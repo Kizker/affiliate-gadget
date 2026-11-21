@@ -187,6 +187,18 @@ export async function GET(
       include: {
         bankAccounts: true,
         schedules: true,
+        users: {
+          where: { role: 'STORE_ADMIN' },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+            mitraStatus: true,
+          },
+          take: 1,
+        },
         _count: {
           select: {
             products: true,
@@ -198,6 +210,8 @@ export async function GET(
     })
 
     if (store) {
+      const activeAdmin = store.users?.[0] || null
+
       return NextResponse.json({
         id: store.id,
         businessName: store.name,
@@ -216,7 +230,11 @@ export async function GET(
         longitude: store.longitude,
         phone: store.phone,
         whatsapp: store.whatsapp || store.phone,
-        email: store.email || `${store.slug}@affiliategadget.com`,
+        email:
+          store.email ||
+          (activeAdmin
+            ? activeAdmin.email
+            : `${store.slug}@affiliategadget.com`),
         website: `https://affiliategadget.com/toko/${store.slug}`,
         commissionRate: store.commissionRate,
         isOwnerStore: store.isOwnerStore,
@@ -242,14 +260,18 @@ export async function GET(
         services: [],
         images: [],
         reviews: [],
-        user: {
-          id: store.id,
-          name: store.companyName,
-          email: store.email || `${store.slug}@affiliategadget.com`,
-          phone: store.phone,
-          isActive: store.isActive,
-          mitraStatus: store.isActive ? 'APPROVED' : 'PENDING',
-        },
+        user: activeAdmin
+          ? {
+              id: activeAdmin.id,
+              name: activeAdmin.name || store.companyName,
+              email: activeAdmin.email,
+              phone: activeAdmin.phone || store.phone,
+              isActive: activeAdmin.isActive,
+              mitraStatus:
+                activeAdmin.mitraStatus ||
+                (activeAdmin.isActive ? 'APPROVED' : 'PENDING'),
+            }
+          : null,
         _count: {
           services: store._count.products,
           products: store._count.products,
@@ -549,6 +571,39 @@ export async function PUT(
       if (isApproved !== undefined) storeUpdateData.isActive = isApproved
       if (body.groupId !== undefined)
         storeUpdateData.groupId = body.groupId || null
+
+      // Penugasan Akun Admin Penanggung Jawab Toko
+      if (body.adminUserId !== undefined) {
+        if (body.adminUserId) {
+          const newAdmin = await db.user.findUnique({
+            where: { id: body.adminUserId },
+          })
+          if (newAdmin) {
+            // Unlink admin toko lama yang terhubung ke toko ini
+            await db.user.updateMany({
+              where: { storeId: id, id: { not: newAdmin.id } },
+              data: { storeId: null },
+            })
+            // Tautkan admin baru terpilih
+            await db.user.update({
+              where: { id: newAdmin.id },
+              data: {
+                storeId: id,
+                role: 'STORE_ADMIN',
+                isActive: true,
+                mitraStatus: 'APPROVED',
+              },
+            })
+            storeUpdateData.email = newAdmin.email
+          }
+        } else {
+          // Unlink jika dikosongkan
+          await db.user.updateMany({
+            where: { storeId: id },
+            data: { storeId: null },
+          })
+        }
+      }
 
       if (bankName && accountNumber) {
         const existingBank = await db.storeBankAccount.findFirst({

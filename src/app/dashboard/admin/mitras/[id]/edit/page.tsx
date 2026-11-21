@@ -52,6 +52,14 @@ interface StoreDetail {
   }
 }
 
+interface StoreAdminUserOption {
+  id: string
+  name: string | null
+  email: string
+  phone?: string | null
+  storeId?: string | null
+}
+
 export default function EditStorePage() {
   const router = useRouter()
   const params = useParams()
@@ -60,6 +68,8 @@ export default function EditStorePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [store, setStore] = useState<StoreDetail | null>(null)
+  const [adminUsers, setAdminUsers] = useState<StoreAdminUserOption[]>([])
+  const [selectedAdminUserId, setSelectedAdminUserId] = useState<string>('')
 
   // Form data
   const [formData, setFormData] = useState({
@@ -87,12 +97,25 @@ export default function EditStorePage() {
   useEffect(() => {
     const fetchStore = async () => {
       try {
-        const res = await fetch(`/api/admin/mitras/${storeId}`)
+        const [res, usersRes] = await Promise.all([
+          fetch(`/api/admin/mitras/${storeId}`),
+          fetch('/api/admin/users?role=STORE_ADMIN&limit=100').catch(
+            () => null
+          ),
+        ])
+
         if (!res.ok) {
           throw new Error('Failed to fetch store')
         }
         const data = await res.json()
         setStore(data)
+
+        if (usersRes && usersRes.ok) {
+          const uJson = await usersRes.json()
+          setAdminUsers(uJson.users || [])
+        }
+
+        setSelectedAdminUserId(data.user?.id || '')
 
         // Populate form
         setFormData({
@@ -164,6 +187,7 @@ export default function EditStorePage() {
         weekendHours: formData.weekendHours || null,
         isApproved: formData.isApproved,
         isActive: formData.isActive,
+        adminUserId: selectedAdminUserId || null,
       }
 
       const res = await fetch(`/api/admin/mitras/${storeId}`, {
@@ -468,8 +492,8 @@ export default function EditStorePage() {
         {/* RIGHT COLUMN (4 Cols): META & OPERATIONAL SETTINGS                       */}
         {/* ========================================================================= */}
         <div className="space-y-5 lg:col-span-4">
-          {/* Card: Akun Pengelola Toko */}
-          <div className="shadow-2xs space-y-3 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          {/* Card: Akun Pengelola Toko / Entitas Toko */}
+          <div className="shadow-2xs space-y-3.5 rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-slate-500" />
@@ -477,21 +501,75 @@ export default function EditStorePage() {
                   Entitas Toko
                 </h3>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400">
-                <span className="h-1 w-1 rounded-full bg-emerald-500" />
-                Aktif
-              </span>
+              {selectedAdminUserId ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <span className="h-1 w-1 rounded-full bg-emerald-500" />
+                  {formData.isActive ? 'Aktif' : 'Nonaktif'}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300">
+                  <span className="h-1 w-1 rounded-full bg-amber-500" />
+                  Belum Ada Admin
+                </span>
+              )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3 text-xs">
+              {/* Dropdown Akun Admin Toko Penanggung Jawab */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Akun Admin Penanggung Jawab{' '}
+                  <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={selectedAdminUserId}
+                  onChange={(e) => {
+                    const uId = e.target.value
+                    setSelectedAdminUserId(uId)
+                    const found = adminUsers.find((u) => u.id === uId)
+                    if (found?.email) {
+                      setFormData((prev) => ({ ...prev, email: found.email }))
+                    }
+                  }}
+                  className="shadow-2xs w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">-- Pilih Akun Admin Toko --</option>
+                  {adminUsers.map((u) => {
+                    const isCurrentStore = u.storeId === storeId
+                    const hasOtherStore = u.storeId && u.storeId !== storeId
+                    return (
+                      <option key={u.id} value={u.id}>
+                        {u.name || 'Admin'} ({u.email}){' '}
+                        {isCurrentStore
+                          ? '• Penanggung Jawab Saat Ini'
+                          : hasOtherStore
+                            ? '• Mengelola Toko Lain'
+                            : '• Siap Ditugaskan'}
+                      </option>
+                    )
+                  })}
+                </select>
+                <p className="text-[10px] text-slate-400">
+                  Pilih akun pengguna dengan peran STORE_ADMIN sebagai pengelola
+                  cabang ini.
+                </p>
+              </div>
+
+              {/* Status Alert jika admin kosong */}
+              {!selectedAdminUserId && (
+                <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-2.5 text-[11px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                  ⚠️ <strong>Perhatian:</strong> Admin toko penanggung jawab
+                  belum ditunjuk. Toko untuk sementara dinonaktifkan dari publik
+                  hingga penanggung jawab baru disimpan.
+                </div>
+              )}
+
               <div>
                 <span className="block text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">
-                  Badan Usaha / Penanggung Jawab
+                  Badan Usaha / PT
                 </span>
                 <p className="mt-0.5 text-xs font-bold text-slate-900 dark:text-white">
-                  {store.companyName ||
-                    store.user.name ||
-                    'PT Gadget Jaya Sentosa'}
+                  {store.companyName || 'PT Gadget Jaya Sentosa'}
                 </p>
               </div>
 
@@ -500,7 +578,11 @@ export default function EditStorePage() {
                   Email Akun Cabang
                 </span>
                 <p className="mt-0.5 truncate font-mono text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {store.user.email}
+                  {adminUsers.find((u) => u.id === selectedAdminUserId)
+                    ?.email ||
+                    store.user?.email ||
+                    formData.email ||
+                    '-'}
                 </p>
               </div>
             </div>

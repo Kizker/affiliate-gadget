@@ -117,6 +117,10 @@ export default function UsersPage() {
     fetchUsers()
   }, [fetchUsers])
 
+  // Delete user state
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
   // Export CSV
   const handleExport = () => {
     const params = new URLSearchParams({
@@ -125,38 +129,34 @@ export default function UsersPage() {
     window.open(`/api/admin/users/export?${params}`, '_blank')
   }
 
-  // Delete user
-  const handleDelete = async (
-    id: string,
-    name: string | null,
-    email: string
-  ) => {
-    const displayName = name || email
-    if (
-      !confirm(
-        `Apakah Anda yakin ingin menghapus akun "${displayName}"?\n\nData pengguna akan dihapus secara permanen dari database.`
-      )
-    ) {
-      return
-    }
+  // Delete user confirmation
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmUser) return
+    setIsDeleting(true)
 
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(`/api/admin/users/${deleteConfirmUser.id}`, {
         method: 'DELETE',
       })
 
+      const data = await res.json()
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Gagal menghapus pengguna')
+        throw new Error(data.error || 'Gagal menghapus pengguna')
       }
 
-      toast.success(`Akun "${displayName}" berhasil dihapus`)
+      toast.success(
+        data.message ||
+          `Akun "${deleteConfirmUser.name || deleteConfirmUser.email}" berhasil dihapus`
+      )
+      setDeleteConfirmUser(null)
       fetchUsers()
     } catch (error) {
       console.error('Error deleting user:', error)
       toast.error(
         error instanceof Error ? error.message : 'Gagal menghapus pengguna'
       )
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -657,9 +657,7 @@ export default function UsersPage() {
                           {/* Delete Button */}
                           {!isSuperAdmin && (
                             <button
-                              onClick={() =>
-                                handleDelete(user.id, user.name, user.email)
-                              }
+                              onClick={() => setDeleteConfirmUser(user)}
                               className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-rose-900 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
                               title="Hapus Akun Pengguna"
                             >
@@ -731,6 +729,66 @@ export default function UsersPage() {
             fetchUsers()
           }}
         />
+      )}
+
+      {/* Modal Konfirmasi Hapus Akun (Simple & Modern) */}
+      {deleteConfirmUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="backdrop-blur-xs fixed inset-0 bg-slate-950/60 transition-opacity"
+            onClick={() => !isDeleting && setDeleteConfirmUser(null)}
+          />
+          <div className="relative w-full max-w-sm rounded-3xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-950 dark:text-white">
+                Hapus Akun Pengguna?
+              </h3>
+              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                Apakah Anda yakin ingin menghapus akun{' '}
+                <strong className="text-slate-800 dark:text-slate-200">
+                  "{deleteConfirmUser.name || deleteConfirmUser.email}"
+                </strong>
+                ?
+              </p>
+
+              {deleteConfirmUser.role === 'STORE_ADMIN' && (
+                <div className="mt-3.5 w-full rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3 text-left text-[11px] text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+                  ⚠️ <strong>Perhatian:</strong> Akun ini adalah Admin Toko.
+                  Toko terkait akan dinonaktifkan sementara dan seluruh riwayat
+                  transaksi tetap aman hingga Anda menunjuk admin penanggung
+                  jawab baru di menu Toko.
+                </div>
+              )}
+
+              <div className="mt-6 flex w-full gap-2.5">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteConfirmUser(null)}
+                  className="flex-1 rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDelete}
+                  className="shadow-xs inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-rose-600 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95 disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  <span>Hapus Akun</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

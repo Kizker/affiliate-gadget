@@ -208,34 +208,209 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Get user to check if it's SUPER_ADMIN
-    const user = await prisma.user.findUnique({
+    // Cannot delete own self
+    if (session.user.id === id) {
+      return NextResponse.json(
+        { error: 'Tidak dapat menghapus akun Anda sendiri saat sedang login' },
+        { status: 400 }
+      )
+    }
+
+    // Get user to check role and relations
+    const targetUser = await prisma.user.findUnique({
       where: { id },
-      select: { role: true },
+      include: {
+        store: true,
+      },
     })
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!targetUser) {
+      return NextResponse.json(
+        { error: 'User tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
     // Cannot delete SUPER_ADMIN
-    if (user.role === 'SUPER_ADMIN') {
+    if (targetUser.role === 'SUPER_ADMIN') {
       return NextResponse.json(
-        { error: 'Cannot delete SUPER_ADMIN' },
+        { error: 'Akun Super Admin tidak dapat dihapus' },
         { status: 403 }
       )
     }
 
-    // Hard delete - permanently remove user from database
-    await prisma.user.delete({
+    // ─── 1. Penanganan Khusus Admin Toko (STORE_ADMIN) ───────────────────────
+    // Pastikan saat admin toko dihapus, toko dan riwayat transaksinya tidak terganggu,
+    // tetapi toko untuk sementara dinonaktifkan (isActive = false) agar tidak muncul di publik.
+    let managedStoreName: string | null = null
+    const managedStore = targetUser.storeId
+      ? await prisma.store.findUnique({ where: { id: targetUser.storeId } })
+      : await prisma.store.findFirst({ where: { email: targetUser.email } })
+
+    if (managedStore) {
+      managedStoreName = managedStore.name
+      // Nonaktifkan toko untuk sementara
+      await prisma.store.update({
+        where: { id: managedStore.id },
+        data: {
+          isActive: false,
+        },
+      })
+    }
+
+    // Unlink user dari toko
+    await prisma.user.update({
       where: { id },
+      data: { storeId: null },
     })
 
-    return NextResponse.json({ message: 'User deleted successfully' })
+    // ─── 2. Pembersihan Data Dependent (Anti-Foreign Key Violation) ───────────
+    await prisma.$transaction(async (tx) => {
+      // Data autentikasi & sesi
+      await tx.session.deleteMany({ where: { userId: id } }).catch(() => {})
+      await tx.account.deleteMany({ where: { userId: id } }).catch(() => {})
+      await tx.userDevice.deleteMany({ where: { userId: id } }).catch(() => {})
+      await tx.otpToken.deleteMany({ where: { userId: id } }).catch(() => {})
+      await tx.emailVerificationToken
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+      await tx.notificationLog
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+
+      // Data aktivitas & personal user
+      await tx.notification
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+      await tx.cart.deleteMany({ where: { userId: id } }).catch(() => {})
+      await tx.userAddress.deleteMany({ where: { userId: id } }).catch(() => {})
+      await tx.auditLog.deleteMany({ where: { userId: id } }).catch(() => {})
+      await tx.voucherUsage
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+      await tx.chatTemplate
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+      await tx.massUpdateTask
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+      await tx.liveStreamComment
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+
+      // Unlink relasi staf / after sales
+      await tx.storeGroup
+        .updateMany({
+          where: { afterSalesUserId: id },
+          data: { afterSalesUserId: null },
+        })
+        .catch(() => {})
+
+      // Unlink klaim chat staf
+      await tx.adminChatRoom
+        .updateMany({
+          where: { claimedById: id },
+          data: { claimedById: null },
+        })
+        .catch(() => {})
+
+      // Hapus pesan dan room yang dikirim / dimiliki user sebagai customer
+      await tx.adminChatMessage
+        .deleteMany({ where: { senderId: id } })
+        .catch(() => {})
+      await tx.adminChatRoom
+        .deleteMany({ where: { customerId: id } })
+        .catch(() => {})
+      await tx.chatMessage
+        .deleteMany({ where: { senderId: id } })
+        .catch(() => {})
+      await tx.chatRoom
+        .deleteMany({ where: { customerId: id } })
+        .catch(() => {})
+
+      // Unlink order assignment staf
+      await tx.order
+        .updateMany({
+          where: { claimedById: id },
+          data: { claimedById: null },
+        })
+        .catch(() => {})
+      await tx.order
+        .updateMany({
+          where: { paymentRequestedById: id },
+          data: { paymentRequestedById: null },
+        })
+        .catch(() => {})
+      await tx.order
+        .updateMany({
+          where: { technicianPaymentRequestedById: id },
+          data: { technicianPaymentRequestedById: null },
+        })
+        .catch(() => {})
+
+      // ─── 3. Penanganan Transaksi Pesanan & Hak Konsumen ─────────────────────
+      // Jika user memiliki riwayat order, alihkan ke akun penampung arsip
+      // agar seluruh riwayat omzet, barang, dan akuntansi toko tidak hilang.
+      const hasOrders = await tx.order.count({ where: { userId: id } })
+      if (hasOrders > 0) {
+        let archiveUser = await tx.user.findUnique({
+          where: { id: 'system_deleted_user' },
+        })
+        if (!archiveUser) {
+          archiveUser = await tx.user.create({
+            data: {
+              id: 'system_deleted_user',
+              name: 'Pengguna Dihapus (Arsip)',
+              email: 'deleted.user@system.internal',
+              role: 'CUSTOMER',
+              isActive: false,
+            },
+          })
+        }
+
+        await tx.order.updateMany({
+          where: { userId: id },
+          data: { userId: archiveUser.id },
+        })
+        await tx.returnRequest.updateMany({
+          where: { userId: id },
+          data: { userId: archiveUser.id },
+        })
+        await tx.complaint.updateMany({
+          where: { userId: id },
+          data: { userId: archiveUser.id },
+        })
+        await tx.review.updateMany({
+          where: { userId: id },
+          data: { userId: archiveUser.id },
+        })
+      }
+
+      // ─── 4. Eksekusi Hapus User Permanen ──────────────────────────────────
+      await tx.user.delete({
+        where: { id },
+      })
+    })
+
+    const successMessage = managedStoreName
+      ? `Akun admin toko berhasil dihapus. Toko "${managedStoreName}" dinonaktifkan sementara dan riwayat transaksinya tetap aman.`
+      : 'Pengguna berhasil dihapus'
+
+    return NextResponse.json({
+      success: true,
+      message: successMessage,
+      storeDeactivated: Boolean(managedStoreName),
+      storeName: managedStoreName,
+    })
   } catch (error) {
     console.error('Error deleting user:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Gagal menghapus pengguna dari database',
+      },
       { status: 500 }
     )
   }
