@@ -11,6 +11,7 @@ import {
   validateAndCompressImage,
   validateVideo,
 } from '@/lib/media-upload-client'
+import { CreatableCombobox } from '@/components/ui/creatable-combobox'
 import { ProductNewMobileView } from '@/components/admin/products/product-new-mobile-view'
 
 const BRAND_OPTIONS = [
@@ -110,25 +111,15 @@ export default function NewGadgetProductPage() {
 
   const [variants, setVariants] = useState([
     {
-      name: '128GB - Black Titanium',
+      name: 'Standar',
       ram: '8GB',
       storage: '128GB',
       color: 'Black Titanium',
       image: '',
       price: '',
       costPrice: '',
-      stock: '3',
-      sku: '',
-    },
-    {
-      name: '256GB - Natural Titanium',
-      ram: '8GB',
-      storage: '256GB',
-      color: 'Natural Titanium',
-      image: '',
-      price: '',
-      costPrice: '',
-      stock: '2',
+      stock: '1',
+      weightGram: '500',
       sku: '',
     },
   ])
@@ -184,14 +175,15 @@ export default function NewGadgetProductPage() {
     setVariants((prev) => [
       ...prev,
       {
-        name: '',
-        ram: '8GB',
-        storage: '256GB',
+        name: `Varian #${prev.length + 1}`,
+        ram: prev[prev.length - 1]?.ram || '8GB',
+        storage: prev[prev.length - 1]?.storage || '256GB',
         color: 'Natural Titanium',
         image: '',
-        price: form.price,
-        costPrice: form.costPrice || '',
+        price: prev[prev.length - 1]?.price || '',
+        costPrice: '',
         stock: '1',
+        weightGram: prev[prev.length - 1]?.weightGram ?? '500',
         sku: '',
       },
     ])
@@ -393,7 +385,13 @@ export default function NewGadgetProductPage() {
           )
         : parseInt(String(form.stock), 10) || 0
 
-    const rawWeight = parseInt(String(form.weightGram), 10)
+    const firstVariantWeight = variants.find(
+      (v) => v.weightGram !== undefined && v.weightGram !== ''
+    )?.weightGram
+    const rawWeight =
+      firstVariantWeight !== undefined
+        ? parseInt(String(firstVariantWeight), 10)
+        : parseInt(String(form.weightGram), 10)
     const effectiveWeightGram =
       !isNaN(rawWeight) && rawWeight >= 0 ? rawWeight : 0
 
@@ -580,13 +578,11 @@ export default function NewGadgetProductPage() {
                     <label className="font-bold text-slate-700 dark:text-slate-300">
                       Merek (Brand) <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <CreatableCombobox
                       value={form.brand}
-                      onChange={(e) =>
-                        setForm({ ...form, brand: e.target.value })
-                      }
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      onChange={(val) => setForm({ ...form, brand: val })}
+                      options={BRAND_OPTIONS}
+                      placeholder="Pilih atau ketik merek..."
                     />
                   </div>
 
@@ -594,138 +590,22 @@ export default function NewGadgetProductPage() {
                     <label className="font-bold text-slate-700 dark:text-slate-300">
                       Kondisi Fisik <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <CreatableCombobox
                       value={form.condition}
-                      onChange={(e) =>
-                        setForm({ ...form, condition: e.target.value })
-                      }
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      onChange={(val) => setForm({ ...form, condition: val })}
+                      options={CONDITION_OPTIONS}
+                      placeholder="Pilih kondisi fisik..."
                     />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Section B: Harga, Pajak & Stok */}
-            <div className="space-y-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-              <div>
-                <h2 className="text-sm font-bold text-slate-950 dark:text-white">
-                  Harga, Pajak &amp; Stok
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Penentuan nominal transaksi dan ketersediaan unit
-                </p>
-              </div>
-
-              <div className="space-y-4 text-xs">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">
-                      Harga Jual (Rp) <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      required
-                      value={formatRupiahInput(form.price)}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, '')
-                        setForm({ ...form, price: raw })
-                      }}
-                      placeholder="18.999.000"
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">
-                      Harga Modal / HPP (Rp)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatRupiahInput(form.costPrice)}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, '')
-                        setForm({ ...form, costPrice: raw })
-                      }}
-                      placeholder="16.500.000"
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">
-                      Harga Coret Pembanding (Rp)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatRupiahInput(form.originalPrice)}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, '')
-                        setForm({ ...form, originalPrice: raw })
-                      }}
-                      placeholder="20.999.000"
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">
-                      Total Stok Unit <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form.stock}
-                      onChange={(e) =>
-                        setForm({ ...form, stock: e.target.value })
-                      }
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-700 dark:text-slate-300">
-                      Berat Produk (gram){' '}
-                      <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={form.weightGram}
-                      onChange={(e) =>
-                        setForm({ ...form, weightGram: e.target.value })
-                      }
-                      placeholder="Contoh: 500 = 0,5 kg"
-                      className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-
-                  <div className="flex h-full flex-col justify-center rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      ⚡ Ongkos Kirim Otomatis (Biteship API)
-                    </span>
-                    <span className="mt-0.5 text-[11px]">
-                      Tarif JNE & Gojek dihitung otomatis saat checkout
-                      berdasarkan berat produk & jarak ke pembeli.
-                    </span>
                   </div>
                 </div>
 
                 {/* Status PPN Inklusif Strip */}
-                <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
                   <span className="text-xs text-slate-600 dark:text-slate-400">
                     <strong className="text-slate-900 dark:text-white">
                       Status PPN Inklusif:
                     </strong>{' '}
-                    Harga jual telah mencakup PPN 11% sesuai regulasi PKP
+                    Harga jual varian telah mencakup PPN 11% sesuai regulasi PKP
                   </span>
                   <label className="flex cursor-pointer items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
                     <input
@@ -1042,14 +922,15 @@ export default function NewGadgetProductPage() {
                       </div>
                     </div>
 
-                    {/* Varian Row 2: Stok Unit & HPP Modal */}
+                    {/* Varian Row 2: Stok Unit, HPP Modal & Berat */}
                     <div className="grid grid-cols-12 gap-3 pt-1 text-xs">
-                      <div className="col-span-2 space-y-1">
+                      <div className="col-span-4 space-y-1 sm:col-span-2">
                         <label className="font-semibold text-slate-500">
-                          Stok Unit
+                          Stok Unit <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="number"
+                          min={0}
                           value={v.stock}
                           onChange={(e) =>
                             updateVariant(i, 'stock', e.target.value)
@@ -1057,15 +938,40 @@ export default function NewGadgetProductPage() {
                           className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 font-medium outline-none focus:border-orange-500"
                         />
                       </div>
-                      <div className="col-span-2 space-y-1">
+                      <div className="col-span-4 space-y-1 sm:col-span-3">
                         <label className="font-semibold text-slate-500">
                           HPP Modal (Rp)
                         </label>
                         <input
                           type="text"
-                          disabled
-                          value={formatRupiahInput(v.costPrice) || 'Otomatis'}
-                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50 px-3 py-2 font-medium text-slate-600 outline-none"
+                          inputMode="numeric"
+                          value={formatRupiahInput(v.costPrice)}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '')
+                            updateVariant(i, 'costPrice', raw)
+                          }}
+                          placeholder="16.500.000"
+                          className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 font-medium outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div className="col-span-4 space-y-1 sm:col-span-3">
+                        <div className="flex items-center justify-between">
+                          <label className="font-semibold text-slate-500">
+                            Berat (gram)
+                          </label>
+                          <span className="text-[9px] text-slate-400">
+                            Bisa 0
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min={0}
+                          value={v.weightGram ?? '500'}
+                          onChange={(e) =>
+                            updateVariant(i, 'weightGram', e.target.value)
+                          }
+                          placeholder="500"
+                          className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 font-medium outline-none focus:border-orange-500"
                         />
                       </div>
                     </div>

@@ -206,26 +206,40 @@ export function findRegionalCoord(
   const normCity = normalizeRegion(city)
   const normProv = normalizeRegion(province)
 
+  // Urutkan keys dari yang paling spesifik / panjang ke yang terpendek
+  // Mencegah 'jakarta' mencocokkan 'jakarta pusat' atau 'jakarta selatan' secara prematur
+  const sortedKeys = Object.keys(REGIONAL_CENTROIDS).sort(
+    (a, b) => b.length - a.length
+  )
+
   if (normCity) {
-    for (const [key, coord] of Object.entries(REGIONAL_CENTROIDS)) {
+    if (REGIONAL_CENTROIDS[normCity]) {
+      return REGIONAL_CENTROIDS[normCity]
+    }
+
+    for (const key of sortedKeys) {
       if (
         normCity === key ||
         normCity.includes(key) ||
         key.includes(normCity)
       ) {
-        return coord
+        return REGIONAL_CENTROIDS[key]
       }
     }
   }
 
   if (normProv) {
-    for (const [key, coord] of Object.entries(REGIONAL_CENTROIDS)) {
+    if (REGIONAL_CENTROIDS[normProv]) {
+      return REGIONAL_CENTROIDS[normProv]
+    }
+
+    for (const key of sortedKeys) {
       if (
         normProv === key ||
         normProv.includes(key) ||
         key.includes(normProv)
       ) {
-        return coord
+        return REGIONAL_CENTROIDS[key]
       }
     }
   }
@@ -600,41 +614,50 @@ export async function calculateShippingOptions(
   const destLng =
     typeof destination.longitude === 'number' ? destination.longitude : null
 
-  // Geographical sanity check:
-  // If regions are clearly in different metropolitan areas / provinces, but GPS coordinates are virtually identical (< 50 km),
-  // coordinates are mismatched (e.g. laptop GPS captured in Jakarta while store is in Palembang/Ogan Komering Ulu).
+  // Koordinat asal efektif: pakai titik GPS toko jika ada, fallback ke centroid kota toko
+  const effectiveOrig =
+    origLat !== null && origLng !== null
+      ? { lat: origLat, lng: origLng }
+      : findRegionalCoord(origin.city, origin.province)
+
+  // Koordinat tujuan efektif: pakai titik GPS pembeli jika ada, fallback ke centroid kota pembeli
+  const effectiveDest =
+    destLat !== null && destLng !== null
+      ? { lat: destLat, lng: destLng }
+      : findRegionalCoord(destination.city, destination.province)
+
   let hasCoordMismatch = false
-  if (
-    origLat !== null &&
-    origLng !== null &&
-    destLat !== null &&
-    destLng !== null
-  ) {
+  if (effectiveOrig && effectiveDest) {
     const rawDist = calculateHaversineDistance(
-      origLat,
-      origLng,
-      destLat,
-      destLng
+      effectiveOrig.lat,
+      effectiveOrig.lng,
+      effectiveDest.lat,
+      effectiveDest.lng
     )
     if (!isSameMetro && rawDist < 50) {
       hasCoordMismatch = true
+      const oCentroid = findRegionalCoord(origin.city, origin.province)
+      const dCentroid = findRegionalCoord(
+        destination.city,
+        destination.province
+      )
+      if (oCentroid && dCentroid) {
+        distanceKm = calculateHaversineDistance(
+          oCentroid.lat,
+          oCentroid.lng,
+          dCentroid.lat,
+          dCentroid.lng
+        )
+      }
     } else {
       distanceKm = rawDist
     }
   }
 
-  // If coordinates are missing or mismatched, fallback to regional centroid coordinates
-  if (distanceKm === null || hasCoordMismatch) {
-    const oCoord = findRegionalCoord(origin.city, origin.province)
-    const dCoord = findRegionalCoord(destination.city, destination.province)
-    if (oCoord && dCoord) {
-      distanceKm = calculateHaversineDistance(
-        oCoord.lat,
-        oCoord.lng,
-        dCoord.lat,
-        dCoord.lng
-      )
-    }
+  // Jika kedua pihak dalam satu metro area (sama-sama Jakarta) tetapi jarak terhitung sangat kecil (< 1 km),
+  // gunakan jarak intra-kota realistis (4.5 km) agar tidak pernah keliru menampilkan 0.0 km
+  if (distanceKm !== null && distanceKm < 1.0 && isSameMetro) {
+    distanceKm = 4.5
   }
 
   // 3. Coba Live Biteship API
@@ -649,21 +672,33 @@ export async function calculateShippingOptions(
     // Ensure Gojek option is present with accurate availability based on distance & metropolitan area
     const hasGojek = liveOptions.some((o) => o.courierCode === 'GOJEK')
     if (!hasGojek) {
+      const isGojekEligible =
+        isSameMetro &&
+        distanceKm !== null &&
+        distanceKm <= GOJEK_MAX_DISTANCE_KM
+      const gojekFare = isGojekEligible
+        ? GOJEK_BASE_FARE +
+          Math.max(0, Math.ceil((distanceKm ?? 0) - 4)) * GOJEK_FARE_PER_KM
+        : 0
+
       liveOptions.push({
         courierCode: 'GOJEK',
         courierService: 'INSTANT',
         serviceName: 'Gojek Instant Kurir',
         courierName: 'Gojek',
-        description:
-          'Di luar area jangkauan pengiriman instan Gojek (Biteship)',
-        cost: 0,
+        description: isGojekEligible
+          ? 'Langsung Sampai (Maks 1-2 Jam)'
+          : 'Di luar area jangkauan pengiriman instan Gojek (maksimal 40 km).',
+        cost: Math.round(gojekFare),
         etd: '1-2 Jam',
-        available: false,
-        unavailableReason:
-          distanceKm !== null && distanceKm > GOJEK_MAX_DISTANCE_KM
+        available: isGojekEligible,
+        unavailableReason: isGojekEligible
+          ? undefined
+          : distanceKm !== null && distanceKm > GOJEK_MAX_DISTANCE_KM
             ? `Jarak pengiriman (${distanceKm.toFixed(1)} km) melebihi batas maksimal Gojek Instant (40 km).`
             : 'Di luar area jangkauan pengiriman instan Gojek (maksimal 40 km).',
         distanceKm: distanceKm ?? undefined,
+        isRecommended: isGojekEligible,
       })
     } else {
       // Validate Gojek in live options against distance & metropolitan boundary
@@ -675,6 +710,8 @@ export async function calculateShippingOptions(
           ) {
             opt.available = false
             opt.unavailableReason = `Jarak pengiriman (${(distanceKm ?? 80).toFixed(1)} km) melebihi batas maksimal Gojek Instant (40 km).`
+          } else {
+            opt.distanceKm = distanceKm ?? undefined
           }
         }
       }

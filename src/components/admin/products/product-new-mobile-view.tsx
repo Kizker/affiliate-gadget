@@ -161,18 +161,9 @@ export function ProductNewMobileView({
               className="w-full rounded-2xl border border-slate-200/90 bg-slate-50 px-3.5 py-2.5 font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
             />
           </div>
-        </div>
-      </div>
 
-      {/* 3. Harga & Inventori Card */}
-      <div className="shadow-2xs space-y-3.5 rounded-3xl border border-slate-200/90 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-xs font-bold text-slate-900 dark:text-white">
-          Harga & Inventori
-        </h2>
-
-        <div className="space-y-3 text-xs">
           {/* Checkbox PPN */}
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3">
+          <div className="mt-2 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3">
             <label className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
               <input
                 type="checkbox"
@@ -185,29 +176,6 @@ export function ProductNewMobileView({
               <span>Dikenakan PPN (Inklusif 11%)</span>
             </label>
             <span className="text-[10px] text-slate-400">PKP Toko</span>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="font-semibold text-slate-600 dark:text-slate-400">
-                Berat Produk (gram) <span className="text-rose-500">*</span>
-              </label>
-              <span className="text-[10px] text-slate-400">
-                Bisa 0 (Jasa / Digital)
-              </span>
-            </div>
-            <input
-              type="number"
-              min={0}
-              value={form.weightGram}
-              onChange={(e) => setForm({ ...form, weightGram: e.target.value })}
-              placeholder="500 (isi 0 jika produk jasa/digital)"
-              className="w-full rounded-2xl border border-slate-200/90 bg-white px-3 py-2.5 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            />
-            <p className="mt-1 text-[11px] text-slate-500">
-              ⚡ Ongkir JNE &amp; Gojek dihitung otomatis via Biteship. Jika
-              berat 0, bebas ongkir (Rp 0).
-            </p>
           </div>
         </div>
       </div>
@@ -520,13 +488,18 @@ export function ProductNewMobileView({
 
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-600 dark:text-slate-400">
-                    HPP Modal
+                    HPP Modal (Rp)
                   </label>
                   <input
                     type="text"
-                    disabled
-                    value={formatRupiahInput(v.costPrice) || 'Otomatis'}
-                    className="w-full rounded-2xl border border-slate-200/90 bg-slate-50 px-3.5 py-2 font-medium text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-800"
+                    inputMode="numeric"
+                    value={formatRupiahInput(v.costPrice)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '')
+                      updateVariant(i, 'costPrice', raw)
+                    }}
+                    placeholder="16.500.000"
+                    className="w-full rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800"
                   />
                 </div>
 
@@ -536,8 +509,28 @@ export function ProductNewMobileView({
                   </label>
                   <input
                     type="number"
+                    min={0}
                     value={v.stock}
                     onChange={(e) => updateVariant(i, 'stock', e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400">
+                      Berat (gram)
+                    </label>
+                    <span className="text-[10px] text-slate-400">Bisa 0</span>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={v.weightGram ?? '500'}
+                    onChange={(e) =>
+                      updateVariant(i, 'weightGram', e.target.value)
+                    }
+                    placeholder="500"
                     className="w-full rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2 font-medium outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800"
                   />
                 </div>
