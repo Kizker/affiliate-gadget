@@ -62,7 +62,7 @@ export async function GET(
       session.user.role === 'STORE_ADMIN' ||
       session.user.role === 'STORE_SALES'
     ) {
-      let storeId = session.user.storeId
+      let storeId = (session.user as any).storeId
       if (!storeId && session.user.id) {
         const u = await prisma.user.findUnique({
           where: { id: session.user.id },
@@ -70,7 +70,23 @@ export async function GET(
         })
         storeId = u?.storeId || null
       }
-      const orderStoreId = returnRequest.order?.storeId || returnRequest.storeId
+      if (!storeId && session.user.email) {
+        const s = await prisma.store.findFirst({
+          where: {
+            OR: [
+              { email: session.user.email },
+              { users: { some: { id: session.user.id } } },
+            ],
+          },
+          select: { id: true },
+        })
+        storeId = s?.id || null
+      }
+      const orderStoreId =
+        returnRequest.order?.storeId ||
+        returnRequest.storeId ||
+        returnRequest.order?.items?.find((i: any) => i.product?.storeId)
+          ?.product?.storeId
       if (!storeId || orderStoreId !== storeId) {
         return NextResponse.json(
           { error: 'Pengajuan pengembalian tidak ditemukan' },
@@ -185,8 +201,24 @@ export async function PUT(
         where: { id: session.user.id },
         select: { storeId: true },
       })
-      const userStoreId = (session.user as any).storeId || userRecord?.storeId
-      const orderStoreId = existing.order?.storeId || existing.storeId
+      let userStoreId = (session.user as any).storeId || userRecord?.storeId
+      if (!userStoreId && session.user.email) {
+        const s = await prisma.store.findFirst({
+          where: {
+            OR: [
+              { email: session.user.email },
+              { users: { some: { id: session.user.id } } },
+            ],
+          },
+          select: { id: true },
+        })
+        userStoreId = s?.id || null
+      }
+      const orderStoreId =
+        existing.order?.storeId ||
+        existing.storeId ||
+        existing.order?.items?.find((i: any) => i.product?.storeId)?.product
+          ?.storeId
       if (!userStoreId || orderStoreId !== userStoreId) {
         return NextResponse.json(
           { error: 'Pengajuan pengembalian tidak ditemukan' },
@@ -346,7 +378,10 @@ export async function PUT(
     }
 
     // Rejection by After Sales (Direct legacy fallback)
-    if (body.action === 'REJECT' && session.user.role === 'AFTER_SALES') {
+    if (
+      body.action === 'REJECT' &&
+      (session.user.role === 'AFTER_SALES' || isSelfManagedStoreAdmin)
+    ) {
       const note =
         body.rejectionReason ||
         'Pengajuan pengembalian ditolak oleh After Sales karena tidak memenuhi syarat garansi.'

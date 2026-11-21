@@ -41,7 +41,12 @@ export async function GET() {
       let effectiveStoreId = user.storeId
       if (!effectiveStoreId) {
         const storeByEmail = await prisma.store.findFirst({
-          where: { email: session.user.email || undefined },
+          where: {
+            OR: [
+              { email: session.user.email || undefined },
+              { users: { some: { id: session.user.id } } },
+            ],
+          },
           select: { id: true },
         })
         if (storeByEmail) {
@@ -408,6 +413,22 @@ export async function POST(request: Request) {
     let orderStoreId: string | null = null
     let fullOrder: any = null
 
+    let userStoreId = user.storeId
+    if (!userStoreId && user.role === 'STORE_ADMIN') {
+      const storeByUser = await prisma.store.findFirst({
+        where: {
+          OR: [
+            { email: session.user.email || undefined },
+            { users: { some: { id: session.user.id } } },
+          ],
+        },
+        select: { id: true },
+      })
+      if (storeByUser) {
+        userStoreId = storeByUser.id
+      }
+    }
+
     if (orderId) {
       fullOrder = await prisma.order.findUnique({
         where: { id: orderId },
@@ -452,12 +473,10 @@ export async function POST(request: Request) {
           null
 
         // STORE_ADMIN: validasi bahwa order yang di-chat adalah milik tokonya
-        if (user.role === 'STORE_ADMIN' && user.storeId) {
+        if (user.role === 'STORE_ADMIN' && userStoreId) {
           const belongsToThisStore =
-            fullOrder.storeId === user.storeId ||
-            fullOrder.items.some(
-              (i: any) => i.product?.storeId === user.storeId
-            )
+            fullOrder.storeId === userStoreId ||
+            fullOrder.items.some((i: any) => i.product?.storeId === userStoreId)
 
           if (!belongsToThisStore) {
             return NextResponse.json(
@@ -476,7 +495,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const targetStoreId = user.storeId || orderStoreId || null
+    const targetStoreId = userStoreId || orderStoreId || null
 
     // 1. Unified Room: Cek apakah room sudah pernah dibuat untuk customer ini di toko terkait
     let room = await prisma.adminChatRoom.findFirst({
@@ -598,7 +617,11 @@ export async function POST(request: Request) {
       if (targetStoreId && !room.storeId) {
         updates.storeId = targetStoreId
       }
-      if (!room.claimedById || user.role === 'AFTER_SALES') {
+      if (
+        !room.claimedById ||
+        user.role === 'AFTER_SALES' ||
+        user.role === 'STORE_ADMIN'
+      ) {
         updates.claimedById = session.user.id
         updates.claimedAt = new Date()
       }

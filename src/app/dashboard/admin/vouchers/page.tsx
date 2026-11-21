@@ -151,7 +151,7 @@ export default function VouchersPage() {
     discountPercent: 10,
     discountAmount: '',
     maxDiscountAmount: '',
-    minimumPurchase: 0,
+    minimumPurchase: '',
     totalQuota: 50,
     usagePerUser: 1,
     validFrom: new Date().toISOString().slice(0, 10),
@@ -307,7 +307,7 @@ export default function VouchersPage() {
       discountPercent: 10,
       discountAmount: '',
       maxDiscountAmount: '',
-      minimumPurchase: 0,
+      minimumPurchase: '',
       totalQuota: 50,
       usagePerUser: 1,
       validFrom: new Date().toISOString().slice(0, 10),
@@ -336,7 +336,9 @@ export default function VouchersPage() {
       maxDiscountAmount: voucher.maxDiscountAmount
         ? String(voucher.maxDiscountAmount)
         : '',
-      minimumPurchase: voucher.minimumPurchase,
+      minimumPurchase: voucher.minimumPurchase
+        ? String(voucher.minimumPurchase)
+        : '',
       totalQuota: voucher.totalQuota,
       usagePerUser: voucher.usagePerUser,
       validFrom: voucher.validFrom.slice(0, 10),
@@ -384,7 +386,10 @@ export default function VouchersPage() {
           !isFixed && formData.maxDiscountAmount !== ''
             ? Number(formData.maxDiscountAmount)
             : undefined,
-        minimumPurchase: Number(formData.minimumPurchase),
+        minimumPurchase:
+          formData.minimumPurchase !== ''
+            ? Number(formData.minimumPurchase)
+            : 0,
         totalQuota: Number(formData.totalQuota),
         usagePerUser: Number(formData.usagePerUser),
         validFrom: new Date(formData.validFrom).toISOString(),
@@ -433,7 +438,10 @@ export default function VouchersPage() {
           !isFixed && formData.maxDiscountAmount !== ''
             ? Number(formData.maxDiscountAmount)
             : null,
-        minimumPurchase: Number(formData.minimumPurchase),
+        minimumPurchase:
+          formData.minimumPurchase !== ''
+            ? Number(formData.minimumPurchase)
+            : 0,
         totalQuota: Number(formData.totalQuota),
         usagePerUser: Number(formData.usagePerUser),
         validFrom: new Date(formData.validFrom).toISOString(),
@@ -1125,7 +1133,7 @@ export default function VouchersPage() {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            minimumPurchase: Number(e.target.value),
+                            minimumPurchase: e.target.value,
                           })
                         }
                         placeholder="0"
@@ -1384,9 +1392,10 @@ export default function VouchersPage() {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            minimumPurchase: Number(e.target.value),
+                            minimumPurchase: e.target.value,
                           })
                         }
+                        placeholder="0"
                         className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:border-orange-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>

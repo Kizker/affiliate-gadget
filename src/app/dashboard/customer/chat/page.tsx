@@ -47,6 +47,7 @@ function CustomerChatContent() {
   const { keyboardInset } = useKeyboardInset(true)
 
   const paramOrderId = searchParams.get('orderId')
+  const paramRoomId = searchParams.get('roomId') || searchParams.get('room')
   const paramOrderNumber = searchParams.get('orderNumber')
   const paramStoreId = searchParams.get('storeId')
   const paramType = searchParams.get('type')
@@ -320,13 +321,24 @@ function CustomerChatContent() {
     }
   }, [status, fetchRooms])
 
-  // Auto-select first room on desktop only once upon initial load if no storeId or orderId param
+  // Auto-select room based on paramRoomId / paramOrderId or first room on desktop
   useEffect(() => {
+    if (paramRoomId && rooms.length > 0) {
+      const match = rooms.find((r) => r.id === paramRoomId)
+      if (match && selectedRoom?.id !== match.id) {
+        hasAutoSelectedRef.current = true
+        setSelectedRoom(match)
+        setShowChatOnMobile(true)
+        return
+      }
+    }
+
     if (
       !hasAutoSelectedRef.current &&
       !paramStoreId &&
       !paramMitraId &&
       !paramOrderId &&
+      !paramRoomId &&
       rooms.length > 0 &&
       !selectedRoom &&
       typeof window !== 'undefined' &&
@@ -335,7 +347,14 @@ function CustomerChatContent() {
       hasAutoSelectedRef.current = true
       setSelectedRoom(rooms[0])
     }
-  }, [rooms, paramStoreId, paramMitraId, paramOrderId, selectedRoom])
+  }, [
+    rooms,
+    paramStoreId,
+    paramMitraId,
+    paramOrderId,
+    paramRoomId,
+    selectedRoom,
+  ])
 
   // Fetch messages for selected room
   const fetchMessages = useCallback(
@@ -573,11 +592,15 @@ function CustomerChatContent() {
           window.history.pushState(
             { chatRoomMobile: true, roomId: room.id },
             '',
-            '/dashboard/customer/chat'
+            `/dashboard/customer/chat?roomId=${room.id}`
           )
           chatRoomPushedRef.current = true
         } else {
-          window.history.replaceState(null, '', '/dashboard/customer/chat')
+          window.history.replaceState(
+            null,
+            '',
+            `/dashboard/customer/chat?roomId=${room.id}`
+          )
         }
       }
     },
@@ -934,15 +957,11 @@ function CustomerChatContent() {
           fetchRooms(true)
 
           if (typeof window !== 'undefined') {
-            window.history.replaceState(null, '', '/dashboard/customer/chat')
-            if (
-              !paramOrderId &&
-              !paramStoreId &&
-              !paramMitraId &&
-              !paramProductId
-            ) {
-              router.replace('/dashboard/customer/chat', { scroll: false })
-            }
+            window.history.replaceState(
+              { chatRoomMobile: true, roomId: data.roomId },
+              '',
+              `/dashboard/customer/chat?roomId=${data.roomId}`
+            )
           }
           lastInitializedKeyRef.current = null
         } else {
@@ -1024,6 +1043,9 @@ function CustomerChatContent() {
 
     // Jika pengguna memilih percakapan dari daftar room list, kembali ke daftar percakapan
     setShowChatOnMobile(false)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/dashboard/customer/chat')
+    }
   }
 
   // Send message with optimistic instant feedback
@@ -1059,11 +1081,11 @@ function CustomerChatContent() {
       setActiveServiceContext(null)
     }
     if (typeof window !== 'undefined') {
-      if (chatRoomPushedRef.current && selectedRoom) {
+      if (selectedRoom) {
         window.history.replaceState(
           { chatRoomMobile: true, roomId: selectedRoom.id },
           '',
-          '/dashboard/customer/chat'
+          `/dashboard/customer/chat?roomId=${selectedRoom.id}`
         )
       } else {
         window.history.replaceState(null, '', '/dashboard/customer/chat')

@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
     // Find active store admin for regular store chat
     const storeAdmin = await prisma.user.findFirst({
       where: {
-        storeId: store.id,
+        OR: [{ storeId: store.id }, { email: store.email || undefined }],
         role: 'STORE_ADMIN',
         isActive: true,
       },
@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Untuk percakapan retur / klaim garansi / pertukaran barang: Alihkan ke Admin After Sales
+    // Untuk percakapan retur / klaim garansi / pertukaran barang: Alihkan ke Admin After Sales jika ada group
     let assignedAdmin = storeAdmin
 
     if (isReturnInquiry) {
@@ -520,6 +520,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Pastikan bubble kartu retur (return_reference) terbuat di room jika belum ada
+    if (isReturnInquiry && orderReferencePayload && room) {
+      const hasReturnMsg = await prisma.adminChatMessage.findFirst({
+        where: {
+          roomId: room.id,
+          messageType: 'return_reference',
+          OR: [
+            ...(effectiveOrderNumber
+              ? [{ content: { contains: effectiveOrderNumber } }]
+              : []),
+            ...(effectiveReturnId
+              ? [{ content: { contains: effectiveReturnId } }]
+              : []),
+            ...(orderId ? [{ content: { contains: orderId } }] : []),
+          ],
+        },
+      })
+
+      if (!hasReturnMsg) {
+        await prisma.adminChatMessage.create({
+          data: {
+            roomId: room.id,
+            senderId: session.user.id,
+            content: JSON.stringify(orderReferencePayload),
+            messageType: 'return_reference',
+            isRead: false,
+          },
+        })
+
+        await prisma.adminChatRoom.update({
+          where: { id: room.id },
+          data: {
+            lastMessageAt: new Date(),
+            orderId: resolvedOrder?.id || orderId || undefined,
+            claimedById: assignedAdmin?.id || undefined,
+            claimedAt: assignedAdmin ? new Date() : undefined,
+          },
+        })
+      }
+    }
+
     // Fetch all messages for this room to return directly (avoiding extra client roundtrip)
     const messages = await prisma.adminChatMessage.findMany({
       where: { roomId: room.id },
@@ -543,20 +584,24 @@ export async function POST(req: NextRequest) {
       orderBy: { createdAt: 'asc' },
     })
 
+    const isGroupAfterSalesActive = Boolean(
+      effectiveIsReturnInquiry && assignedAdmin?.role === 'AFTER_SALES'
+    )
+
     return NextResponse.json({
       roomId: room.id,
       store: {
         id: store.id,
-        name: effectiveIsReturnInquiry
+        name: isGroupAfterSalesActive
           ? `Layanan Purna Jual (${store.name})`
           : store.name,
-        companyName: effectiveIsReturnInquiry
+        companyName: isGroupAfterSalesActive
           ? 'Admin After Sales & Garansi Terpusat'
           : store.companyName,
         phone: store.phone,
         city: store.city,
         logo: store.logo,
-        isAfterSales: effectiveIsReturnInquiry,
+        isAfterSales: isGroupAfterSalesActive,
       },
       claimedBy: effectiveClaimedBy
         ? {

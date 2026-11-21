@@ -35,8 +35,36 @@ export async function GET(request: NextRequest) {
       session.user.role === 'STORE_ADMIN' ||
       session.user.role === 'STORE_SALES'
     ) {
-      // Store admin tidak lagi mengelola retur/komplain
-      return NextResponse.json({ success: true, data: [] })
+      let userStoreId = (session.user as any).storeId
+      if (!userStoreId && session.user.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { storeId: true },
+        })
+        userStoreId = u?.storeId || null
+      }
+      if (!userStoreId && session.user.email) {
+        const s = await prisma.store.findFirst({
+          where: {
+            OR: [
+              { email: session.user.email },
+              { users: { some: { id: session.user.id } } },
+            ],
+          },
+          select: { id: true },
+        })
+        userStoreId = s?.id || null
+      }
+
+      if (userStoreId) {
+        where.OR = [
+          { storeId: userStoreId },
+          { order: { storeId: userStoreId } },
+          { order: { items: { some: { product: { storeId: userStoreId } } } } },
+        ]
+      } else {
+        return NextResponse.json({ success: true, data: [] })
+      }
     } else if (
       session.user.role === 'ADMIN' ||
       session.user.role === 'SUPER_ADMIN'

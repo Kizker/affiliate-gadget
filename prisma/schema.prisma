@@ -294,9 +294,10 @@ model ProductVariant {
   storage   String?
   color     String?
   image     String?
-  price     Float
-  costPrice Float? // Modal spesifik varian (opsional, fallback ke Product.costPrice)
-  stock     Int      @default(0)
+  price         Float
+  costPrice     Float? // Modal spesifik varian (opsional, fallback ke Product.costPrice)
+  originalPrice Float? // Harga coret pembanding spesifik varian
+  stock         Int      @default(0)
   sku       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

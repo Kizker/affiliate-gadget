@@ -324,21 +324,24 @@ export async function GET() {
       const totalUnreadCount = unreadMap.get(room.id) || 0
       const hasOrder = !!resolvedOrder
 
-      // Room After Sales: HANYA jika di-claim oleh AFTER_SALES atau room spesifik pesanan purna jual yang BUKAN room toko reguler
+      const storeGroupAfterSales = (room.store as any)?.group?.afterSalesUser
+
+      // Room After Sales: HANYA jika toko memiliki Group After Sales
+      // Jika toko tidak memiliki Group After Sales (toko mandiri), segala urusan retur/purna jual dikelola langsung oleh Admin Toko itu sendiri
       const isAfterSalesRoom = Boolean(
-        room.claimedBy?.role === 'AFTER_SALES' ||
-        (room.orderId &&
-          (resolvedOrder?.status === 'COMPLETED' ||
-            resolvedOrder?.status === 'RETURNED' ||
-            (resolvedOrder?.returnRequests &&
-              resolvedOrder.returnRequests.length > 0)) &&
-          room.claimedBy?.role !== 'STORE_ADMIN')
+        storeGroupAfterSales &&
+        (room.claimedBy?.role === 'AFTER_SALES' ||
+          (room.orderId &&
+            (resolvedOrder?.status === 'COMPLETED' ||
+              resolvedOrder?.status === 'RETURNED' ||
+              (resolvedOrder?.returnRequests &&
+                resolvedOrder.returnRequests.length > 0)) &&
+            room.claimedBy?.role !== 'STORE_ADMIN'))
       )
 
-      const storeGroupAfterSales = (room.store as any)?.group?.afterSalesUser
       let resolvedClaimedBy = room.claimedBy
       if (isAfterSalesRoom && resolvedClaimedBy?.role !== 'AFTER_SALES') {
-        const targetAfterSales = storeGroupAfterSales || defaultAfterSalesUser
+        const targetAfterSales = storeGroupAfterSales
         if (targetAfterSales) {
           resolvedClaimedBy = targetAfterSales as any
         }
