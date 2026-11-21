@@ -368,7 +368,7 @@ export default function AfterSalesReturnsPage() {
     setDecisionImages((prev) => prev.filter((_, idx) => idx !== indexToRemove))
   }
 
-  // Handle Kirim Keputusan (Setujui atau Tolak) ke Superadmin
+  // Handle Kirim Keputusan (Kirim Unit Baru / Tolak / Refund ke Superadmin)
   const handleSubmitDecision = async () => {
     if (!decisionModalTarget) return
     const notesTrimmed = decisionNotes.trim()
@@ -381,29 +381,52 @@ export default function AfterSalesReturnsPage() {
 
     setIsSubmitting(true)
     try {
+      const isReplacementApprove =
+        decisionType === 'APPROVE' && decisionModalTarget.type === 'REPLACEMENT'
+
+      const requestBody = isReplacementApprove
+        ? {
+            action: 'REPLACEMENT',
+            resolutionAction: 'REPLACEMENT',
+            replacementCourier: 'JNE',
+            replacementTrackingNumber: 'AUTO',
+            notes: notesTrimmed,
+            qcImages: decisionImages,
+          }
+        : decisionType === 'REJECT'
+          ? {
+              action: 'REJECT',
+              rejectionReason: notesTrimmed,
+              notes: notesTrimmed,
+              qcImages: decisionImages,
+            }
+          : {
+              action: 'AFTER_SALES_CONFIRM',
+              decision: decisionType,
+              notes: notesTrimmed,
+              qcImages: decisionImages,
+            }
+
       const res = await fetch(`/api/returns/${decisionModalTarget.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'AFTER_SALES_CONFIRM',
-          decision: decisionType,
-          notes: notesTrimmed,
-          qcImages: decisionImages,
-        }),
+        body: JSON.stringify(requestBody),
       })
       const json = await res.json()
       if (res.ok && json.success) {
         toast.success(
-          decisionType === 'APPROVE'
-            ? 'Keputusan persetujuan berhasil dikirim ke Superadmin untuk ACC Final!'
-            : 'Keputusan penolakan berhasil dikirim ke Superadmin!'
+          isReplacementApprove
+            ? 'Unit baru pengganti berhasil diproses dan dikirim via Biteship!'
+            : decisionType === 'APPROVE'
+              ? 'Rekomendasi refund berhasil diteruskan ke Superadmin!'
+              : 'Pengajuan retur berhasil ditolak!'
         )
         setDecisionModalTarget(null)
         setDecisionNotes('')
         setDecisionImages([])
         fetchReturns()
       } else {
-        toast.error(json.error || 'Gagal mengirimkan keputusan ke Superadmin')
+        toast.error(json.error || 'Gagal memproses keputusan')
       }
     } catch {
       toast.error('Terjadi kesalahan koneksi')
@@ -1016,10 +1039,32 @@ export default function AfterSalesReturnsPage() {
 
                 {/* Tombol Keputusan After Sales */}
                 {item.status === 'COMPLETED' ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    Tiket Garansi Selesai
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      {item.type === 'REPLACEMENT'
+                        ? 'Unit Baru Dikirim'
+                        : 'Refund Selesai'}
+                    </span>
+                    {(item.returnTrackingNumber ||
+                      (item as any).order?.trackingNumber) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTrackingQuery(
+                            item.returnTrackingNumber ||
+                              (item as any).order?.trackingNumber ||
+                              ''
+                          )
+                          setResiModalOpen(true)
+                        }}
+                        className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700 active:scale-95"
+                      >
+                        <Search className="h-3.5 w-3.5" />
+                        <span>Lacak Unit Pengganti</span>
+                      </button>
+                    )}
+                  </div>
                 ) : item.status === 'REJECTED' ? (
                   <span className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
                     <XCircle className="h-3.5 w-3.5 text-rose-600" />
@@ -1293,8 +1338,10 @@ export default function AfterSalesReturnsPage() {
                   )}
                   <span>
                     {decisionType === 'APPROVE'
-                      ? 'Kirim Persetujuan ke Superadmin'
-                      : 'Kirim Penolakan ke Superadmin'}
+                      ? decisionModalTarget.type === 'REPLACEMENT'
+                        ? 'Kirim Unit Baru Pengganti Sekarang'
+                        : 'Kirim Persetujuan Refund ke Superadmin'
+                      : 'Kirim Penolakan Retur'}
                   </span>
                 </button>
               </div>

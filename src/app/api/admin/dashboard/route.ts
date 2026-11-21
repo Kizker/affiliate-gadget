@@ -31,12 +31,24 @@ export async function GET() {
       session.user.role === 'STORE_SALES'
     ) {
       let storeId = (session.user as any).storeId
-      if (!storeId && session.user.email) {
+      if (!storeId && session.user.id) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: session.user.email },
+          where: { id: session.user.id },
           select: { storeId: true },
         })
         storeId = dbUser?.storeId
+      }
+      if (!storeId && session.user.email) {
+        const storeByEmailOrUser = await prisma.store.findFirst({
+          where: {
+            OR: [
+              { email: session.user.email },
+              { users: { some: { id: session.user.id } } },
+            ],
+          },
+          select: { id: true },
+        })
+        storeId = storeByEmailOrUser?.id
       }
 
       if (!storeId) {
@@ -136,11 +148,17 @@ export async function GET() {
         // Omset toko hari ini (Pesanan lunas/berjalan yang dibuat atau dilunasi hari ini)
         prisma.order.aggregate({
           where: {
-            ...whereOrder,
-            status: { in: ['PAID', 'IN_PROGRESS', 'SHIPPED', 'COMPLETED'] },
-            OR: [
-              { createdAt: { gte: startOfDay } },
-              { updatedAt: { gte: startOfDay } },
+            AND: [
+              whereOrder,
+              {
+                status: { in: ['PAID', 'IN_PROGRESS', 'SHIPPED', 'COMPLETED'] },
+              },
+              {
+                OR: [
+                  { createdAt: { gte: startOfDay } },
+                  { updatedAt: { gte: startOfDay } },
+                ],
+              },
             ],
           },
           _sum: { total: true },
@@ -148,12 +166,16 @@ export async function GET() {
         // Jumlah pesanan masuk hari ini
         prisma.order.count({
           where: {
-            ...whereOrder,
-            OR: [
-              { createdAt: { gte: startOfDay } },
+            AND: [
+              whereOrder,
               {
-                updatedAt: { gte: startOfDay },
-                status: { not: 'PENDING_PAYMENT' },
+                OR: [
+                  { createdAt: { gte: startOfDay } },
+                  {
+                    updatedAt: { gte: startOfDay },
+                    status: { not: 'PENDING_PAYMENT' },
+                  },
+                ],
               },
             ],
           },

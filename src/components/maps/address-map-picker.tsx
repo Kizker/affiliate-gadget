@@ -333,13 +333,6 @@ export default function AddressMapPicker({
           </svg>
         </div>
 
-        {/* Real OpenStreetMap Visual Map Layer with seamless blend */}
-        <iframe
-          src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.007}%2C${lat - 0.004}%2C${lng + 0.007}%2C${lat + 0.004}&layer=mapnik&marker=${lat}%2C${lng}`}
-          className="pointer-events-none absolute inset-0 h-full w-full border-0 opacity-85 transition-opacity duration-500"
-          title="Peta Interaktif Lokasi Toko"
-        />
-
         {/* Central Pulsing GPS Pin Target */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="relative flex flex-col items-center">

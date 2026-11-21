@@ -294,16 +294,34 @@ export async function POST(request: Request) {
     let cameraCol = -1
     let batteryCol = -1
 
+    let isShopeeBasicInfo = false
+
     for (let r = 1; r <= Math.min(worksheet.rowCount, 5); r++) {
       const row = worksheet.getRow(r)
       let foundHeaderCount = 0
 
       row.eachCell((cell, colNumber) => {
         const text = parseCellString(cell).toLowerCase().trim()
-        if (text === 'kode produk' || text.includes('kode produk')) {
+        if (
+          text === 'basic_info' ||
+          text.includes('basic_info') ||
+          text === 'et_title_product_description'
+        ) {
+          isShopeeBasicInfo = true
+        }
+
+        if (
+          text === 'kode produk' ||
+          text.includes('kode produk') ||
+          text === 'et_title_product_id'
+        ) {
           kodeProdukCol = colNumber
           foundHeaderCount++
-        } else if (text === 'nama produk' || text.includes('nama produk')) {
+        } else if (
+          text === 'nama produk' ||
+          text.includes('nama produk') ||
+          text === 'et_title_product_name'
+        ) {
           namaProdukCol = colNumber
           foundHeaderCount++
         } else if (text === 'kode variasi' || text.includes('kode variasi')) {
@@ -312,8 +330,13 @@ export async function POST(request: Request) {
         } else if (text === 'nama variasi' || text.includes('nama variasi')) {
           namaVariasiCol = colNumber
           foundHeaderCount++
-        } else if (text === 'sku induk' || text.includes('sku induk')) {
+        } else if (
+          text === 'sku induk' ||
+          text.includes('sku induk') ||
+          text === 'et_title_parent_sku'
+        ) {
           skuIndukCol = colNumber
+          foundHeaderCount++
         } else if (text === 'sku' || text.includes('sku')) {
           skuCol = colNumber
           foundHeaderCount++
@@ -355,8 +378,12 @@ export async function POST(request: Request) {
           storeCol = colNumber
         } else if (text.includes('status')) {
           statusCol = colNumber
-        } else if (text.includes('deskripsi')) {
+        } else if (
+          text.includes('deskripsi') ||
+          text === 'et_title_product_description'
+        ) {
           descCol = colNumber
+          foundHeaderCount++
         } else if (text.includes('chipset')) {
           chipsetCol = colNumber
         } else if (text.includes('layar')) {
@@ -368,12 +395,16 @@ export async function POST(request: Request) {
         }
       })
 
-      if (foundHeaderCount >= 3) {
+      if (
+        foundHeaderCount >= 3 ||
+        (kodeProdukCol !== -1 && namaProdukCol !== -1)
+      ) {
         headerRowNumber = r
         if (
           kodeProdukCol !== -1 ||
           kodeVariasiCol !== -1 ||
-          namaVariasiCol !== -1
+          namaVariasiCol !== -1 ||
+          isShopeeBasicInfo
         ) {
           isShopeeFormat = true
         }
@@ -383,18 +414,25 @@ export async function POST(request: Request) {
 
     // Fallback column positions for Shopee format if not discovered
     if (isShopeeFormat) {
-      if (kodeProdukCol === -1) kodeProdukCol = 1
-      if (namaProdukCol === -1) namaProdukCol = 2
-      if (kodeVariasiCol === -1) kodeVariasiCol = 3
-      if (namaVariasiCol === -1) namaVariasiCol = 4
-      if (skuIndukCol === -1) skuIndukCol = 5
-      if (skuCol === -1) skuCol = 6
-      if (hargaCol === -1) hargaCol = 7
-      if (costPriceCol === -1) costPriceCol = 8
-      if (gtinCol === -1) gtinCol = 9
-      if (stokCol === -1) stokCol = 10
-      if (minBeliCol === -1) minBeliCol = 11
-      if (maksBeliCol === -1) maksBeliCol = 12
+      if (isShopeeBasicInfo) {
+        if (kodeProdukCol === -1) kodeProdukCol = 1
+        if (skuIndukCol === -1) skuIndukCol = 2
+        if (namaProdukCol === -1) namaProdukCol = 3
+        if (descCol === -1) descCol = 4
+      } else {
+        if (kodeProdukCol === -1) kodeProdukCol = 1
+        if (namaProdukCol === -1) namaProdukCol = 2
+        if (kodeVariasiCol === -1) kodeVariasiCol = 3
+        if (namaVariasiCol === -1) namaVariasiCol = 4
+        if (skuIndukCol === -1) skuIndukCol = 5
+        if (skuCol === -1) skuCol = 6
+        if (hargaCol === -1) hargaCol = 7
+        if (costPriceCol === -1) costPriceCol = 8
+        if (gtinCol === -1) gtinCol = 9
+        if (stokCol === -1) stokCol = 10
+        if (minBeliCol === -1) minBeliCol = 11
+        if (maksBeliCol === -1) maksBeliCol = 12
+      }
     } else {
       // Legacy format fallbacks
       if (skuCol === -1) skuCol = 1
@@ -448,7 +486,7 @@ export async function POST(request: Request) {
       namaVariasi: string
       skuInduk: string
       sku: string
-      harga: number
+      harga?: number | null
       costPrice?: number | null
       stok: number
       // Optional/Extended fields for legacy support
@@ -525,8 +563,12 @@ export async function POST(request: Request) {
         return // Skip blank or trailing decorative rows
       }
 
-      // If price is missing or invalid, record error
-      if (price === null || price < 0) {
+      // If price is missing or invalid, check if this is basic_info format
+      if (
+        !isShopeeBasicInfo &&
+        hargaCol !== -1 &&
+        (price === null || price < 0)
+      ) {
         errors.push({
           row: rowNumber,
           sku: sku || namaProduk || kodeProduk || '-',
@@ -536,7 +578,8 @@ export async function POST(request: Request) {
       }
 
       // Safe stock parsing: if stock cell is blank or empty, safely default to 0 (stok habis)
-      const rawStockNum = parseCellNumber(row.getCell(stokCol))
+      const rawStockNum =
+        stokCol !== -1 ? parseCellNumber(row.getCell(stokCol)) : null
       const stock =
         rawStockNum !== null ? Math.max(0, Math.floor(rawStockNum)) : 0
 
@@ -554,6 +597,10 @@ export async function POST(request: Request) {
       let layar = ''
       let kamera = ''
       let baterai = ''
+
+      if (descCol !== -1) {
+        description = parseCellString(row.getCell(descCol))
+      }
 
       if (!isShopeeFormat) {
         ram = parseCellString(row.getCell(ramCol))
@@ -577,7 +624,6 @@ export async function POST(request: Request) {
         ) {
           isActive = true
         }
-        description = parseCellString(row.getCell(descCol))
         chipset = parseCellString(row.getCell(chipsetCol))
         layar = parseCellString(row.getCell(displayCol))
         kamera = parseCellString(row.getCell(cameraCol))
@@ -710,6 +756,19 @@ export async function POST(request: Request) {
                 hasChanges = true
               }
 
+              if (
+                item.description &&
+                item.description.trim() !== '' &&
+                item.description.trim() !==
+                  (variant.product.description || '').trim()
+              ) {
+                await tx.product.update({
+                  where: { id: variant.productId },
+                  data: { description: item.description.trim() },
+                })
+                hasChanges = true
+              }
+
               if (hasChanges) {
                 await tx.productVariant.update({
                   where: { id: variant.id },
@@ -755,6 +814,19 @@ export async function POST(request: Request) {
                 item.namaVariasi.trim() !== (variant.name || '').trim()
               ) {
                 variantUpdates.name = item.namaVariasi.trim()
+                hasChanges = true
+              }
+
+              if (
+                item.description &&
+                item.description.trim() !== '' &&
+                item.description.trim() !==
+                  (variant.product.description || '').trim()
+              ) {
+                await tx.product.update({
+                  where: { id: variant.productId },
+                  data: { description: item.description.trim() },
+                })
                 hasChanges = true
               }
 
@@ -846,6 +918,43 @@ export async function POST(request: Request) {
             }
 
             if (product) {
+              // Update product-level fields: description, name, model
+              let productHasChanges = false
+              const productUpdates: any = {}
+              if (
+                item.description &&
+                item.description.trim() !== '' &&
+                item.description.trim() !== (product.description || '').trim()
+              ) {
+                productUpdates.description = item.description.trim()
+                productHasChanges = true
+              }
+              if (
+                item.namaProduk &&
+                item.namaProduk.trim() !== '' &&
+                item.namaProduk.trim() !== (product.name || '').trim()
+              ) {
+                productUpdates.name = item.namaProduk.trim()
+                productHasChanges = true
+              }
+              if (
+                item.skuInduk &&
+                item.skuInduk.trim() !== '' &&
+                item.skuInduk.trim() !== (product.model || '').trim()
+              ) {
+                productUpdates.model = item.skuInduk.trim()
+                productHasChanges = true
+              }
+
+              if (productHasChanges) {
+                await tx.product.update({
+                  where: { id: product.id },
+                  data: productUpdates,
+                })
+                product = { ...product, ...productUpdates }
+                updatedCount++
+              }
+
               // Product exists: Search for variant inside this product
               const variants: any[] = product.variants || []
               let matchedVariant: any = null
@@ -873,11 +982,19 @@ export async function POST(request: Request) {
                 let hasChanges = false
                 const variantUpdates: any = {}
 
-                if (Number(matchedVariant.price) !== Number(item.harga)) {
+                if (
+                  item.harga !== null &&
+                  item.harga !== undefined &&
+                  Number(matchedVariant.price) !== Number(item.harga)
+                ) {
                   variantUpdates.price = item.harga
                   hasChanges = true
                 }
-                if (Number(matchedVariant.stock) !== Number(item.stok)) {
+                if (
+                  item.stok !== null &&
+                  item.stok !== undefined &&
+                  Number(matchedVariant.stock) !== Number(item.stok)
+                ) {
                   variantUpdates.stock = item.stok
                   hasChanges = true
                 }
@@ -891,13 +1008,17 @@ export async function POST(request: Request) {
                     where: { id: matchedVariant.id },
                     data: variantUpdates,
                   })
-                  updatedCount++
-                } else {
+                  if (!productHasChanges) updatedCount++
+                } else if (!productHasChanges) {
                   unchangedCount++
                 }
 
                 touchedProductIds.add(product.id)
                 touchedVariantIds.add(matchedVariant.id)
+                processed = true
+              } else if (isShopeeBasicInfo) {
+                // Template basic_info tidak berisi varian, tandai produk berhasil diproses
+                touchedProductIds.add(product.id)
                 processed = true
               } else {
                 // Variant not found in existing product -> Create new variant
@@ -921,7 +1042,7 @@ export async function POST(request: Request) {
                     ram: item.ram || null,
                     storage: item.storage || null,
                     color: item.color || null,
-                    price: item.harga,
+                    price: item.harga ?? 0,
                     stock: item.stok,
                     sku: finalSku,
                   },
@@ -979,7 +1100,7 @@ export async function POST(request: Request) {
                   brand: brand,
                   category: 'Smartphone',
                   condition: condition,
-                  price: item.harga,
+                  price: item.harga ?? 0,
                   stock: item.stok,
                   storeId: storeId,
                   description:
@@ -1004,7 +1125,7 @@ export async function POST(request: Request) {
                   ram: item.ram || null,
                   storage: item.storage || null,
                   color: item.color || null,
-                  price: item.harga,
+                  price: item.harga ?? 0,
                   stock: item.stok,
                   sku: finalSku,
                 },

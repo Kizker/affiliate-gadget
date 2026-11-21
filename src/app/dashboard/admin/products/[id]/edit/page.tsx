@@ -230,6 +230,10 @@ export default function EditProductPage() {
                 v.costPrice !== undefined && v.costPrice !== null
                   ? String(v.costPrice)
                   : '',
+              originalPrice:
+                v.originalPrice !== undefined && v.originalPrice !== null
+                  ? String(v.originalPrice)
+                  : '',
               stock: String(v.stock ?? 1),
               sku: v.sku || '',
             }))
@@ -246,6 +250,10 @@ export default function EditProductPage() {
               costPrice:
                 p.costPrice !== undefined && p.costPrice !== null
                   ? String(p.costPrice)
+                  : '',
+              originalPrice:
+                p.originalPrice !== undefined && p.originalPrice !== null
+                  ? String(p.originalPrice)
                   : '',
               stock: String(p.stock ?? 1),
               sku: '',
@@ -282,6 +290,7 @@ export default function EditProductPage() {
         image: '',
         price: form.price,
         costPrice: form.costPrice || '',
+        originalPrice: form.originalPrice || '',
         stock: '1',
         sku: '',
       },
@@ -518,6 +527,11 @@ export default function EditProductPage() {
           costPrice: v.costPrice
             ? parseRupiahInput(v.costPrice)
             : effectiveCostPrice,
+          originalPrice: v.originalPrice
+            ? parseRupiahInput(v.originalPrice)
+            : form.originalPrice
+              ? parseRupiahInput(form.originalPrice)
+              : undefined,
           stock: parseInt(String(v.stock), 10) || 0,
           sku: v.sku?.trim() || form.sku?.trim() || undefined,
         })),
@@ -998,8 +1012,8 @@ export default function EditProductPage() {
                     </div>
                   </div>
 
-                  {/* Inputs Grid: Nama, SKU, RAM, Storage, Warna, Harga, Modal, Stok, Berat */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9">
+                  {/* Inputs Grid: Nama, SKU, RAM, Storage, Warna, Harga, Coret, Modal, Stok, Berat */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-10">
                     <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
                       <CreatableCombobox
                         label="Nama Varian"
@@ -1104,6 +1118,24 @@ export default function EditProductPage() {
                         }}
                         placeholder="18.999.000"
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Harga Coret (Rp)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatRupiahInput(v.originalPrice)}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '')
+                          updateVariant(i, 'originalPrice', raw)
+                        }}
+                        placeholder="21.999.000"
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        title="Harga coret pembanding spesifik varian"
                       />
                     </div>
 

@@ -2168,19 +2168,6 @@ function AdminChatContent() {
 
         {/* Right Pane: Active Conversation Window (8 Cols) */}
         <div
-          style={
-            keyboardInset > 0
-              ? {
-                  paddingBottom: `${keyboardInset}px`,
-                  transition:
-                    'padding-bottom 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
-                }
-              : {
-                  paddingBottom: '0px',
-                  transition:
-                    'padding-bottom 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
-                }
-          }
           className={`flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/40 dark:bg-slate-950/40 lg:col-span-8 xl:col-span-8 ${
             !showChatOnMobile ? 'hidden lg:flex' : 'flex'
           }`}

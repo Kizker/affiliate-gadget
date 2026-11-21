@@ -830,15 +830,9 @@ function LiveKitStudioControls({
 
         {/* Floating Comments Stream, Pinned Product & Bottom Action Bar */}
         <div
-          className="pointer-events-none relative z-30 mt-auto flex flex-col justify-end gap-2.5 p-3"
+          className="pointer-events-none relative z-30 mt-auto flex flex-col justify-end gap-2.5 p-3 pb-4"
           style={{
-            transform:
-              keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : 'none',
-            paddingBottom:
-              keyboardInset > 0
-                ? 10
-                : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
-            transition: 'transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1)',
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 14px))',
           }}
         >
           {/* Floating Comments Stream (Overlay di atas video, menempel di bawah / di atas barang sematan) */}

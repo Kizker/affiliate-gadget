@@ -592,14 +592,9 @@ export function LiveStreamViewer({
 
         {/* Instagram Live Bottom Section */}
         <div
-          className="pointer-events-none relative z-30 flex flex-col justify-end gap-2.5 p-3 pb-6"
+          className="pointer-events-none relative z-30 flex flex-col justify-end gap-2.5 p-3 pb-4"
           style={{
-            transform:
-              keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : undefined,
-            paddingBottom:
-              keyboardInset > 0
-                ? 10
-                : 'max(1.25rem, env(safe-area-inset-bottom, 16px))',
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 14px))',
           }}
         >
           {/* Floating Comments Stream */}
@@ -1134,16 +1129,6 @@ export function LiveStreamViewer({
                     >
                       Kunjungi Toko
                     </Link>
-                    {stream.store.whatsapp && (
-                      <a
-                        href={`https://wa.me/${stream.store.whatsapp.replace(/\D/g, '')}?text=Halo%20Admin%20${encodeURIComponent(stream.store.name)},%20saya%20tertarik%20dengan%20produk%20di%20Live%20Streaming`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-emerald-700"
-                      >
-                        Chat WhatsApp
-                      </a>
-                    )}
                   </div>
                 </div>
               )}

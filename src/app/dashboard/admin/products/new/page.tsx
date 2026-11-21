@@ -440,6 +440,11 @@ export default function NewGadgetProductPage() {
             costPrice: v.costPrice
               ? parseRupiahInput(v.costPrice)
               : effectiveCostPrice,
+            originalPrice: v.originalPrice
+              ? parseRupiahInput(v.originalPrice)
+              : form.originalPrice
+                ? parseRupiahInput(form.originalPrice)
+                : undefined,
             stock: parseInt(String(v.stock), 10) || 0,
             sku: v.sku?.trim() || form.sku?.trim() || undefined,
           })),
@@ -926,6 +931,23 @@ export default function NewGadgetProductPage() {
                           }}
                           placeholder="18.999.000"
                           className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 font-medium outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <label className="font-semibold text-slate-500">
+                          Harga Coret (Rp)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatRupiahInput(v.originalPrice)}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '')
+                            updateVariant(i, 'originalPrice', raw)
+                          }}
+                          placeholder="21.999.000"
+                          className="w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2 font-medium outline-none focus:border-orange-500"
+                          title="Harga coret pembanding spesifik varian"
                         />
                       </div>
                     </div>
