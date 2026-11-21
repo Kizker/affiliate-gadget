@@ -325,12 +325,7 @@ function AdminChatContent() {
     'ALL' | 'UNREAD' | 'ORDER' | 'STORE_HELP' | 'CUSTOMER_CS'
   >('ALL')
 
-  // Superadmin default ke CS miliknya sendiri agar tidak langsung membuka chat customer toko
-  useEffect(() => {
-    if (isSuperAdmin && roomFilter === 'ALL' && !searchQuery) {
-      setRoomFilter('CUSTOMER_CS')
-    }
-  }, [isSuperAdmin])
+  // Superadmin default ke Semua Chat agar riwayat percakapan toko & customer langsung terlihat di sidebar
   const [stats, setStats] = useState({ totalRooms: 0, unreadRooms: 0 })
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const showChatOnMobileRef = useRef<boolean>(false)
@@ -1834,6 +1829,11 @@ function AdminChatContent() {
   // Filtered rooms based on search and status (with defensive deduplication per customer + store)
   const filteredRooms = useMemo(() => {
     const matched = rooms.filter((room) => {
+      // Room yang sedang aktif dibuka di panel kanan selalu dipertahankan di sidebar agar riwayat tidak hilang
+      if (selectedRoom && room.id === selectedRoom.id && searchQuery === '') {
+        return true
+      }
+
       const matchSearch =
         searchQuery === '' ||
         (room.customer.name &&
@@ -2001,9 +2001,9 @@ function AdminChatContent() {
             <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
               {(isSuperAdmin
                 ? [
+                    { id: 'ALL', label: 'Semua Chat' },
                     { id: 'CUSTOMER_CS', label: 'CS Saya' },
                     { id: 'STORE_HELP', label: 'Bantuan' },
-                    { id: 'ALL', label: 'Semua' },
                     {
                       id: 'UNREAD',
                       label: `Unread (${stats.unreadRooms})`,
@@ -2372,11 +2372,25 @@ function AdminChatContent() {
                       index > 0 ? new Date(messages[index - 1].createdAt) : null
                     const showDateSeparator =
                       !previousDate || !isSameDay(currentDate, previousDate)
-                    const isCurrentUser =
+                    const isSentByMe =
                       Boolean(
                         currentUserId && message.senderId === currentUserId
                       ) || message.senderId === 'me'
-                    const isAdmin = isCurrentUser
+
+                    const isCustomerSender =
+                      message.sender.role === 'CUSTOMER' ||
+                      message.senderId === selectedRoom?.customerId
+
+                    // Perataan posisi chat (Kanan vs Kiri):
+                    // 1. Pesan yang dikirim oleh user yang sedang login selalu di KANAN
+                    // 2. Dalam mode pantau Superadmin (Superadmin bukan pengirim pesan):
+                    //    - Pesan dari pihak Toko/Staff/After Sales berada di KANAN (biru)
+                    //    - Pesan dari Customer/Pembeli berada di KIRI (putih)
+                    let isRightAligned = isSentByMe
+                    if (isSuperAdmin && !isSentByMe) {
+                      isRightAligned = !isCustomerSender
+                    }
+                    const isAdmin = isRightAligned
                     const isVideo = isVideoMedia(
                       message.mediaUrl,
                       message.mediaType,
@@ -2505,10 +2519,19 @@ function AdminChatContent() {
                                   : 'rounded-tl-xs mr-auto border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100'
                               }`}
                             >
-                              {!isAdmin && (
+                              {!isAdmin ? (
                                 <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
                                   {message.sender.name || 'Customer'}
                                 </p>
+                              ) : (
+                                isSuperAdmin &&
+                                !isSentByMe && (
+                                  <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-blue-100">
+                                    {message.sender.name ||
+                                      selectedRoom?.store?.name ||
+                                      'Toko'}
+                                  </p>
+                                )
                               )}
 
                               {renderMessageContent(

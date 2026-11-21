@@ -2,18 +2,32 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { ShoppingBag, Gift, Check, Building2, Truck } from 'lucide-react'
+import {
+  ShoppingBag,
+  Gift,
+  Check,
+  Building2,
+  Truck,
+  RotateCcw,
+} from 'lucide-react'
 import {
   OrderData,
+  OrderDetailItem,
   DEFAULT_GADGET_IMAGE,
   formatPrice,
 } from './order-detail-types'
 
 interface OrderDesktopItemsCardProps {
   order: OrderData
+  canRequestReturnOrComplaint?: boolean
+  onOpenReturnForItem?: (item: OrderDetailItem) => void
 }
 
-export function OrderDesktopItemsCard({ order }: OrderDesktopItemsCardProps) {
+export function OrderDesktopItemsCard({
+  order,
+  canRequestReturnOrComplaint,
+  onOpenReturnForItem,
+}: OrderDesktopItemsCardProps) {
   return (
     <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
       <div className="mb-5 flex items-center justify-between">
@@ -81,6 +95,18 @@ export function OrderDesktopItemsCard({ order }: OrderDesktopItemsCardProps) {
                     <p className="mt-1 text-xs text-slate-500">
                       {item.quantity} unit × {formatPrice(item.price)}
                     </p>
+                    {canRequestReturnOrComplaint && (
+                      <div className="mt-2.5">
+                        <button
+                          type="button"
+                          onClick={() => onOpenReturnForItem?.(item)}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-600 transition-all hover:border-orange-300 hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Ajukan Retur Unit Ini</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <span className="shrink-0 whitespace-nowrap font-mono text-base font-black text-slate-950 dark:text-white sm:text-lg">
                     {formatPrice(item.subtotal)}

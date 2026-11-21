@@ -16,6 +16,11 @@ import {
 import { toast } from 'sonner'
 import { processMediaUploadFile } from '@/lib/media-upload-client'
 import { calculateNetRefundAmount } from '@/lib/returns/refund-calculator'
+import {
+  OrderDetailItem,
+  DEFAULT_GADGET_IMAGE,
+  formatPrice,
+} from '@/components/customer/order-detail/order-detail-types'
 
 interface ReturnModalProps {
   isOpen: boolean
@@ -27,6 +32,8 @@ interface ReturnModalProps {
   shippingCost?: number
   tax?: number
   insuranceFee?: number
+  items?: OrderDetailItem[]
+  initialSelectedItemId?: string | null
   onSuccess?: () => void
 }
 
@@ -89,11 +96,28 @@ export function ReturnModal({
   shippingCost,
   tax,
   insuranceFee,
+  items,
+  initialSelectedItemId,
   onSuccess,
 }: ReturnModalProps) {
   const [returnType, setReturnType] = useState<'REFUND' | 'REPLACEMENT'>(
     'REFUND'
   )
+  const [selectedItemId, setSelectedItemId] = useState<string>(
+    initialSelectedItemId || (items && items.length > 0 ? items[0].id : '')
+  )
+
+  useEffect(() => {
+    if (initialSelectedItemId) {
+      setSelectedItemId(initialSelectedItemId)
+    } else if (items && items.length > 0 && !selectedItemId) {
+      setSelectedItemId(items[0].id)
+    }
+  }, [initialSelectedItemId, items])
+
+  const selectedItem =
+    items?.find((it) => it.id === selectedItemId) || items?.[0] || null
+
   const [selectedPreset, setSelectedPreset] = useState<string>('CACAT_FISIK')
   const [reasonLabel, setReasonLabel] = useState(COMMON_REASONS[0].label)
   const [description, setDescription] = useState(COMMON_REASONS[0].fullText)
@@ -113,11 +137,15 @@ export function ReturnModal({
 
   const [submitting, setSubmitting] = useState(false)
 
-  // Estimasi pengembalian dana setelah dipotong biaya operasional (ongkir, pajak, QC)
-  const refundCalc = totalAmount
+  // Estimasi pengembalian dana berdasarkan produk terpilih
+  const effectiveProductTotal = selectedItem
+    ? selectedItem.subtotal || selectedItem.price * selectedItem.quantity
+    : totalAmount
+
+  const refundCalc = effectiveProductTotal
     ? calculateNetRefundAmount({
-        total: totalAmount,
-        subtotal,
+        total: effectiveProductTotal,
+        subtotal: selectedItem ? effectiveProductTotal : subtotal,
         shippingCost,
         tax,
         insuranceFee,
@@ -247,6 +275,12 @@ export function ReturnModal({
 
     setSubmitting(true)
     try {
+      const itemPrefix = selectedItem
+        ? `[Unit yang Diretur: ${selectedItem.product?.name || selectedItem.rentalItem?.name || selectedItem.service?.name || 'Gadget'}${selectedItem.variantName ? ` - Varian: ${selectedItem.variantName}` : ''} - ${selectedItem.quantity} unit @ Rp ${selectedItem.price.toLocaleString('id-ID')}]\n\n`
+        : ''
+
+      const finalDescription = `${itemPrefix}${description}`.trim()
+
       const res = await fetch('/api/returns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,7 +289,7 @@ export function ReturnModal({
           type: returnType,
           reason: selectedPreset,
           reasonLabel,
-          description,
+          description: finalDescription,
           images,
           videoUrl,
           bankName: returnType === 'REFUND' ? bankName : null,
@@ -324,6 +358,81 @@ export function ReturnModal({
           className="flex flex-1 flex-col overflow-hidden"
         >
           <div className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-5 py-4 pb-16 text-xs">
+            {/* 0. Unit Produk yang Diajukan Retur */}
+            {items && items.length > 0 && (
+              <div className="space-y-2 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                  Unit Produk yang Ingin Diretur / Diklaim Garansi *
+                </label>
+                {items.length > 1 && (
+                  <div className="relative">
+                    <select
+                      value={selectedItemId}
+                      onChange={(e) => setSelectedItemId(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      {items.map((it) => {
+                        const name =
+                          it.product?.name ||
+                          it.rentalItem?.name ||
+                          it.service?.name ||
+                          'Unit Gadget'
+                        const variant = it.variantName
+                          ? ` - ${it.variantName}`
+                          : ''
+                        return (
+                          <option key={it.id} value={it.id}>
+                            {name}
+                            {variant} ({it.quantity}x @ Rp{' '}
+                            {it.price.toLocaleString('id-ID')})
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                {/* Selected Item Card Preview */}
+                {selectedItem && (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/70 bg-white p-2 dark:border-slate-800 dark:bg-slate-800">
+                    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-700 dark:bg-slate-700">
+                      <img
+                        src={
+                          selectedItem.product?.images?.[0] ||
+                          selectedItem.rentalItem?.images?.[0] ||
+                          DEFAULT_GADGET_IMAGE
+                        }
+                        alt="Unit Retur"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                        {selectedItem.product?.name ||
+                          selectedItem.rentalItem?.name ||
+                          selectedItem.service?.name ||
+                          'Unit Gadget'}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500">
+                        {selectedItem.variantName && (
+                          <span className="truncate">
+                            Varian: {selectedItem.variantName}
+                          </span>
+                        )}
+                        <span>•</span>
+                        <span className="font-mono font-bold text-orange-600 dark:text-orange-400">
+                          {formatPrice(
+                            selectedItem.subtotal ||
+                              selectedItem.price * selectedItem.quantity
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 1. Bentuk Resolusi Akhir */}
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-800 dark:text-white">

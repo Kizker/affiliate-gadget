@@ -28,6 +28,7 @@ import {
 import { isWarrantyExpired } from '@/lib/order-return-utils'
 import {
   OrderDetailProps,
+  OrderDetailItem,
   statusConfig,
   OrderCancelModal,
   OrderConfirmReceivedModal,
@@ -54,6 +55,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   const [copied, setCopied] = useState(false)
   const [complaintModalOpen, setComplaintModalOpen] = useState(false)
   const [returnModalOpen, setReturnModalOpen] = useState(false)
+  const [selectedReturnItem, setSelectedReturnItem] =
+    useState<OrderDetailItem | null>(null)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState(
@@ -473,7 +476,14 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             onOpenMedia={handleOpenMedia}
             onPayNow={() => setPaymentModalOpen(true)}
             onConfirmReceived={handleConfirmReceived}
-            onOpenReturn={() => setReturnModalOpen(true)}
+            onOpenReturn={() => {
+              setSelectedReturnItem(order.items[0] || null)
+              setReturnModalOpen(true)
+            }}
+            onOpenReturnForItem={(item) => {
+              setSelectedReturnItem(item)
+              setReturnModalOpen(true)
+            }}
             onOpenComplaint={() => setComplaintModalOpen(true)}
             onOpenRating={handleOpenRating}
             onOpenCancel={() => setCancelModalOpen(true)}
@@ -514,7 +524,14 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* Left Col (2 Cols): Products, Bonus Package & Logistics */}
               <div className="space-y-6 lg:col-span-2">
-                <OrderDesktopItemsCard order={order} />
+                <OrderDesktopItemsCard
+                  order={order}
+                  canRequestReturnOrComplaint={canRequestReturnOrComplaint}
+                  onOpenReturnForItem={(item) => {
+                    setSelectedReturnItem(item)
+                    setReturnModalOpen(true)
+                  }}
+                />
                 <OrderDesktopShippingCard
                   order={order}
                   backHref={backHref}
@@ -539,7 +556,10 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   onOpenMedia={handleOpenMedia}
                   onPayNow={() => setPaymentModalOpen(true)}
                   onConfirmReceived={handleConfirmReceived}
-                  onOpenReturn={() => setReturnModalOpen(true)}
+                  onOpenReturn={() => {
+                    setSelectedReturnItem(order.items[0] || null)
+                    setReturnModalOpen(true)
+                  }}
                   onOpenComplaint={() => setComplaintModalOpen(true)}
                   onOpenRating={handleOpenRating}
                   onOpenCancel={() => setCancelModalOpen(true)}
@@ -583,7 +603,10 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
       {/* Return & Refund Request Modal */}
       <ReturnModal
         isOpen={returnModalOpen}
-        onClose={() => setReturnModalOpen(false)}
+        onClose={() => {
+          setReturnModalOpen(false)
+          setSelectedReturnItem(null)
+        }}
         orderId={order.id}
         orderNumber={order.orderNumber}
         totalAmount={order.total}
@@ -591,6 +614,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         shippingCost={order.shippingCost}
         tax={order.tax}
         insuranceFee={order.insuranceFee}
+        items={order.items}
+        initialSelectedItemId={selectedReturnItem?.id || null}
         onSuccess={() => {
           toast.success(
             'Pengajuan pengembalian berhasil dikirim ke pihak toko!'

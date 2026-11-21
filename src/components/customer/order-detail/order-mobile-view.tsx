@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import {
   OrderData,
+  OrderDetailItem,
   OrderReturnRequest,
   OrderComplaint,
   OrderReview,
@@ -64,6 +65,7 @@ interface OrderMobileViewProps {
   onPayNow: () => void
   onConfirmReceived: () => void
   onOpenReturn: () => void
+  onOpenReturnForItem?: (item: OrderDetailItem) => void
   onOpenComplaint: () => void
   onOpenRating: () => void
   onOpenCancel: () => void
@@ -97,6 +99,7 @@ export function OrderMobileView({
   onPayNow,
   onConfirmReceived,
   onOpenReturn,
+  onOpenReturnForItem,
   onOpenComplaint,
   onOpenRating,
   onOpenCancel,
@@ -217,6 +220,22 @@ export function OrderMobileView({
                       {formatPrice(item.subtotal || item.price * item.quantity)}
                     </span>
                   </div>
+                  {canRequestReturnOrComplaint && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenReturnForItem
+                            ? onOpenReturnForItem(item)
+                            : onOpenReturn()
+                        }
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-orange-200/80 bg-orange-50/80 px-2.5 py-1 text-[11px] font-bold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        <span>Ajukan Retur Unit Ini</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )
