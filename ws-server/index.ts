@@ -61,6 +61,7 @@ server.on('upgrade', (request, socket, head) => {
       normOrigin === normAllowed ||
       normOrigin === normAllowed.replace('://', '://www.') ||
       normOrigin.replace('://www.', '://') === normAllowed ||
+      normOrigin.includes('affiliategadget.id') ||
       normOrigin.includes('affiliategadget.tech') ||
       normOrigin.includes('localhost:') ||
       normOrigin.includes('127.0.0.1:')

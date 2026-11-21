@@ -13,14 +13,14 @@ describe('OAuth & NextAuth Safe Public Origin Redirection Suite', () => {
     expect(content).toContain('resolvePublicOrigin')
     expect(content).toContain("!forwardedHost.includes('0.0.0.0')")
     expect(content).not.toContain("origin || 'http://localhost:3000'")
-    expect(content).toContain('https://affiliategadget.tech')
+    expect(content).toContain('https://affiliategadget.id')
   })
 
   it('2. auth.config.ts should have a safe redirect callback preventing 0.0.0.0 redirects', () => {
     const content = fs.readFileSync(authConfigPath, 'utf-8')
     expect(content).toContain('async redirect({ url, baseUrl })')
     expect(content).toContain("publicBase.includes('0.0.0.0')")
-    expect(content).toContain('https://affiliategadget.tech')
+    expect(content).toContain('https://affiliategadget.id')
   })
 
   it('3. middleware.ts should use getSafeRedirectUrl instead of raw req.url', () => {
