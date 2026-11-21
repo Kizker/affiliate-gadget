@@ -408,7 +408,16 @@ export async function POST(request: Request) {
         ) {
           isShopeeFormat = true
         }
-        break
+
+        const hasIdText = parseCellString(
+          row.getCell(kodeProdukCol !== -1 ? kodeProdukCol : 1)
+        )
+          .toLowerCase()
+          .includes('kode produk')
+        if (hasIdText) {
+          headerRowNumber = r
+          break
+        }
       }
     }
 
@@ -509,11 +518,34 @@ export async function POST(request: Request) {
     const rowsToProcess: ParsedRow[] = []
     const errors: Array<{ row: number; sku?: string; reason: string }> = []
 
+    const safeCellString = (row: ExcelJS.Row, colNumber: number): string => {
+      if (colNumber < 1 || colNumber > 16384) return ''
+      try {
+        const cell = row.getCell(colNumber)
+        return parseCellString(cell)
+      } catch {
+        return ''
+      }
+    }
+
+    const safeCellNumber = (
+      row: ExcelJS.Row,
+      colNumber: number
+    ): number | null => {
+      if (colNumber < 1 || colNumber > 16384) return null
+      try {
+        const cell = row.getCell(colNumber)
+        return parseCellNumber(cell)
+      } catch {
+        return null
+      }
+    }
+
     worksheet.eachRow((row, rowNumber) => {
       // Skip header row and preceding rows
       if (rowNumber <= headerRowNumber) return
 
-      const rawHargaStr = parseCellString(row.getCell(hargaCol))
+      const rawHargaStr = safeCellString(row, hargaCol)
 
       // Check if this is an instruction/guideline row (Shopee Row 2 - Row 6)
       if (
@@ -524,34 +556,41 @@ export async function POST(request: Request) {
         rawHargaStr === 'Harga' ||
         rawHargaStr === 'Wajib' ||
         rawHargaStr.includes('Min Rp 99') ||
-        parseCellString(row.getCell(namaProdukCol)).includes(
-          'Min. jumlah pembelian'
-        ) ||
-        parseCellString(row.getCell(namaProdukCol)) === 'string' ||
-        parseCellString(row.getCell(namaProdukCol)) === 'Hanya Baca' ||
-        parseCellString(row.getCell(namaProdukCol)).includes('Maks 255')
+        safeCellString(row, namaProdukCol).includes('Min. jumlah pembelian') ||
+        safeCellString(row, namaProdukCol) === 'string' ||
+        safeCellString(row, namaProdukCol) === 'Hanya Baca' ||
+        safeCellString(row, namaProdukCol).includes('Maks 255')
       ) {
         return // Skip instruction row!
       }
 
-      const kodeProduk = parseCellString(
-        row.getCell(kodeProdukCol !== -1 ? kodeProdukCol : productIdCol)
-      )
-      const namaProduk = parseCellString(row.getCell(namaProdukCol))
-      const kodeVariasi = parseCellString(
-        row.getCell(kodeVariasiCol !== -1 ? kodeVariasiCol : variantIdCol)
-      )
-      const namaVariasi = parseCellString(row.getCell(namaVariasiCol))
-      const skuInduk = parseCellString(
-        row.getCell(skuIndukCol !== -1 ? skuIndukCol : modelCol)
-      )
-      const sku = parseCellString(row.getCell(skuCol))
-      const price = parseCellNumber(row.getCell(hargaCol))
+      const effectiveKodeProdukCol =
+        kodeProdukCol !== -1 ? kodeProdukCol : productIdCol
+      const effectiveKodeVariasiCol =
+        kodeVariasiCol !== -1 ? kodeVariasiCol : variantIdCol
+      const effectiveSkuIndukCol = skuIndukCol !== -1 ? skuIndukCol : modelCol
+
+      const kodeProduk = safeCellString(row, effectiveKodeProdukCol)
+      const namaProduk = safeCellString(row, namaProdukCol)
+      const kodeVariasi = safeCellString(row, effectiveKodeVariasiCol)
+      const namaVariasi = safeCellString(row, namaVariasiCol)
+      const skuInduk = safeCellString(row, effectiveSkuIndukCol)
+      const sku = safeCellString(row, skuCol)
+      const price = safeCellNumber(row, hargaCol)
       const costPrice =
-        costPriceCol !== -1 ? parseCellNumber(row.getCell(costPriceCol)) : null
+        costPriceCol !== -1 ? safeCellNumber(row, costPriceCol) : null
 
       const isMeaningful = (s: string) =>
         s && s.trim() !== '' && s.trim() !== '-' && !s.startsWith('AUTO-')
+
+      if (
+        kodeProduk === 'basic_info' ||
+        kodeProduk.toLowerCase() === 'kode produk' ||
+        namaProduk.toLowerCase() === 'nama produk' ||
+        namaProduk === '0'
+      ) {
+        return // Skip Shopee sub-header rows!
+      }
 
       // If row has no meaningful identifiers at all (blank or trailing formatted row), skip immediately!
       if (
@@ -578,8 +617,7 @@ export async function POST(request: Request) {
       }
 
       // Safe stock parsing: if stock cell is blank or empty, safely default to 0 (stok habis)
-      const rawStockNum =
-        stokCol !== -1 ? parseCellNumber(row.getCell(stokCol)) : null
+      const rawStockNum = stokCol !== -1 ? safeCellNumber(row, stokCol) : null
       const stock =
         rawStockNum !== null ? Math.max(0, Math.floor(rawStockNum)) : 0
 
@@ -599,18 +637,18 @@ export async function POST(request: Request) {
       let baterai = ''
 
       if (descCol !== -1) {
-        description = parseCellString(row.getCell(descCol))
+        description = safeCellString(row, descCol)
       }
 
       if (!isShopeeFormat) {
-        ram = parseCellString(row.getCell(ramCol))
-        storage = parseCellString(row.getCell(storageCol))
-        color = parseCellString(row.getCell(colorCol))
-        brand = parseCellString(row.getCell(brandCol))
-        condition = parseCellString(row.getCell(conditionCol))
-        originalPrice = parseCellNumber(row.getCell(origPriceCol))
-        storeName = parseCellString(row.getCell(storeCol))
-        const statusRaw = parseCellString(row.getCell(statusCol)).toUpperCase()
+        ram = safeCellString(row, ramCol)
+        storage = safeCellString(row, storageCol)
+        color = safeCellString(row, colorCol)
+        brand = safeCellString(row, brandCol)
+        condition = safeCellString(row, conditionCol)
+        originalPrice = safeCellNumber(row, origPriceCol)
+        storeName = safeCellString(row, storeCol)
+        const statusRaw = safeCellString(row, statusCol).toUpperCase()
         if (
           statusRaw.includes('NON') ||
           statusRaw === 'FALSE' ||
@@ -624,10 +662,10 @@ export async function POST(request: Request) {
         ) {
           isActive = true
         }
-        chipset = parseCellString(row.getCell(chipsetCol))
-        layar = parseCellString(row.getCell(displayCol))
-        kamera = parseCellString(row.getCell(cameraCol))
-        baterai = parseCellString(row.getCell(batteryCol))
+        chipset = safeCellString(row, chipsetCol)
+        layar = safeCellString(row, displayCol)
+        kamera = safeCellString(row, cameraCol)
+        baterai = safeCellString(row, batteryCol)
       } else {
         // In Shopee format, extract RAM, storage, and color from variant/product name
         const specsExtracted = extractVariantSpecs(namaVariasi, namaProduk)
