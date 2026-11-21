@@ -569,6 +569,37 @@ export async function PUT(
         storeUpdateData.commissionRate = parseFloat(commissionRate)
       if (isActive !== undefined) storeUpdateData.isActive = isActive
       if (isApproved !== undefined) storeUpdateData.isActive = isApproved
+
+      // Validasi penanggung jawab saat toko akan diaktifkan
+      if (storeUpdateData.isActive === true) {
+        const storeAdmins = await db.user.findMany({
+          where: { storeId: id, role: 'STORE_ADMIN' },
+        })
+
+        const willHaveAdmin =
+          Boolean(body.adminUserId) || storeAdmins.length > 0
+        if (!willHaveAdmin) {
+          return NextResponse.json(
+            {
+              error:
+                'Admin toko belum dipilih. Silakan pilih akun admin penanggung jawab terlebih dahulu di menu Ubah Data.',
+            },
+            { status: 400 }
+          )
+        }
+
+        const isAnyAdminActive =
+          Boolean(body.adminUserId) || storeAdmins.some((u) => u.isActive)
+        if (!isAnyAdminActive) {
+          return NextResponse.json(
+            {
+              error:
+                'Akun admin toko masih berstatus nonaktif. Silakan aktifkan akun admin toko terlebih dahulu di menu Kelola Pengguna.',
+            },
+            { status: 400 }
+          )
+        }
+      }
       if (body.groupId !== undefined)
         storeUpdateData.groupId = body.groupId || null
 
@@ -823,3 +854,5 @@ export async function DELETE(
     )
   }
 }
+
+export const PATCH = PUT

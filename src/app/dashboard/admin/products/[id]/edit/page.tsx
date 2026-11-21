@@ -458,15 +458,21 @@ export default function EditProductPage() {
       const finalStoreId =
         isStoreAdmin && userStoreId ? userStoreId : form.storeId
 
-      const variantCosts = variants
-        .map((v) => parseRupiahInput(v.costPrice))
-        .filter((c) => c > 0)
-      const effectiveCostPrice =
-        variantCosts.length > 0
-          ? variantCosts[0]
-          : form.costPrice
-            ? parseRupiahInput(form.costPrice)
-            : 0
+      let effectiveCostPrice = 0
+      if (variants.length > 0) {
+        let lowestVar = variants[0]
+        let lowestP = Infinity
+        for (const v of variants) {
+          const p = parseRupiahInput(v.price)
+          if (p > 0 && p < lowestP) {
+            lowestP = p
+            lowestVar = v
+          }
+        }
+        effectiveCostPrice = parseRupiahInput(lowestVar.costPrice) || 0
+      } else if (form.costPrice) {
+        effectiveCostPrice = parseRupiahInput(form.costPrice) || 0
+      }
 
       const effectiveStock =
         variants.length > 0

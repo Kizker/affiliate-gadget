@@ -242,9 +242,10 @@ export default function MitraDetailPage() {
         }),
       })
 
+      const data = await res.json().catch(() => ({}))
+
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Gagal memperbarui status toko')
+        throw new Error(data.error || 'Gagal memperbarui status toko')
       }
 
       toast.success(
@@ -256,7 +257,7 @@ export default function MitraDetailPage() {
         prev ? { ...prev, isActive: newStatus, isApproved: newStatus } : null
       )
     } catch (err: any) {
-      console.error(err)
+      console.error('Error toggling store approval:', err)
       toast.error(err.message || 'Gagal mengupdate status toko')
     } finally {
       setIsProcessingAction(false)

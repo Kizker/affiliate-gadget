@@ -137,23 +137,29 @@ export function evaluateProduct(
 
   // 2. Harga jual di bawah HPP (modal)
   let hasPriceBelowCost = false
-  if (
-    product.costPrice !== undefined &&
-    product.costPrice !== null &&
-    Number(product.costPrice) > 0 &&
-    Number(product.price) < Number(product.costPrice)
-  ) {
-    hasPriceBelowCost = true
-  }
-  const varsBelowCost = variants.filter((v) => {
-    const cp =
-      v.costPrice !== undefined && v.costPrice !== null
-        ? Number(v.costPrice)
-        : Number(product.costPrice) || 0
-    return cp > 0 && Number(v.price) < cp
-  })
-  if (varsBelowCost.length > 0) {
-    hasPriceBelowCost = true
+  if (variants.length > 0) {
+    // Jika memiliki varian, evaluasi HPP akurat per masing-masing varian
+    const varsBelowCost = variants.filter((v) => {
+      const cp =
+        v.costPrice !== undefined && v.costPrice !== null
+          ? Number(v.costPrice)
+          : Number(product.costPrice) || 0
+      const p = Number(v.price) || 0
+      return cp > 0 && p < cp
+    })
+    if (varsBelowCost.length > 0) {
+      hasPriceBelowCost = true
+    }
+  } else {
+    // Jika produk tunggal tanpa varian
+    if (
+      product.costPrice !== undefined &&
+      product.costPrice !== null &&
+      Number(product.costPrice) > 0 &&
+      Number(product.price) < Number(product.costPrice)
+    ) {
+      hasPriceBelowCost = true
+    }
   }
 
   if (hasPriceBelowCost) {

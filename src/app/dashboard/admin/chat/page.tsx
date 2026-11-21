@@ -1550,11 +1550,23 @@ function AdminChatContent() {
           data.items?.[0]?.product?.name ||
           'Produk Pesanan'
         const rawPrice =
+          (data.orderTotal !== undefined && Number(data.orderTotal) > 0
+            ? data.orderTotal
+            : undefined) ??
+          (data.total !== undefined && Number(data.total) > 0
+            ? data.total
+            : undefined) ??
+          (selectedRoom?.order?.total !== undefined &&
+          Number(selectedRoom.order.total) > 0
+            ? selectedRoom.order.total
+            : undefined) ??
+          (activeOrderContext?.total !== undefined &&
+          Number(activeOrderContext.total) > 0
+            ? activeOrderContext.total
+            : undefined) ??
           data.productPrice ??
           data.price ??
           data.items?.[0]?.price ??
-          data.total ??
-          data.orderTotal ??
           0
         const prodPrice = Number(rawPrice) || 0
         const prodImage =
@@ -2363,23 +2375,7 @@ function AdminChatContent() {
                     const isCurrentUser =
                       Boolean(
                         currentUserId && message.senderId === currentUserId
-                      ) ||
-                      message.senderId === 'me' ||
-                      Boolean(
-                        selectedRoom?.customerId &&
-                        message.senderId &&
-                        message.senderId !== selectedRoom.customerId
-                      ) ||
-                      Boolean(
-                        message.sender?.role &&
-                        [
-                          'ADMIN',
-                          'SUPER_ADMIN',
-                          'STORE_ADMIN',
-                          'STORE_SALES',
-                          'AFTER_SALES',
-                        ].includes(message.sender.role)
-                      )
+                      ) || message.senderId === 'me'
                     const isAdmin = isCurrentUser
                     const isVideo = isVideoMedia(
                       message.mediaUrl,

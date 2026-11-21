@@ -211,16 +211,21 @@ export function ChatMessageBubble({
               'Produk Pesanan'
 
             const rawPrice =
-              p.productPrice !== undefined
-                ? p.productPrice
-                : p.price !== undefined
-                  ? p.price
-                  : p.orderTotal !== undefined
-                    ? p.orderTotal
-                    : activeOrderContext?.productPrice ||
-                      selectedRoom?.order?.items?.[0]?.price ||
-                      selectedRoom?.order?.total ||
-                      0
+              p.orderTotal !== undefined && Number(p.orderTotal) > 0
+                ? p.orderTotal
+                : p.total !== undefined && Number(p.total) > 0
+                  ? p.total
+                  : selectedRoom?.order?.total !== undefined &&
+                      Number(selectedRoom.order.total) > 0
+                    ? selectedRoom.order.total
+                    : activeOrderContext?.total !== undefined &&
+                        Number(activeOrderContext.total) > 0
+                      ? activeOrderContext.total
+                      : p.productPrice !== undefined
+                        ? p.productPrice
+                        : p.price !== undefined
+                          ? p.price
+                          : selectedRoom?.order?.items?.[0]?.price || 0
 
             const prodPrice = Number(rawPrice) || 0
 

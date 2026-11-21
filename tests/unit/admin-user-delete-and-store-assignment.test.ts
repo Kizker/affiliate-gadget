@@ -70,6 +70,7 @@ vi.mock('@/lib/db', () => ({
   db: {
     user: {
       findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
       updateMany: vi.fn(),
     },

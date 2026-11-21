@@ -317,7 +317,7 @@ export async function POST(req: NextRequest) {
           orderNumber: effectiveOrderNumber,
           productId: firstProduct?.id || productId || dbProduct?.id || null,
           productName: refProductName,
-          productPrice: refProductPrice,
+          productPrice: resolvedOrder?.total || refProductPrice,
           productImage: refProductImage,
           brand: refBrand,
           variantName: variantName || null,

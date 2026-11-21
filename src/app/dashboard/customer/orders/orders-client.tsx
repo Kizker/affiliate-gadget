@@ -945,10 +945,12 @@ export default function OrdersClient({
                                   'productImage',
                                   firstProduct.images[0]
                                 )
-                              if (firstItem?.price)
+                              const effectiveChatPrice =
+                                order.total || firstItem?.price
+                              if (effectiveChatPrice)
                                 chatParams.set(
                                   'productPrice',
-                                  String(firstItem.price)
+                                  String(effectiveChatPrice)
                                 )
 
                               const isAfterSales =

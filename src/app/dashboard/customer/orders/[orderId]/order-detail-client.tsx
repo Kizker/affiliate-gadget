@@ -333,7 +333,9 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   if (firstProduct?.name) chatParams.set('productName', firstProduct.name)
   if (firstProduct?.images?.[0])
     chatParams.set('productImage', firstProduct.images[0])
-  if (firstItem?.price) chatParams.set('productPrice', String(firstItem.price))
+  const effectiveItemPrice = order.total || firstItem?.price
+  if (effectiveItemPrice)
+    chatParams.set('productPrice', String(effectiveItemPrice))
 
   const isAfterSalesOrder =
     Boolean(latestReturnRequest) ||
