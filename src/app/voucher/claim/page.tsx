@@ -13,7 +13,7 @@ export async function generateMetadata({
   const { code: rawCode } = await searchParams
   const code = rawCode?.trim().toUpperCase()
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
 
   if (!code) {
     return {

@@ -16,7 +16,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
 
   const store = await getStoreDetailData(slug)
   if (!store) {
@@ -68,7 +68,7 @@ export async function generateMetadata({
 export default async function StoreDetailPage({ params }: PageProps) {
   const { slug } = await params
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
 
   const headersList = await headers()
   const ua = headersList.get('user-agent') || ''

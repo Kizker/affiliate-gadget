@@ -21,7 +21,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
 
   try {
     const stream = await prisma.liveStream.findUnique({

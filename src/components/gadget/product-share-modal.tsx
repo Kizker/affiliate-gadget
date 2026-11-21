@@ -77,7 +77,7 @@ export function ProductShareModal({
   const shareUrl =
     typeof window !== 'undefined'
       ? window.location.href
-      : `https://affiliategadget.tech/gadget/${product.id}`
+      : `https://affiliategadget.id/gadget/${product.id}`
 
   const displayPrice =
     currentPrice || selectedVariant?.price || product.price || 0

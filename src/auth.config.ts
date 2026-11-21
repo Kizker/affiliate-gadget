@@ -92,7 +92,7 @@ export const authConfig = {
         baseUrl
 
       const cleanBase = publicBase.includes('0.0.0.0')
-        ? 'https://affiliategadget.tech'
+        ? 'https://affiliategadget.id'
         : publicBase
 
       if (url.startsWith('/')) {

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
 
   const title =
     'Layanan Servis Gadget & Pergantian LCD Kilat 2 Jam | Affiliate Gadget'
@@ -47,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ServisPage() {
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
   const headersList = await headers()
   const ua = headersList.get('user-agent') || ''
   const clientDevice = parseUserAgent(ua)

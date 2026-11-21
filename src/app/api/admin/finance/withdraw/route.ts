@@ -426,7 +426,7 @@ export async function POST(request: NextRequest) {
       beneficiaryName: primaryBank.accountName || store.companyName,
       beneficiaryAccount: primaryBank.accountNumber,
       beneficiaryBank: primaryBank.bankName,
-      beneficiaryEmail: session.user.email || 'finance@affiliategadget.tech',
+      beneficiaryEmail: session.user.email || 'finance@affiliategadget.id',
       amount: numericAmount,
       notes: `Pencairan Saldo ${store.name} - Ref #${withdrawal.refNumber}`,
     })

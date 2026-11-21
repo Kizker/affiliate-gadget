@@ -128,7 +128,7 @@ export async function createIrisPayout(
             beneficiary_account: param.beneficiaryAccount,
             beneficiary_bank: bankCode,
             beneficiary_email:
-              param.beneficiaryEmail || 'finance@affiliategadget.tech',
+              param.beneficiaryEmail || 'finance@affiliategadget.id',
             amount: param.amount.toFixed(2),
             notes: param.notes || `Withdrawal Ref #${param.referenceNo}`,
           },

@@ -129,7 +129,7 @@ function getSafeRedirectUrl(targetPath: string, req: any): URL {
     (process.env.NEXTAUTH_URL &&
       !process.env.NEXTAUTH_URL.includes('0.0.0.0') &&
       process.env.NEXTAUTH_URL) ||
-    'https://affiliategadget.tech'
+    'https://affiliategadget.id'
 
   return new URL(targetPath, base)
 }

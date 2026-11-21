@@ -14,7 +14,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { id } = await params
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
 
   try {
     const product = await getGadgetDetail(id)
@@ -100,7 +100,7 @@ export async function generateMetadata({
 export default async function Page({ params }: PageProps) {
   const { id } = await params
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.tech'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://affiliategadget.id'
 
   // Detect mobile device on server to eliminate mobile hydration flash & double-mount
   const headerList = await headers()

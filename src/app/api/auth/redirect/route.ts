@@ -25,7 +25,7 @@ function resolvePublicOrigin(req: NextRequest): string {
     return configured.replace(/\/$/, '')
   }
 
-  return 'https://affiliategadget.tech'
+  return 'https://affiliategadget.id'
 }
 
 export async function GET(req: NextRequest) {
