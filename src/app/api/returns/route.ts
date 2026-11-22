@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { calculateNetRefundAmount } from '@/lib/returns/refund-calculator'
+import {
+  doesReturnMatchOrderItem,
+  extractReturnedQuantityFromDescription,
+} from '@/lib/order-return-utils'
 
 // GET - List return requests
 export async function GET(request: NextRequest) {
@@ -196,8 +200,56 @@ export async function GET(request: NextRequest) {
       const assignedGroupName = assignedGroup?.name || null
       const isSelfManaged = !hasAssignedAfterSales
 
+      // Filter order.items agar kartu retur di After Sales & Superadmin HANYA menampilkan barang yang diajukan retur
+      const allOrderItems = Array.isArray(r.order?.items) ? r.order.items : []
+      let filteredOrderItems = allOrderItems
+      let effectiveReturnedTotal = r.order?.total || 0
+
+      if (allOrderItems.length > 0) {
+        const matchedItems = allOrderItems.filter((item: any) =>
+          doesReturnMatchOrderItem(r, item, allOrderItems.length)
+        )
+        const targetItems =
+          matchedItems.length > 0 ? matchedItems : [allOrderItems[0]]
+
+        filteredOrderItems = targetItems.map((item: any) => {
+          const retQty = extractReturnedQuantityFromDescription(
+            r.description,
+            item.quantity || 1
+          )
+          const safeQty = Math.min(Math.max(1, retQty), item.quantity || 1)
+          return {
+            ...item,
+            quantity: safeQty,
+          }
+        })
+
+        // Jika dalam pesanan terdapat beberapa item atau kuantitas berbeda, sesuaikan nominal transaksi ke barang yang diretur
+        if (
+          allOrderItems.length > 1 ||
+          filteredOrderItems[0]?.quantity !== allOrderItems[0]?.quantity
+        ) {
+          const calcUnitSum = filteredOrderItems.reduce(
+            (sum: number, it: any) =>
+              sum + (Number(it.price) || 0) * (Number(it.quantity) || 1),
+            0
+          )
+          if (calcUnitSum > 0) {
+            effectiveReturnedTotal = calcUnitSum
+          }
+        }
+      }
+
       return {
         ...r,
+        order: r.order
+          ? {
+              ...r.order,
+              items: filteredOrderItems,
+              total: effectiveReturnedTotal,
+              originalOrderTotal: r.order.total,
+            }
+          : r.order,
         hasAssignedAfterSales,
         assignedAfterSalesName,
         assignedGroupName,
@@ -229,6 +281,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       orderId,
+      orderItemId,
+      returnQuantity,
+      itemTotalAmount,
       type = 'REFUND', // 'REFUND' | 'REPLACEMENT'
       reason,
       reasonLabel,
@@ -264,7 +319,13 @@ export async function POST(request: NextRequest) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: { select: { id: true, name: true } },
+            rentalItem: { select: { id: true, name: true } },
+            service: { select: { id: true, name: true } },
+          },
+        },
         store: true,
       },
     })
@@ -323,33 +384,92 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if there is already an active return request
-    const activeReturn = await prisma.returnRequest.findFirst({
+    // Check if there is already an active return request for this specific item
+    const existingActiveReturns = await prisma.returnRequest.findMany({
       where: {
         orderId,
         status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] },
       },
     })
 
-    if (activeReturn) {
+    const targetOrderItem = orderItemId
+      ? order.items.find((it) => it.id === orderItemId)
+      : order.items.find((it) =>
+          doesReturnMatchOrderItem({ description }, it, order.items.length)
+        ) || order.items[0]
+
+    const isDuplicateForItem = existingActiveReturns.some((ret) => {
+      if (order.items.length <= 1) return true
+      if (targetOrderItem) {
+        return doesReturnMatchOrderItem(
+          ret,
+          targetOrderItem,
+          order.items.length
+        )
+      }
+      return true
+    })
+
+    if (isDuplicateForItem) {
       return NextResponse.json(
         {
           error:
-            'Sudah ada pengajuan pengembalian aktif untuk pesanan ini. Harap tunggu verifikasi toko terlebih dahulu.',
+            'Sudah ada pengajuan pengembalian aktif untuk produk ini. Harap tunggu verifikasi terlebih dahulu.',
         },
         { status: 400 }
       )
     }
 
-    // Hitung nominal pengembalian dana setelah dipotong biaya operasional (ongkir, pajak, operasional, asuransi)
+    // Pastikan description menyertakan informasi unit jika diajukan pada multi-item
+    let finalDescription = description
+    if (
+      targetOrderItem &&
+      !finalDescription.includes('[Unit yang Diretur:') &&
+      !finalDescription.includes('ItemID:')
+    ) {
+      const itemName =
+        targetOrderItem.product?.name ||
+        targetOrderItem.rentalItem?.name ||
+        targetOrderItem.service?.name ||
+        'Gadget'
+      const variantPart = targetOrderItem.variantName
+        ? ` - Varian: ${targetOrderItem.variantName}`
+        : ''
+      const qtyToRet = Math.max(
+        1,
+        Math.min(
+          Number(returnQuantity) || targetOrderItem.quantity || 1,
+          targetOrderItem.quantity || 1
+        )
+      )
+      finalDescription = `[Unit yang Diretur: ${itemName}${variantPart} - ${qtyToRet} unit @ Rp ${targetOrderItem.price.toLocaleString('id-ID')} | ItemID:${targetOrderItem.id} | Qty:${qtyToRet}]\n\n${finalDescription}`
+    }
+
+    const effectiveReturnQty = extractReturnedQuantityFromDescription(
+      finalDescription,
+      Number(returnQuantity) || targetOrderItem?.quantity || 1
+    )
+
+    const effectiveItemTotal =
+      itemTotalAmount && Number(itemTotalAmount) > 0
+        ? Number(itemTotalAmount)
+        : targetOrderItem
+          ? Number(targetOrderItem.price) * Math.max(1, effectiveReturnQty)
+          : order.total
+
+    // Hitung nominal pengembalian dana berdasarkan unit yang diretur
+    const isPartialOrder =
+      order.items.length > 1 ||
+      (targetOrderItem && effectiveReturnQty < (targetOrderItem.quantity || 1))
+
     const refundCalc =
       type === 'REFUND'
         ? calculateNetRefundAmount({
-            total: order.total,
-            subtotal: order.subtotal,
-            shippingCost: order.shippingCost,
-            tax: order.tax,
-            insuranceFee: order.insuranceFee,
+            total: isPartialOrder ? effectiveItemTotal : order.total,
+            subtotal: isPartialOrder ? effectiveItemTotal : order.subtotal,
+            shippingCost: isPartialOrder ? 0 : order.shippingCost,
+            tax: isPartialOrder ? 0 : order.tax,
+            insuranceFee: isPartialOrder ? 0 : order.insuranceFee,
           })
         : null
 
@@ -367,7 +487,7 @@ export async function POST(request: NextRequest) {
           type: type === 'REPLACEMENT' ? 'REPLACEMENT' : 'REFUND',
           reason,
           reasonLabel: reasonLabel || reason,
-          description,
+          description: finalDescription,
           images: Array.isArray(images) ? images : [],
           videoUrl: videoUrl || null,
           bankName: type === 'REFUND' ? bankName : null,

@@ -34,6 +34,7 @@ import {
   Sparkles,
   Radio,
   Headphones,
+  QrCode,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 import { useAdminNotifications } from '@/context/admin-notifications-context'
@@ -108,6 +109,11 @@ const superAdminNavSections: NavSection[] = [
         icon: Layers,
         label: 'Grup Cabang & After Sales',
         href: '/dashboard/admin/groups',
+      },
+      {
+        icon: QrCode,
+        label: 'WhatsApp Gateway',
+        href: '/dashboard/admin/whatsapp',
       },
       {
         icon: Settings,

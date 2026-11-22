@@ -123,6 +123,11 @@ const cleanRecommendationNote = (storeResponse?: string | null): string => {
     .trim()
 }
 
+const cleanReturnDescription = (desc?: string | null): string => {
+  if (!desc) return ''
+  return desc.replace(/\[Unit yang Diretur:[^\]]+\]\s*/gi, '').trim()
+}
+
 export default function AfterSalesReturnsPage() {
   const {
     isLoading: guardLoading,
@@ -829,7 +834,7 @@ export default function AfterSalesReturnsPage() {
                         {item.reasonLabel || item.reason}
                       </p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                        &ldquo;{item.description}&rdquo;
+                        &ldquo;{cleanReturnDescription(item.description)}&rdquo;
                       </p>
                     </div>
 

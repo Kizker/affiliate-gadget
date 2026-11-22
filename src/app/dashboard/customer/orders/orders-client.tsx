@@ -31,7 +31,11 @@ import {
 } from 'lucide-react'
 import { ReturnModal } from '@/components/customer/return-modal'
 import { MobileOrdersView } from '@/components/customer/mobile-orders-view'
-import { isReturnEligible } from '@/lib/order-return-utils'
+import {
+  isReturnEligible,
+  findReturnForOrderItem,
+  isOrderItemReturnEligible,
+} from '@/lib/order-return-utils'
 import { toast } from 'sonner'
 import {
   getOrderPaymentRemainingSeconds,
@@ -377,6 +381,8 @@ export default function OrdersClient({
     shippingCost?: number
     tax?: number
     insuranceFee?: number
+    items?: any[]
+    initialSelectedItemId?: string | null
   }>({
     isOpen: false,
     orderId: '',
@@ -513,6 +519,8 @@ export default function OrdersClient({
               orderId: order.id,
               orderNumber: order.orderNumber,
               totalAmount: order.total,
+              items: order.items as any,
+              initialSelectedItemId: order.items?.[0]?.id || null,
             })
           }}
         />
@@ -751,7 +759,11 @@ export default function OrdersClient({
                           {order.items.length > 1 &&
                             expandedOrders[order.id] &&
                             (() => {
-                              const latestReturn = order.returnRequests?.[0]
+                              const firstItemReturn = findReturnForOrderItem(
+                                order.returnRequests,
+                                firstItem,
+                                order.items.length
+                              )
                               const prod =
                                 firstItem?.product ||
                                 firstItem?.rentalItem ||
@@ -762,22 +774,22 @@ export default function OrdersClient({
                                 chatParams.set('storeId', order.store.id)
                               if (order.orderNumber)
                                 chatParams.set('orderNumber', order.orderNumber)
-                              if (latestReturn) {
-                                chatParams.set('returnId', latestReturn.id)
+                              if (firstItemReturn) {
+                                chatParams.set('returnId', firstItemReturn.id)
                                 chatParams.set(
                                   'returnReason',
-                                  latestReturn.reasonLabel ||
-                                    latestReturn.reason ||
+                                  firstItemReturn.reasonLabel ||
+                                    firstItemReturn.reason ||
                                     ''
                                 )
                                 chatParams.set(
                                   'returnStatus',
-                                  latestReturn.status
+                                  firstItemReturn.status
                                 )
-                                if (latestReturn.type)
+                                if (firstItemReturn.type)
                                   chatParams.set(
                                     'returnType',
-                                    latestReturn.type
+                                    firstItemReturn.type
                                   )
                               }
                               if (prod?.name)
@@ -797,7 +809,7 @@ export default function OrdersClient({
                                 )
 
                               const isAfterSales =
-                                Boolean(latestReturn) ||
+                                Boolean(firstItemReturn) ||
                                 order.status === 'COMPLETED' ||
                                 order.status === 'RETURNED'
                               if (isAfterSales) {
@@ -806,6 +818,26 @@ export default function OrdersClient({
 
                               return (
                                 <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/70 pt-2 dark:border-slate-800/70">
+                                  {firstItemReturn && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-[10.5px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+                                      <RotateCcw className="h-3 w-3 text-purple-600" />
+                                      <span>
+                                        {firstItemReturn.status === 'PENDING'
+                                          ? 'Menunggu Verifikasi Retur'
+                                          : firstItemReturn.status ===
+                                              'IN_REVIEW'
+                                            ? 'Retur Sedang Ditinjau'
+                                            : firstItemReturn.status ===
+                                                'COMPLETED'
+                                              ? 'Retur Selesai'
+                                              : firstItemReturn.status ===
+                                                  'REJECTED'
+                                                ? 'Retur Ditolak'
+                                                : 'Retur Disetujui'}
+                                      </span>
+                                    </span>
+                                  )}
+
                                   <Link
                                     href={`/dashboard/customer/chat?${chatParams.toString()}`}
                                     onClick={(e) => e.stopPropagation()}
@@ -829,7 +861,11 @@ export default function OrdersClient({
                                     </span>
                                   </Link>
 
-                                  {isReturnEligible(order) && (
+                                  {isOrderItemReturnEligible(
+                                    order,
+                                    firstItem,
+                                    order.items.length
+                                  ) && (
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -842,6 +878,8 @@ export default function OrdersClient({
                                           totalAmount:
                                             (firstItem.price || 0) *
                                             (firstItem.quantity || 1),
+                                          items: order.items as any,
+                                          initialSelectedItemId: firstItem.id,
                                         })
                                       }}
                                       className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
@@ -934,8 +972,12 @@ export default function OrdersClient({
 
                                   {/* Action Buttons for extraItem when order has multiple items and is expanded */}
                                   {(() => {
-                                    const latestReturn =
-                                      order.returnRequests?.[0]
+                                    const extraItemReturn =
+                                      findReturnForOrderItem(
+                                        order.returnRequests,
+                                        extraItem,
+                                        order.items.length
+                                      )
                                     const prod =
                                       extraItem.product ||
                                       extraItem.rentalItem ||
@@ -949,25 +991,25 @@ export default function OrdersClient({
                                         'orderNumber',
                                         order.orderNumber
                                       )
-                                    if (latestReturn) {
+                                    if (extraItemReturn) {
                                       chatParams.set(
                                         'returnId',
-                                        latestReturn.id
+                                        extraItemReturn.id
                                       )
                                       chatParams.set(
                                         'returnReason',
-                                        latestReturn.reasonLabel ||
-                                          latestReturn.reason ||
+                                        extraItemReturn.reasonLabel ||
+                                          extraItemReturn.reason ||
                                           ''
                                       )
                                       chatParams.set(
                                         'returnStatus',
-                                        latestReturn.status
+                                        extraItemReturn.status
                                       )
-                                      if (latestReturn.type)
+                                      if (extraItemReturn.type)
                                         chatParams.set(
                                           'returnType',
-                                          latestReturn.type
+                                          extraItemReturn.type
                                         )
                                     }
                                     if (prod?.name)
@@ -991,7 +1033,7 @@ export default function OrdersClient({
                                       )
 
                                     const isAfterSales =
-                                      Boolean(latestReturn) ||
+                                      Boolean(extraItemReturn) ||
                                       order.status === 'COMPLETED' ||
                                       order.status === 'RETURNED'
                                     if (isAfterSales) {
@@ -1000,6 +1042,27 @@ export default function OrdersClient({
 
                                     return (
                                       <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/70 pt-2 dark:border-slate-800/70">
+                                        {extraItemReturn && (
+                                          <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-[10.5px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+                                            <RotateCcw className="h-3 w-3 text-purple-600" />
+                                            <span>
+                                              {extraItemReturn.status ===
+                                              'PENDING'
+                                                ? 'Menunggu Verifikasi Retur'
+                                                : extraItemReturn.status ===
+                                                    'IN_REVIEW'
+                                                  ? 'Retur Sedang Ditinjau'
+                                                  : extraItemReturn.status ===
+                                                      'COMPLETED'
+                                                    ? 'Retur Selesai'
+                                                    : extraItemReturn.status ===
+                                                        'REJECTED'
+                                                      ? 'Retur Ditolak'
+                                                      : 'Retur Disetujui'}
+                                            </span>
+                                          </span>
+                                        )}
+
                                         <Link
                                           href={`/dashboard/customer/chat?${chatParams.toString()}`}
                                           onClick={(e) => e.stopPropagation()}
@@ -1023,7 +1086,11 @@ export default function OrdersClient({
                                           </span>
                                         </Link>
 
-                                        {isReturnEligible(order) && (
+                                        {isOrderItemReturnEligible(
+                                          order,
+                                          extraItem,
+                                          order.items.length
+                                        ) && (
                                           <button
                                             type="button"
                                             onClick={(e) => {
@@ -1036,6 +1103,9 @@ export default function OrdersClient({
                                                 totalAmount:
                                                   (extraItem.price || 0) *
                                                   (extraItem.quantity || 1),
+                                                items: order.items as any,
+                                                initialSelectedItemId:
+                                                  extraItem.id,
                                               })
                                             }}
                                             className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
@@ -1227,6 +1297,9 @@ export default function OrdersClient({
                                         orderId: order.id,
                                         orderNumber: order.orderNumber,
                                         totalAmount: order.total,
+                                        items: order.items as any,
+                                        initialSelectedItemId:
+                                          order.items?.[0]?.id || null,
                                       })
                                     }
                                     className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3.5 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
@@ -1316,6 +1389,8 @@ export default function OrdersClient({
         shippingCost={returnModal.shippingCost}
         tax={returnModal.tax}
         insuranceFee={returnModal.insuranceFee}
+        items={returnModal.items}
+        initialSelectedItemId={returnModal.initialSelectedItemId}
         onSuccess={() => router.refresh()}
       />
     </>

@@ -1167,6 +1167,12 @@ export default function AdminOrdersPage() {
                     const fullName = variantName
                       ? `${productName} ${variantName}`
                       : productName
+                    const totalUnits =
+                      (order.items || []).reduce(
+                        (sum, item) => sum + (Number(item.quantity) || 1),
+                        0
+                      ) || 1
+                    const extraItemsCount = (order.items?.length || 1) - 1
 
                     const customerName =
                       order.user?.name || order.user?.email || 'Customer'
@@ -1189,6 +1195,11 @@ export default function AdminOrdersPage() {
                             <div className="min-w-0 max-w-[320px]">
                               <p className="line-clamp-1 text-xs font-bold text-slate-800 dark:text-white">
                                 {fullName}
+                                {extraItemsCount > 0 ? (
+                                  <span className="ml-1.5 rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+                                    +{extraItemsCount} lainnya
+                                  </span>
+                                ) : null}
                               </p>
                               <p className="mt-0.5 font-mono text-[11px] text-slate-400">
                                 #
@@ -1220,7 +1231,7 @@ export default function AdminOrdersPage() {
                               Rp {order.total.toLocaleString('id-ID')}
                             </p>
                             <p className="text-[11px] text-slate-400">
-                              {firstItem?.quantity || 1} Unit
+                              {totalUnits} Unit
                             </p>
                           </div>
                         </td>
@@ -1274,6 +1285,12 @@ export default function AdminOrdersPage() {
                 const fullName = variantName
                   ? `${productName} ${variantName}`
                   : productName
+                const totalUnits =
+                  (order.items || []).reduce(
+                    (sum, item) => sum + (Number(item.quantity) || 1),
+                    0
+                  ) || 1
+                const extraItemsCount = (order.items?.length || 1) - 1
 
                 const customerName =
                   order.user?.name || order.user?.email || 'Customer'
@@ -1313,6 +1330,11 @@ export default function AdminOrdersPage() {
                       <div className="min-w-0 flex-1">
                         <p className="line-clamp-1 text-xs font-bold text-slate-900 dark:text-white">
                           {fullName}
+                          {extraItemsCount > 0 ? (
+                            <span className="ml-1.5 rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600 dark:bg-orange-950/50 dark:text-orange-400">
+                              +{extraItemsCount} lainnya
+                            </span>
+                          ) : null}
                         </p>
                         <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
                           {customerName}{' '}
@@ -1328,7 +1350,7 @@ export default function AdminOrdersPage() {
                           Rp {order.total.toLocaleString('id-ID')}
                         </span>
                         <span className="ml-1 text-[10px] text-slate-400">
-                          ({firstItem?.quantity || 1} Unit)
+                          ({totalUnits} Unit)
                         </span>
                       </div>
                       <button

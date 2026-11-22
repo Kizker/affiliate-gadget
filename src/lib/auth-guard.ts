@@ -58,6 +58,7 @@ export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   ],
   '/dashboard/admin/onboarding': ['SUPER_ADMIN', 'ADMIN', 'STORE_ADMIN'],
   '/dashboard/admin/groups': ['SUPER_ADMIN'],
+  '/dashboard/admin/whatsapp': ['SUPER_ADMIN'],
   '/dashboard/after-sales': ['SUPER_ADMIN', 'AFTER_SALES', 'STORE_ADMIN'],
 
   // Chat — semua admin & staff toko

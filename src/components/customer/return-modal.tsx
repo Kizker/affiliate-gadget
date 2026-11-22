@@ -118,6 +118,15 @@ export function ReturnModal({
   const selectedItem =
     items?.find((it) => it.id === selectedItemId) || items?.[0] || null
 
+  const [returnQuantity, setReturnQuantity] = useState<number>(1)
+
+  useEffect(() => {
+    setReturnQuantity(1)
+  }, [selectedItemId])
+
+  const maxItemQty = selectedItem ? Math.max(1, selectedItem.quantity || 1) : 1
+  const safeReturnQty = Math.min(Math.max(1, returnQuantity), maxItemQty)
+
   const [selectedPreset, setSelectedPreset] = useState<string>('CACAT_FISIK')
   const [reasonLabel, setReasonLabel] = useState(COMMON_REASONS[0].label)
   const [description, setDescription] = useState(COMMON_REASONS[0].fullText)
@@ -137,9 +146,9 @@ export function ReturnModal({
 
   const [submitting, setSubmitting] = useState(false)
 
-  // Estimasi pengembalian dana berdasarkan produk terpilih
+  // Estimasi pengembalian dana berdasarkan produk dan jumlah unit terpilih
   const effectiveProductTotal = selectedItem
-    ? selectedItem.subtotal || selectedItem.price * selectedItem.quantity
+    ? selectedItem.price * safeReturnQty
     : totalAmount
 
   const refundCalc = effectiveProductTotal
@@ -276,7 +285,7 @@ export function ReturnModal({
     setSubmitting(true)
     try {
       const itemPrefix = selectedItem
-        ? `[Unit yang Diretur: ${selectedItem.product?.name || selectedItem.rentalItem?.name || selectedItem.service?.name || 'Gadget'}${selectedItem.variantName ? ` - Varian: ${selectedItem.variantName}` : ''} - ${selectedItem.quantity} unit @ Rp ${selectedItem.price.toLocaleString('id-ID')}]\n\n`
+        ? `[Unit yang Diretur: ${selectedItem.product?.name || selectedItem.rentalItem?.name || selectedItem.service?.name || 'Gadget'}${selectedItem.variantName ? ` - Varian: ${selectedItem.variantName}` : ''} - ${safeReturnQty} unit @ Rp ${selectedItem.price.toLocaleString('id-ID')} | ItemID:${selectedItem.id} | Qty:${safeReturnQty}]\n\n`
         : ''
 
       const finalDescription = `${itemPrefix}${description}`.trim()
@@ -286,6 +295,9 @@ export function ReturnModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
+          orderItemId: selectedItem?.id || null,
+          returnQuantity: safeReturnQty,
+          itemTotalAmount: effectiveProductTotal,
           type: returnType,
           reason: selectedPreset,
           reasonLabel,
@@ -421,12 +433,48 @@ export function ReturnModal({
                         )}
                         <span>•</span>
                         <span className="font-mono font-bold text-orange-600 dark:text-orange-400">
-                          {formatPrice(
-                            selectedItem.subtotal ||
-                              selectedItem.price * selectedItem.quantity
-                          )}
+                          {formatPrice(selectedItem.price * safeReturnQty)}
                         </span>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pemilih Jumlah Unit yang Diretur jika beli > 1 unit barang yang sama */}
+                {selectedItem && maxItemQty > 1 && (
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-800">
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                        Jumlah Unit Diretur:
+                      </span>
+                      <p className="text-[10px] text-slate-400">
+                        Dari total {maxItemQty} unit yang dibeli
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReturnQuantity((q) => Math.max(1, q - 1))
+                        }
+                        disabled={safeReturnQty <= 1}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-700 dark:text-white"
+                      >
+                        -
+                      </button>
+                      <span className="min-w-[2.5rem] text-center font-mono text-xs font-black text-slate-900 dark:text-white">
+                        {safeReturnQty} Unit
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReturnQuantity((q) => Math.min(maxItemQty, q + 1))
+                        }
+                        disabled={safeReturnQty >= maxItemQty}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-700 dark:text-white"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
                 )}

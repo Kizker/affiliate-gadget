@@ -121,7 +121,138 @@ export interface OrderWarrantyInfo {
   customerConfirmedAt?: string | Date | null
   updatedAt?: string | Date | null
   createdAt?: string | Date | null
-  returnRequests?: Array<{ status: string }> | null
+  returnRequests?: Array<{
+    id?: string
+    status: string
+    type?: string | null
+    reason?: string | null
+    reasonLabel?: string | null
+    description?: string | null
+  }> | null
+}
+
+export interface MatchableOrderItem {
+  id?: string
+  quantity?: number
+  price?: number
+  variantName?: string | null
+  productId?: string | null
+  product?: { id?: string; name?: string } | null
+  rentalItem?: { id?: string; name?: string } | null
+  service?: { id?: string; name?: string } | null
+}
+
+/**
+ * Extracts how many units were requested for return from the return description prefix.
+ * Format: [Unit yang Diretur: ... - X unit @ Rp ... | ItemID:... | Qty:X]
+ */
+export function extractReturnedQuantityFromDescription(
+  description?: string | null,
+  fallbackQty: number = 1
+): number {
+  if (!description) return fallbackQty
+  const explicitQtyMatch = description.match(/Qty:(\d+)/i)
+  if (explicitQtyMatch) {
+    const parsed = parseInt(explicitQtyMatch[1], 10)
+    if (!isNaN(parsed) && parsed > 0) return parsed
+  }
+  const headerMatch = description.match(
+    /\[Unit yang Diretur:[^\]]*?-\s*(\d+)\s*unit\s*@/i
+  )
+  if (headerMatch) {
+    const parsed = parseInt(headerMatch[1], 10)
+    if (!isNaN(parsed) && parsed > 0) return parsed
+  }
+  return fallbackQty
+}
+
+/**
+ * Determines if a specific OrderItem matches a ReturnRequest.
+ * Supports explicit ItemID marker, ProductID marker, and product name + variant matching.
+ */
+export function doesReturnMatchOrderItem(
+  ret: { description?: string | null },
+  item: MatchableOrderItem,
+  totalOrderItemsCount: number = 1
+): boolean {
+  const desc = ret.description || ''
+
+  // 1. Check explicit ItemID marker
+  if (desc.includes('ItemID:')) {
+    if (item.id && desc.includes(`ItemID:${item.id}`)) return true
+    return false
+  }
+
+  // 2. Check explicit [Unit yang Diretur: ...] header
+  const itemMatch = desc.match(/\[Unit yang Diretur:\s*([^\]]+)\]/i)
+  if (itemMatch) {
+    const headerText = itemMatch[1].toLowerCase()
+    const itemName = (
+      item.product?.name ||
+      item.rentalItem?.name ||
+      item.service?.name ||
+      ''
+    )
+      .toLowerCase()
+      .trim()
+
+    if (itemName && headerText.includes(itemName)) {
+      if (item.variantName && headerText.includes('varian:')) {
+        return headerText.includes(item.variantName.toLowerCase().trim())
+      }
+      return true
+    }
+    return false
+  }
+
+  // 3. Fallback if no unit prefix and order only has 1 item
+  if (totalOrderItemsCount <= 1) return true
+  return true
+}
+
+/**
+ * Finds the active/latest ReturnRequest targeting a specific OrderItem.
+ */
+export function findReturnForOrderItem<
+  T extends { status: string; description?: string | null },
+>(
+  returnRequests: T[] | null | undefined,
+  item: MatchableOrderItem,
+  totalOrderItemsCount: number = 1
+): T | undefined {
+  if (!returnRequests || returnRequests.length === 0) return undefined
+  return returnRequests.find((r) =>
+    doesReturnMatchOrderItem(r, item, totalOrderItemsCount)
+  )
+}
+
+/**
+ * Checks if a specific OrderItem is eligible for a new return request.
+ * Even if another item in the same order has an active return, this item remains eligible!
+ */
+export function isOrderItemReturnEligible(
+  order: OrderWarrantyInfo,
+  item: MatchableOrderItem,
+  totalOrderItemsCount: number = 1
+): boolean {
+  if (order.status !== 'COMPLETED') return false
+  if (isWarrantyExpired(order)) return false
+
+  const matchingReturn = findReturnForOrderItem(
+    order.returnRequests,
+    item,
+    totalOrderItemsCount
+  )
+  if (matchingReturn) {
+    const isBlocked =
+      matchingReturn.status === 'PENDING' ||
+      matchingReturn.status === 'IN_REVIEW' ||
+      matchingReturn.status === 'APPROVED' ||
+      matchingReturn.status === 'COMPLETED'
+    if (isBlocked) return false
+  }
+
+  return true
 }
 
 /**

@@ -19,6 +19,7 @@ import {
   DEFAULT_GADGET_IMAGE,
   formatPrice,
 } from './order-detail-types'
+import { findReturnForOrderItem } from '@/lib/order-return-utils'
 
 interface OrderDesktopItemsCardProps {
   order: OrderData
@@ -108,73 +109,118 @@ export function OrderDesktopItemsCard({
                       {item.quantity} unit × {formatPrice(item.price)}
                     </p>
                     {/* Aksi Khusus per Produk untuk Pembelian Keranjang / Multi-Item */}
-                    {isMultiItem && (
-                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100/80 pt-2.5 dark:border-slate-800/80">
-                        {/* 1. Ajukan Komplain / Retur per Item */}
-                        {canRequestReturnOrComplaint &&
-                          !hasActiveClaim &&
-                          isCompleted && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenReturnForItem?.(item)}
-                              className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-600 transition-all hover:border-orange-300 hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
-                              <span>Ajukan Retur Unit Ini</span>
-                            </button>
-                          )}
+                    {isMultiItem &&
+                      (() => {
+                        const itemSpecificReturn = findReturnForOrderItem(
+                          order.returnRequests,
+                          item,
+                          order.items.length
+                        )
+                        const isItemClaimActive = Boolean(
+                          itemSpecificReturn &&
+                          [
+                            'PENDING',
+                            'IN_REVIEW',
+                            'APPROVED',
+                            'COMPLETED',
+                          ].includes(itemSpecificReturn.status)
+                        )
 
-                        {/* 2. Beri Ulasan per Item */}
-                        {isCompleted && !latestReturnRequest && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenRatingForItem?.(item)}
-                            className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                          >
-                            <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-                            <span>Beri Ulasan</span>
-                          </button>
-                        )}
-
-                        {/* 3. Chat Toko / After Sales per Item */}
-                        {(() => {
-                          const prod =
-                            item.product || item.rentalItem || item.service
-                          const itemChatParams = new URLSearchParams()
-                          itemChatParams.set('orderId', order.id)
-                          if (order.store?.id)
-                            itemChatParams.set('storeId', order.store.id)
-                          if (order.orderNumber)
-                            itemChatParams.set('orderNumber', order.orderNumber)
-                          if (prod?.name)
-                            itemChatParams.set('productName', prod.name)
-                          const prodImg = (prod as any)?.images?.[0]
-                          if (prodImg)
-                            itemChatParams.set('productImage', prodImg)
-                          if (item.price)
-                            itemChatParams.set(
-                              'productPrice',
-                              String(item.price)
-                            )
-                          if (item.variantName)
-                            itemChatParams.set('variantName', item.variantName)
-                          if (isCompleted)
-                            itemChatParams.set('type', 'after_sales')
-
-                          return (
-                            <Link
-                              href={`/dashboard/customer/chat?${itemChatParams.toString()}`}
-                              className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
-                              <span>
-                                {isCompleted ? 'Chat After Sales' : 'Chat Toko'}
+                        return (
+                          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100/80 pt-2.5 dark:border-slate-800/80">
+                            {itemSpecificReturn && (
+                              <span className="inline-flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-[11px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+                                <RotateCcw className="h-3.5 w-3.5 text-purple-600" />
+                                <span>
+                                  {itemSpecificReturn.status === 'PENDING'
+                                    ? 'Menunggu Verifikasi Retur'
+                                    : itemSpecificReturn.status === 'IN_REVIEW'
+                                      ? 'Retur Sedang Ditinjau'
+                                      : itemSpecificReturn.status ===
+                                          'COMPLETED'
+                                        ? 'Retur Selesai'
+                                        : itemSpecificReturn.status ===
+                                            'REJECTED'
+                                          ? 'Retur Ditolak'
+                                          : 'Retur Disetujui'}
+                                </span>
                               </span>
-                            </Link>
-                          )
-                        })()}
-                      </div>
-                    )}
+                            )}
+
+                            {/* 1. Ajukan Komplain / Retur per Item */}
+                            {canRequestReturnOrComplaint &&
+                              !isItemClaimActive &&
+                              isCompleted && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenReturnForItem?.(item)}
+                                  className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-600 transition-all hover:border-orange-300 hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5 text-orange-600" />
+                                  <span>Ajukan Retur Unit Ini</span>
+                                </button>
+                              )}
+
+                            {/* 2. Beri Ulasan per Item */}
+                            {isCompleted && !isItemClaimActive && (
+                              <button
+                                type="button"
+                                onClick={() => onOpenRatingForItem?.(item)}
+                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                              >
+                                <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                                <span>Beri Ulasan</span>
+                              </button>
+                            )}
+
+                            {/* 3. Chat Toko / After Sales per Item */}
+                            {(() => {
+                              const prod =
+                                item.product || item.rentalItem || item.service
+                              const itemChatParams = new URLSearchParams()
+                              itemChatParams.set('orderId', order.id)
+                              if (order.store?.id)
+                                itemChatParams.set('storeId', order.store.id)
+                              if (order.orderNumber)
+                                itemChatParams.set(
+                                  'orderNumber',
+                                  order.orderNumber
+                                )
+                              if (prod?.name)
+                                itemChatParams.set('productName', prod.name)
+                              const prodImg = (prod as any)?.images?.[0]
+                              if (prodImg)
+                                itemChatParams.set('productImage', prodImg)
+                              if (item.price)
+                                itemChatParams.set(
+                                  'productPrice',
+                                  String(item.price)
+                                )
+                              if (item.variantName)
+                                itemChatParams.set(
+                                  'variantName',
+                                  item.variantName
+                                )
+                              if (isCompleted)
+                                itemChatParams.set('type', 'after_sales')
+
+                              return (
+                                <Link
+                                  href={`/dashboard/customer/chat?${itemChatParams.toString()}`}
+                                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-95 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
+                                  <span>
+                                    {isCompleted
+                                      ? 'Chat After Sales'
+                                      : 'Chat Toko'}
+                                  </span>
+                                </Link>
+                              )
+                            })()}
+                          </div>
+                        )
+                      })()}
                   </div>
                   <span className="shrink-0 whitespace-nowrap font-mono text-base font-black text-slate-950 dark:text-white sm:text-lg">
                     {formatPrice(item.subtotal)}

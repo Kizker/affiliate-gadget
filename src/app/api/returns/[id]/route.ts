@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { bookShippingPickup } from '@/lib/shipping/biteship-client'
+import {
+  doesReturnMatchOrderItem,
+  extractReturnedQuantityFromDescription,
+} from '@/lib/order-return-utils'
 
 // GET - Single return request details
 export async function GET(
@@ -553,13 +557,28 @@ export async function PUT(
         const resolutionType = existing.type || 'REPLACEMENT'
 
         if (resolutionType === 'REPLACEMENT') {
-          // 1. Validasi & Pengurangan Stok Unit Pengganti di Toko Cabang Pengirim
-          const productItems = (existing.order?.items || []).filter(
+          // 1. Validasi & Pengurangan Stok Unit Pengganti di Toko Cabang Pengirim (HANYA untuk barang & unit yang diajukan retur)
+          const allOrderItems = existing.order?.items || []
+          const matchedOrderItems = allOrderItems.filter((item: any) =>
+            doesReturnMatchOrderItem(existing, item, allOrderItems.length)
+          )
+          const targetOrderItems =
+            matchedOrderItems.length > 0 ? matchedOrderItems : allOrderItems
+          const productItems = targetOrderItems.filter(
             (item: any) => item.productId && item.product
           )
 
           for (const item of productItems) {
-            const requiredQty = item.quantity || 1
+            const requiredQty = Math.min(
+              Math.max(
+                1,
+                extractReturnedQuantityFromDescription(
+                  existing.description,
+                  item.quantity || 1
+                )
+              ),
+              item.quantity || 1
+            )
             const prod = item.product!
             let hasStock = false
             let currentStock = 0
@@ -1252,13 +1271,28 @@ export async function PUT(
 
       // After Sales, Superadmin, and Admin handle functional resolution actions
       if (resolutionAction === 'REPLACEMENT') {
-        // 0. Validasi & Pengurangan Stok Unit Pengganti di Toko Cabang Pengirim
-        const productItems = (existing.order?.items || []).filter(
+        // 0. Validasi & Pengurangan Stok Unit Pengganti di Toko Cabang Pengirim (HANYA untuk barang & unit yang diajukan retur)
+        const allOrderItems = existing.order?.items || []
+        const matchedOrderItems = allOrderItems.filter((item: any) =>
+          doesReturnMatchOrderItem(existing, item, allOrderItems.length)
+        )
+        const targetOrderItems =
+          matchedOrderItems.length > 0 ? matchedOrderItems : allOrderItems
+        const productItems = targetOrderItems.filter(
           (item) => item.productId && item.product
         )
 
         for (const item of productItems) {
-          const requiredQty = item.quantity || 1
+          const requiredQty = Math.min(
+            Math.max(
+              1,
+              extractReturnedQuantityFromDescription(
+                existing.description,
+                item.quantity || 1
+              )
+            ),
+            item.quantity || 1
+          )
           const prod = item.product!
           let hasStock = false
           let currentStock = 0
