@@ -2370,13 +2370,9 @@ function AdminChatContent() {
 
                     // Perataan posisi chat (Kanan vs Kiri):
                     // 1. Pesan yang dikirim oleh user yang sedang login selalu di KANAN
-                    // 2. Dalam mode pantau Superadmin (Superadmin bukan pengirim pesan):
-                    //    - Pesan dari pihak Toko/Staff/After Sales berada di KANAN (biru)
-                    //    - Pesan dari Customer/Pembeli berada di KIRI (putih)
-                    let isRightAligned = isSentByMe
-                    if (isSuperAdmin && !isSentByMe) {
-                      isRightAligned = !isCustomerSender
-                    }
+                    // 2. Pesan dari pihak Internal (Toko, Staf, After Sales, Admin) selalu di KANAN (biru)
+                    // 3. Pesan dari Customer/Pembeli selalu di KIRI (putih)
+                    const isRightAligned = isSentByMe || !isCustomerSender
                     const isAdmin = isRightAligned
                     const isVideo = isVideoMedia(
                       message.mediaUrl,
@@ -2511,7 +2507,6 @@ function AdminChatContent() {
                                   {message.sender.name || 'Customer'}
                                 </p>
                               ) : (
-                                isSuperAdmin &&
                                 !isSentByMe && (
                                   <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-blue-100">
                                     {message.sender.name ||

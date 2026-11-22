@@ -124,21 +124,6 @@ export default function EditUserModal({
         'Kelola chat pesanan selesai, retur garansi & keluhan pelanggan grup toko',
     },
     {
-      value: 'STORE_SALES',
-      label: 'Staff Sales Toko',
-      description: 'Operasional penjualan dan layanan toko cabang',
-    },
-    {
-      value: 'ADMIN',
-      label: 'Admin Platform (Pengelola)',
-      description: 'Master katalog gadget, verifikasi toko & pusat komplain',
-    },
-    {
-      value: 'FINANCE_ADMIN',
-      label: 'Admin Keuangan',
-      description: 'Kelola pencairan dana, rekonsiliasi dan laporan keuangan',
-    },
-    {
       value: 'SUPER_ADMIN',
       label: 'Superadmin (Akses Penuh)',
       description: 'Hak akses tertinggi ke seluruh aktivitas platform & omzet',

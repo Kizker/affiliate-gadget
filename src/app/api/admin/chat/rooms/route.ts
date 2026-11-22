@@ -144,74 +144,64 @@ export async function GET() {
       })
       const storeIds = group?.stores.map((s) => s.id) || []
 
-      const storeScope =
-        storeIds.length > 0
-          ? {
-              OR: [
-                { storeId: { in: storeIds } },
-                { order: { storeId: { in: storeIds } } },
-                {
-                  order: {
-                    items: {
-                      some: { product: { storeId: { in: storeIds } } },
-                    },
-                  },
-                },
-              ],
-            }
-          : {}
+      // Jika After Sales belum ditugaskan ke grup toko manapun, kembalikan daftar kosong
+      if (storeIds.length === 0) {
+        return NextResponse.json({ success: true, data: [] })
+      }
+
+      const storeScope = {
+        OR: [
+          { storeId: { in: storeIds } },
+          { order: { storeId: { in: storeIds } } },
+          {
+            order: {
+              items: {
+                some: { product: { storeId: { in: storeIds } } },
+              },
+            },
+          },
+        ],
+      }
 
       whereClause = {
         messages: { some: {} },
-        OR: [
-          // 1. Seluruh percakapan yang memiliki permohonan retur / penukaran barang
+        AND: [
+          storeScope,
           {
-            order: {
-              returnRequests: { some: {} },
-            },
-            ...storeScope,
-          },
-          // 2. Percakapan dengan pesan kartu referensi retur
-          {
-            messages: {
-              some: {
-                OR: [
-                  { messageType: 'return_reference' },
-                  { content: { contains: 'return_reference' } },
-                ],
+            OR: [
+              // 1. Seluruh percakapan yang memiliki permohonan retur / penukaran barang di grup toko
+              {
+                order: {
+                  returnRequests: { some: {} },
+                },
               },
-            },
-            ...storeScope,
-          },
-          // 3. Percakapan dengan aduan komplain purna jual
-          {
-            order: {
-              complaints: { some: {} },
-            },
-            ...storeScope,
-          },
-          // 4. Percakapan pesanan selesai (COMPLETED) untuk toko dalam grup
-          ...(storeIds.length > 0
-            ? [
-                {
-                  order: {
-                    status: 'COMPLETED',
+              // 2. Percakapan dengan pesan kartu referensi retur
+              {
+                messages: {
+                  some: {
                     OR: [
-                      { storeId: { in: storeIds } },
-                      {
-                        items: {
-                          some: { product: { storeId: { in: storeIds } } },
-                        },
-                      },
+                      { messageType: 'return_reference' },
+                      { content: { contains: 'return_reference' } },
                     ],
                   },
                 },
-              ]
-            : []),
-          // 5. Percakapan yang di-claim oleh user After Sales ini
-          { claimedById: session.user.id },
-          // 6. Percakapan yang di-claim oleh role AFTER_SALES
-          { claimedBy: { role: 'AFTER_SALES' }, ...storeScope },
+              },
+              // 3. Percakapan dengan aduan komplain purna jual
+              {
+                order: {
+                  complaints: { some: {} },
+                },
+              },
+              // 4. Percakapan pesanan selesai (COMPLETED) untuk toko dalam grup
+              {
+                order: {
+                  status: 'COMPLETED',
+                },
+              },
+              // 5. Percakapan yang di-claim oleh user After Sales ini
+              { claimedById: session.user.id },
+            ],
+          },
         ],
       }
     } else if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {

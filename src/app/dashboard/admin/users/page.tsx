@@ -360,11 +360,11 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {/* 4. Superadmin & Admin */}
+        {/* 4. Superadmin */}
         <div className="shadow-2xs hover:shadow-xs group flex min-w-[200px] flex-1 flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 sm:text-[11px]">
-              Superadmin & Admin
+              Superadmin
             </span>
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
               <ShieldCheck className="h-3 w-3" />
@@ -376,10 +376,10 @@ export default function UsersPage() {
             </p>
             <div className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px]">
               <span className="font-medium text-slate-700 dark:text-slate-300">
-                Pengelola Platform
+                Pengelola Sistem
               </span>
               <span className="text-slate-400 dark:text-slate-500">
-                · Akses Sistem
+                · Akses Penuh
               </span>
             </div>
           </div>
@@ -395,7 +395,6 @@ export default function UsersPage() {
           {[
             { id: 'ALL', label: 'Semua Role' },
             { id: 'SUPER_ADMIN', label: 'Superadmin' },
-            { id: 'ADMIN', label: 'Admin Platform' },
             { id: 'AFTER_SALES', label: 'After Sales' },
             { id: 'STORE_ADMIN', label: 'Admin Toko' },
             { id: 'CUSTOMER', label: 'Customer' },

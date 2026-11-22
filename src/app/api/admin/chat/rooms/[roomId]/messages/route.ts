@@ -105,20 +105,24 @@ export async function GET(
         include: { stores: { select: { id: true } } },
       })
       const storeIds = group?.stores.map((s) => s.id) || []
-      const hasReturn = Boolean(
-        room.order?.returnRequests && room.order.returnRequests.length > 0
-      )
+
+      // Jika belum ditugaskan ke grup cabang manapun, tolak akses
+      if (storeIds.length === 0) {
+        return NextResponse.json(
+          { error: 'Anda belum ditugaskan ke grup cabang toko manapun' },
+          { status: 403 }
+        )
+      }
+
       const isGroupRoom =
-        storeIds.length === 0 ||
         storeIds.includes(room.storeId || '') ||
         (room.order &&
           (storeIds.includes((room.order as any).storeId || '') ||
             (room.order as any).items?.some((i: any) =>
               storeIds.includes(i.product?.storeId || '')
             ))) ||
-        room.claimedById === session.user.id ||
-        hasReturn ||
-        room.claimedBy?.role === 'AFTER_SALES'
+        room.claimedById === session.user.id
+
       if (!isGroupRoom) {
         return NextResponse.json(
           { error: 'Akses percakapan grup cabang lain ditolak' },
@@ -396,20 +400,24 @@ export async function POST(
         include: { stores: { select: { id: true } } },
       })
       const storeIds = group?.stores.map((s) => s.id) || []
-      const hasReturn = Boolean(
-        room.order?.returnRequests && room.order.returnRequests.length > 0
-      )
+
+      // Jika belum ditugaskan ke grup cabang manapun, tolak kirim pesan
+      if (storeIds.length === 0) {
+        return NextResponse.json(
+          { error: 'Anda belum ditugaskan ke grup cabang toko manapun' },
+          { status: 403 }
+        )
+      }
+
       const isGroupStore =
-        storeIds.length === 0 ||
         storeIds.includes(room.storeId || '') ||
         (room.order &&
           (storeIds.includes(room.order.storeId || '') ||
             room.order.items?.some((i) =>
               storeIds.includes(i.product?.storeId || '')
             ))) ||
-        room.claimedById === session.user.id ||
-        hasReturn ||
-        room.claimedBy?.role === 'AFTER_SALES'
+        room.claimedById === session.user.id
+
       if (!isGroupStore) {
         return NextResponse.json(
           { error: 'Akses percakapan grup cabang lain ditolak' },

@@ -53,11 +53,6 @@ export default function CreateUserModal({
         'Kelola chat pesanan selesai, retur garansi & keluhan pelanggan grup toko',
     },
     {
-      value: 'ADMIN',
-      label: 'Admin Platform (Pengelola)',
-      description: 'Master katalog gadget, verifikasi toko & pusat komplain',
-    },
-    {
       value: 'SUPER_ADMIN',
       label: 'Superadmin (Akses Penuh)',
       description: 'Hak akses tertinggi ke seluruh aktivitas platform & omzet',

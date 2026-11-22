@@ -677,14 +677,6 @@ function LoginForm() {
                       autoFocus
                       className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-3 text-center font-mono text-2xl font-black tracking-[0.35em] text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
-                    {otpData?.otpPreview && (
-                      <p className="text-center text-[10px] text-slate-400">
-                        Simulasi Kode:{' '}
-                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
-                          {otpData.otpPreview}
-                        </span>
-                      </p>
-                    )}
                   </div>
 
                   {/* Expiry and Resend */}

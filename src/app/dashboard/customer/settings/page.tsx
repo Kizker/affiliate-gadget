@@ -2452,33 +2452,6 @@ function CustomerSettingsContent() {
                   autoFocus
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 text-center font-mono text-2xl font-black tracking-[0.35em] text-slate-950 outline-none transition focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/20"
                 />
-
-                {otpWhatsappUrl && (
-                  <div className="pt-1.5 text-center">
-                    <a
-                      href={otpWhatsappUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 hover:text-emerald-800 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                    >
-                      <span>💬 Buka WhatsApp untuk Terima Kode</span>
-                    </a>
-                  </div>
-                )}
-
-                {otpPreview && (
-                  <p className="text-center text-[10px] text-slate-400">
-                    Kode Verifikasi:{' '}
-                    <button
-                      type="button"
-                      onClick={() => setOtpCode(otpPreview)}
-                      className="font-mono font-bold text-emerald-600 hover:underline"
-                      title="Klik untuk mengisi otomatis"
-                    >
-                      {otpPreview} (Klik untuk isi)
-                    </button>
-                  </p>
-                )}
               </div>
 
               {/* Expiry & Resend */}
