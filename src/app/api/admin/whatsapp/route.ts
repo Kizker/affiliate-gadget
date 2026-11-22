@@ -65,10 +65,10 @@ export async function GET() {
       })
     }
 
-    // Jika sesi berstatus created / stopped, panggil start
+    // Jika sesi belum terhubung dan belum siap scan QR (misal disconnected, stopped, created, dll.), otomatis nyalakan sesi
     if (
-      activeSession.status === 'created' ||
-      activeSession.status === 'stopped'
+      activeSession.status !== 'connected' &&
+      activeSession.status !== 'qr_ready'
     ) {
       try {
         const startRes = await fetch(
@@ -81,12 +81,14 @@ export async function GET() {
         if (startRes.ok) {
           activeSession = await startRes.json()
         }
-      } catch {}
+      } catch (startErr) {
+        console.warn('[OpenWA Start Error]:', startErr)
+      }
     }
 
-    // Ambil QR Code jika status qr_ready
+    // Ambil QR Code jika status qr_ready atau jika baru saja di-start
     let qrCode = null
-    if (activeSession.status === 'qr_ready') {
+    if (activeSession.status !== 'connected') {
       try {
         const qrRes = await fetch(
           `${OPENWA_URL}/api/sessions/${activeSession.id}/qr`,
@@ -98,6 +100,9 @@ export async function GET() {
         if (qrRes.ok) {
           const qrData = await qrRes.json()
           qrCode = qrData.qrCode || null
+          if (qrCode) {
+            activeSession.status = 'qr_ready'
+          }
         }
       } catch {}
     }
@@ -120,7 +125,7 @@ export async function GET() {
   }
 }
 
-// POST - Tes Kirim WhatsApp Langsung dari Dashboard
+// POST - Tes Kirim WhatsApp atau Restart Sesi QR Code
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -131,7 +136,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { targetPhone, message } = await request.json()
+    const body = await request.json()
+
+    // Aksi 1: Restart sesi untuk mendapatkan QR Code baru
+    if (body.action === 'restart') {
+      try {
+        await fetch(`${OPENWA_URL}/api/sessions/${OPENWA_SESSION_ID}/stop`, {
+          method: 'POST',
+          headers: { 'X-API-Key': OPENWA_API_KEY },
+        }).catch(() => {})
+
+        const startRes = await fetch(
+          `${OPENWA_URL}/api/sessions/${OPENWA_SESSION_ID}/start`,
+          {
+            method: 'POST',
+            headers: { 'X-API-Key': OPENWA_API_KEY },
+          }
+        )
+        const startData = await startRes.json().catch(() => null)
+        return NextResponse.json({
+          success: true,
+          message: 'Sesi WhatsApp berhasil dimuat ulang',
+          data: startData,
+        })
+      } catch (err: any) {
+        return NextResponse.json(
+          { error: err?.message || 'Gagal restart sesi OpenWA' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Aksi 2: Tes Kirim WhatsApp
+    const { targetPhone, message } = body
     if (!targetPhone || !message) {
       return NextResponse.json(
         { error: 'Nomor telepon tujuan dan pesan wajib diisi' },

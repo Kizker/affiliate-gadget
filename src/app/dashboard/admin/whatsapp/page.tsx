@@ -42,6 +42,28 @@ export default function WhatsAppGatewayPage() {
     'Halo! Ini adalah pesan uji coba verifikasi otomatis dari Affiliate Gadget. Gateway WhatsApp aktif!'
   )
   const [isSendingTest, setIsSendingTest] = useState(false)
+  const [isRestarting, setIsRestarting] = useState(false)
+
+  const handleRestartSession = async () => {
+    setIsRestarting(true)
+    try {
+      const res = await fetch('/api/admin/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restart' }),
+      })
+      if (res.ok) {
+        toast.success('Sesi WhatsApp dimuat ulang! Menyiapkan QR Code...')
+        setTimeout(() => fetchStatus(false), 2000)
+      } else {
+        toast.error('Gagal memuat ulang sesi WhatsApp')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan jaringan')
+    } finally {
+      setIsRestarting(false)
+    }
+  }
 
   const fetchStatus = useCallback(async (isSilent = false) => {
     try {
@@ -255,16 +277,38 @@ export default function WhatsAppGatewayPage() {
                   alt="WhatsApp QR Code"
                   className="h-64 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-md dark:border-slate-700"
                 />
-                <p className="text-center text-[11px] font-semibold text-slate-500">
-                  QR Code otomatis diperbarui secara berkala
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-center text-[11px] font-semibold text-slate-500">
+                    QR Code siap dipindai
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRestartSession}
+                    disabled={isRestarting}
+                    className="text-[11px] font-bold text-orange-600 hover:underline"
+                    title="Buat QR Code baru jika kedaluwarsa"
+                  >
+                    (Ganti QR Baru)
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center py-8 text-center text-slate-400">
                 <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
                 <p className="mt-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  Memuat sesi WhatsApp...
+                  Sedang menyiapkan sesi WhatsApp...
                 </p>
+                <button
+                  type="button"
+                  onClick={handleRestartSession}
+                  disabled={isRestarting}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${isRestarting ? 'animate-spin' : ''}`}
+                  />
+                  <span>Muat Ulang Sesi &amp; QR Code</span>
+                </button>
               </div>
             )}
           </div>

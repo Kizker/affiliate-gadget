@@ -111,6 +111,10 @@ services:
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-}
       - NEXT_PUBLIC_LIVEKIT_URL=${NEXT_PUBLIC_LIVEKIT_URL:-}
       - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-}
+      # OpenWA Self-Hosted WhatsApp Gateway
+      - OPENWA_URL=${OPENWA_URL:-http://openwa:2785}
+      - OPENWA_API_KEY=${OPENWA_API_KEY:-owa_k1_3f49466bccc0dc23cb7d1851bbb9fce5137ecf31e8a716281ab4170c8814f6ab}
+      - OPENWA_SESSION_ID=${OPENWA_SESSION_ID:-3c68a0be-cc2c-4ff0-86c3-ee1e17141693}
     volumes:
       # Persistent uploads directory & runtime data store
       - ./public/uploads:/app/public/uploads
