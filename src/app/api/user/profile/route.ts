@@ -131,6 +131,19 @@ export async function PATCH(request: NextRequest) {
         )
         const masked = targetPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
 
+        // Kirimkan salinan cadangan ke email pengguna
+        if (existingSelf.email) {
+          import('@/lib/notifications/email-provider')
+            .then(({ sendEmail }) => {
+              sendEmail(
+                existingSelf.email,
+                'Kode Verifikasi Keamanan Akun Affiliate Gadget',
+                `<p>Halo <strong>${existingSelf.name || 'Pengguna'}</strong>,</p><p>Kode verifikasi keamanan akun Anda adalah: <strong style="font-size: 20px; color: #ea580c;">${otpData.code}</strong></p><p>Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.</p>`
+              ).catch(() => {})
+            })
+            .catch(() => {})
+        }
+
         return NextResponse.json({
           requiresOtp: true,
           message:
@@ -237,6 +250,19 @@ export async function PATCH(request: NextRequest) {
           'CHANGE_PHONE'
         )
         const masked = cleanPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+
+        // Kirimkan salinan cadangan ke email pengguna jika ada
+        if (existingSelf.email) {
+          import('@/lib/notifications/email-provider')
+            .then(({ sendEmail }) => {
+              sendEmail(
+                existingSelf.email,
+                'Kode Verifikasi Ganti Nomor Telepon Affiliate Gadget',
+                `<p>Halo <strong>${existingSelf.name || 'Pengguna'}</strong>,</p><p>Kode verifikasi untuk konfirmasi ganti nomor telepon Anda adalah: <strong style="font-size: 20px; color: #ea580c;">${otpData.code}</strong></p><p>Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.</p>`
+              ).catch(() => {})
+            })
+            .catch(() => {})
+        }
 
         return NextResponse.json({
           requiresOtp: true,

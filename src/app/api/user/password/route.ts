@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import {
-  createWhatsAppOtp,
-  verifyWhatsAppOtp,
-} from '@/lib/two-factor-store'
+import { createWhatsAppOtp, verifyWhatsAppOtp } from '@/lib/two-factor-store'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,17 +17,24 @@ export async function POST(request: NextRequest) {
     // Fetch user with phone and password
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, email: true, phone: true, password: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        password: true,
+      },
     })
 
     if (!user || !user.password) {
-      return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Pengguna tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
     const targetPhone =
-      user.phone && user.phone.trim().length >= 8
-        ? user.phone
-        : '081289001122'
+      user.phone && user.phone.trim().length >= 8 ? user.phone : '081289001122'
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. Action: REQUEST OTP to WhatsApp for Change Password
@@ -38,6 +42,18 @@ export async function POST(request: NextRequest) {
     if (action === 'request-otp') {
       const otpData = createWhatsAppOtp(user.id, targetPhone, 'CHANGE_PASSWORD')
       const masked = targetPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
+
+      if (user.email) {
+        import('@/lib/notifications/email-provider')
+          .then(({ sendEmail }) => {
+            sendEmail(
+              user.email,
+              'Kode Verifikasi Ubah Kata Sandi Affiliate Gadget',
+              `<p>Halo <strong>${user.name || 'Pengguna'}</strong>,</p><p>Kode verifikasi untuk mengubah kata sandi akun Anda adalah: <strong style="font-size: 20px; color: #ea580c;">${otpData.code}</strong></p><p>Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.</p>`
+            ).catch(() => {})
+          })
+          .catch(() => {})
+      }
 
       return NextResponse.json({
         success: true,
@@ -81,9 +97,22 @@ export async function POST(request: NextRequest) {
       const otpData = createWhatsAppOtp(user.id, targetPhone, 'CHANGE_PASSWORD')
       const masked = targetPhone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
 
+      if (user.email) {
+        import('@/lib/notifications/email-provider')
+          .then(({ sendEmail }) => {
+            sendEmail(
+              user.email,
+              'Kode Verifikasi Ubah Kata Sandi Affiliate Gadget',
+              `<p>Halo <strong>${user.name || 'Pengguna'}</strong>,</p><p>Kode verifikasi untuk mengubah kata sandi akun Anda adalah: <strong style="font-size: 20px; color: #ea580c;">${otpData.code}</strong></p><p>Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.</p>`
+            ).catch(() => {})
+          })
+          .catch(() => {})
+      }
+
       return NextResponse.json({
         requiresOtp: true,
-        message: 'Verifikasi OTP WhatsApp diperlukan untuk mengganti kata sandi',
+        message:
+          'Verifikasi OTP WhatsApp diperlukan untuk mengganti kata sandi',
         phone: targetPhone,
         maskedPhone: masked,
         whatsappUrl: otpData.whatsappUrl,
@@ -93,10 +122,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify WhatsApp OTP
-    const verifyRes = verifyWhatsAppOtp(user.id, String(otp).trim(), 'CHANGE_PASSWORD')
+    const verifyRes = verifyWhatsAppOtp(
+      user.id,
+      String(otp).trim(),
+      'CHANGE_PASSWORD'
+    )
     if (!verifyRes.success) {
       return NextResponse.json(
-        { error: verifyRes.error || 'Kode OTP WhatsApp tidak cocok. Periksa kembali pesan WhatsApp Anda.' },
+        {
+          error:
+            verifyRes.error ||
+            'Kode OTP WhatsApp tidak cocok. Periksa kembali pesan WhatsApp Anda.',
+        },
         { status: 400 }
       )
     }

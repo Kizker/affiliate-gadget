@@ -126,6 +126,22 @@ export async function GET(request: NextRequest) {
                 city: true,
                 address: true,
                 phone: true,
+                groupId: true,
+                group: {
+                  select: {
+                    id: true,
+                    name: true,
+                    afterSalesUserId: true,
+                    afterSalesUser: {
+                      select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -174,8 +190,18 @@ export async function GET(request: NextRequest) {
             null
           : null)
 
+      const assignedGroup = r.order?.store?.group
+      const hasAssignedAfterSales = Boolean(assignedGroup?.afterSalesUserId)
+      const assignedAfterSalesName = assignedGroup?.afterSalesUser?.name || null
+      const assignedGroupName = assignedGroup?.name || null
+      const isSelfManaged = !hasAssignedAfterSales
+
       return {
         ...r,
+        hasAssignedAfterSales,
+        assignedAfterSalesName,
+        assignedGroupName,
+        isSelfManaged,
         packageReceivedAt: effectivePackageReceivedAt,
         qcStatus: effectiveQcStatus,
         qcNotes: effectiveQcNotes,

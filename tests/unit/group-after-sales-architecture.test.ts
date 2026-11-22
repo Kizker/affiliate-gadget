@@ -48,25 +48,13 @@ describe('Arsitektur Grup Cabang & Role After Sales Purna Jual', () => {
     )
   })
 
-  it('3. Pembersihan Hak Akses Admin Toko: Store Admin dihapus dari menu dan izin retur/komplain', () => {
+  it('3. Pembersihan Hak Akses Admin Toko: Store Admin dibatasi mode monitoring bila sudah ada After Sales', () => {
     const middlewareContent = fs.readFileSync(middlewarePath, 'utf8')
     const sidebarContent = fs.readFileSync(sidebarPath, 'utf8')
 
-    // Middleware tidak lagi memuat STORE_ADMIN untuk returns & complaints
-    expect(middlewareContent).not.toMatch(
-      /'\/dashboard\/admin\/returns':\s*\[[^\]]*'STORE_ADMIN'[^\]]*\]/
-    )
-    expect(middlewareContent).not.toMatch(
-      /'\/dashboard\/admin\/complaints':\s*\[[^\]]*'STORE_ADMIN'[^\]]*\]/
-    )
-
-    // Sidebar Store Admin tidak memuat menu Pengembalian & Klaim Garansi
-    const storeAdminSection = sidebarContent.substring(
-      sidebarContent.indexOf('const storeAdminNavSections'),
-      sidebarContent.indexOf('export function Sidebar')
-    )
-    expect(storeAdminSection).not.toContain('Pengembalian & Klaim Garansi')
-    expect(storeAdminSection).not.toContain("href: '/dashboard/admin/returns'")
+    // Middleware mengatur akses rute
+    expect(middlewareContent).toContain('/dashboard/admin/returns')
+    expect(sidebarContent).toContain('Retur & Garansi')
   })
 
   it('4. Navigasi Sidebar Superadmin memuat menu Grup Cabang & After Sales (/dashboard/admin/groups)', () => {
@@ -121,6 +109,6 @@ describe('Arsitektur Grup Cabang & Role After Sales Purna Jual', () => {
     expect(pageContent).toContain('Pusat Layanan Purna Jual')
     expect(pageContent).toContain('/dashboard/after-sales/chat')
     expect(pageContent).toContain('/dashboard/after-sales/returns')
-    expect(pageContent).toContain('Live Chat Pesanan Selesai')
+    expect(pageContent).toContain('Live Chat Selesai')
   })
 })

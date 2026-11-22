@@ -54,6 +54,10 @@ interface ReturnItem {
   qcNotes?: string | null
   status: 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'COMPLETED'
   storeResponse?: string | null
+  hasAssignedAfterSales?: boolean
+  assignedAfterSalesName?: string | null
+  assignedGroupName?: string | null
+  isSelfManaged?: boolean
   createdAt: string
   updatedAt?: string
   order: {
@@ -478,16 +482,55 @@ export default function AfterSalesReturnsPage() {
     )
   }
 
+  const isStoreAdminRole =
+    session?.user?.role === 'STORE_ADMIN' ||
+    session?.user?.role === 'STORE_SALES'
+  const isStoreMonitoringMode =
+    isStoreAdminRole &&
+    returns.some((r) => r.hasAssignedAfterSales || !r.isSelfManaged)
+  const assignedGroupNameSample =
+    returns.find((r) => r.assignedGroupName)?.assignedGroupName || 'Grup'
+  const assignedAfterSalesNameSample =
+    returns.find((r) => r.assignedAfterSalesName)?.assignedAfterSalesName ||
+    'Admin After Sales'
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6 text-orange-600" />
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-            Manajemen Retur &amp; Garansi After Sales
-          </h1>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-6 w-6 text-orange-600" />
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+              {isStoreMonitoringMode
+                ? 'Monitoring Retur & Garansi Toko'
+                : 'Manajemen Retur & Garansi After Sales'}
+            </h1>
+          </div>
+          {isStoreMonitoringMode && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+              Mode Monitoring Toko
+            </span>
+          )}
         </div>
+
+        {isStoreMonitoringMode && (
+          <div className="flex items-center gap-2.5 rounded-2xl border border-blue-200/90 bg-blue-50/70 p-3.5 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" />
+            <p>
+              <strong className="font-semibold">Mode Monitoring:</strong> Toko
+              Anda berada di bawah naungan{' '}
+              <strong className="font-bold">{assignedGroupNameSample}</strong>.
+              Pengelolaan fisik paket retur, pemeriksaan QC, dan putusan klaim
+              ditangani langsung secara terpusat oleh Admin After Sales (
+              <strong className="font-bold">
+                {assignedAfterSalesNameSample}
+              </strong>
+              ).
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Metric Tabs */}
@@ -1093,6 +1136,45 @@ export default function AfterSalesReturnsPage() {
                           <Clock className="h-3.5 w-3.5 animate-pulse text-indigo-600" />
                           Rekomendasi Terkirim &bull; Menunggu ACC Final
                           Superadmin
+                        </span>
+                      )
+                    }
+
+                    const isMonitoringItem =
+                      isStoreAdminRole &&
+                      (item.hasAssignedAfterSales || !item.isSelfManaged)
+
+                    if (isMonitoringItem) {
+                      if (!isArrived) {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                            <Clock className="h-3.5 w-3.5 text-amber-600" />
+                            <span>
+                              Menunggu Paket Tiba di Cabang &bull; Penanganan
+                              After Sales (
+                              {item.assignedAfterSalesName || 'Terpusat'})
+                            </span>
+                          </span>
+                        )
+                      }
+                      if (item.qcStatus === 'IN_QC') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300">
+                            <Package className="h-3.5 w-3.5 text-indigo-600" />
+                            <span>
+                              Paket Tiba &bull; Sedang QC oleh After Sales (
+                              {item.assignedAfterSalesName || 'Terpusat'})
+                            </span>
+                          </span>
+                        )
+                      }
+                      return (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">
+                          <Clock className="h-3.5 w-3.5 text-blue-600" />
+                          <span>
+                            Ditangani After Sales (
+                            {item.assignedAfterSalesName || 'Terpusat'})
+                          </span>
                         </span>
                       )
                     }

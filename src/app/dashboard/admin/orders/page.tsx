@@ -18,6 +18,7 @@ import {
   Eye,
   Gift,
   X,
+  XCircle,
   Store,
   ExternalLink,
   Copy,
@@ -125,6 +126,7 @@ interface Order {
     name: string
     companyName: string
     city: string
+    groupId?: string | null
   } | null
   payment?: {
     status: string
@@ -149,6 +151,7 @@ interface Order {
     qcStatus?: string | null
     qcNotes?: string | null
     resolvedAt?: string | null
+    hasAssignedAfterSales?: boolean
     createdAt: string
   }>
 }
@@ -534,6 +537,14 @@ export default function AdminOrdersPage() {
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false)
   const [dateRangeFilter, setDateRangeFilter] = useState<string>('ALL')
 
+  // State untuk Modal Pembatalan Pesanan oleh Toko / Admin
+  const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null)
+  const [cancelReasonPreset, setCancelReasonPreset] = useState(
+    'Stok fisik rusak / tidak lolos QC sebelum kirim'
+  )
+  const [cancelCustomNotes, setCancelCustomNotes] = useState('')
+  const [isCancellingOrder, setIsCancellingOrder] = useState(false)
+
   const statusDropdownRef = useRef<HTMLDivElement>(null)
   const dateDropdownRef = useRef<HTMLDivElement>(null)
 
@@ -598,6 +609,42 @@ export default function AdminOrdersPage() {
       toast.error('Terjadi kesalahan jaringan')
     } finally {
       setConfirmingArrivalId(null)
+    }
+  }
+
+  const handleCancelOrder = async () => {
+    if (!cancelModalOrder) return
+    setIsCancellingOrder(true)
+    try {
+      const finalReason = cancelCustomNotes.trim()
+        ? `${cancelReasonPreset}: ${cancelCustomNotes.trim()}`
+        : cancelReasonPreset
+
+      const res = await fetch(`/api/orders/${cancelModalOrder.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: finalReason }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        toast.success(
+          `Pesanan #${cancelModalOrder.orderNumber} berhasil dibatalkan.`
+        )
+        setCancelModalOrder(null)
+        setCancelCustomNotes('')
+        fetchOrders()
+        if (selectedOrder && selectedOrder.id === cancelModalOrder.id) {
+          setSelectedOrder((prev) =>
+            prev ? { ...prev, status: 'CANCELLED' } : null
+          )
+        }
+      } else {
+        toast.error(json.error || 'Gagal membatalkan pesanan')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan jaringan saat membatalkan pesanan')
+    } finally {
+      setIsCancellingOrder(false)
     }
   }
 
@@ -1576,7 +1623,19 @@ export default function AdminOrdersPage() {
                                   </div>
                                 ) : (
                                   ret.status !== 'COMPLETED' &&
-                                  ret.status !== 'REJECTED' && (
+                                  ret.status !== 'REJECTED' &&
+                                  (session?.user?.role === 'STORE_ADMIN' &&
+                                  (ret.hasAssignedAfterSales ||
+                                    selectedOrder.store?.groupId) ? (
+                                    <div className="flex items-center gap-2 rounded-lg bg-blue-50/70 p-2 text-[10.5px] text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
+                                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+                                      <span>
+                                        Paket retur ditangani secara terpusat
+                                        oleh Admin After Sales (Mode Monitoring
+                                        Toko).
+                                      </span>
+                                    </div>
+                                  ) : (
                                     <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 p-2 text-[10.5px] dark:bg-slate-800/50">
                                       <span className="text-slate-500">
                                         Barang sudah diterima staf cabang?
@@ -1604,7 +1663,7 @@ export default function AdminOrdersPage() {
                                         </span>
                                       </button>
                                     </div>
-                                  )
+                                  ))
                                 )}
                               </div>
                             ) : (
@@ -1915,6 +1974,23 @@ export default function AdminOrdersPage() {
                     Tutup
                   </button>
 
+                  {/* Tombol Batalkan Pesanan untuk Toko / Admin */}
+                  {[
+                    'PENDING_PAYMENT',
+                    'PAID',
+                    'PROCESSING',
+                    'IN_PROGRESS',
+                  ].includes(selectedOrder.status) && (
+                    <button
+                      type="button"
+                      onClick={() => setCancelModalOrder(selectedOrder)}
+                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-2xl border border-rose-200/90 bg-rose-50/80 px-4 py-2.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 hover:text-rose-900 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+                    >
+                      <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                      <span>Batalkan Pesanan</span>
+                    </button>
+                  )}
+
                   {isPlatformAdmin && (
                     <button
                       type="button"
@@ -2098,6 +2174,113 @@ export default function AdminOrdersPage() {
         onClose={() => setShowCheckResiModal(false)}
         initialQuery={checkResiQuery}
       />
+
+      {/* Modal Konfirmasi Pembatalan Pesanan oleh Toko / Admin */}
+      {cancelModalOrder && (
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+                <XCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Batalkan Pesanan
+                </h3>
+                <p className="font-mono text-xs text-slate-500">
+                  #{cancelModalOrder.orderNumber}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Pilih Alasan Pembatalan:
+                </label>
+                <div className="space-y-2">
+                  {[
+                    'Stok fisik rusak / tidak lolos QC sebelum kirim',
+                    'Pembeli meminta pembatalan pesanan',
+                    'Alamat pengiriman pembeli tidak dapat dijangkau kurir',
+                    'Kendala operasional toko cabang lainnya',
+                  ].map((preset) => (
+                    <label
+                      key={preset}
+                      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-2.5 text-xs transition ${
+                        cancelReasonPreset === preset
+                          ? 'border-rose-500 bg-rose-50/60 font-semibold text-rose-900 dark:border-rose-600 dark:bg-rose-950/40 dark:text-rose-200'
+                          : 'border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="cancelReason"
+                        checked={cancelReasonPreset === preset}
+                        onChange={() => setCancelReasonPreset(preset)}
+                        className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                      />
+                      <span>{preset}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Catatan Tambahan (Opsional):
+                </label>
+                <textarea
+                  value={cancelCustomNotes}
+                  onChange={(e) => setCancelCustomNotes(e.target.value)}
+                  placeholder="Tuliskan catatan penjelasan pembatalan jika ada..."
+                  rows={2}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-900 outline-none transition focus:border-rose-500 focus:bg-white dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-[11px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                <span className="font-bold">Perhatian:</span> Status pesanan
+                akan berubah menjadi <strong>Dibatalkan</strong>, dan unit stok
+                fisik produk serta varian akan otomatis dikembalikan ke katalog
+                toko.
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setCancelModalOrder(null)
+                  setCancelCustomNotes('')
+                }}
+                disabled={isCancellingOrder}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelOrder}
+                disabled={isCancellingOrder}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95 disabled:opacity-50"
+              >
+                {isCancellingOrder ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Membatalkan...</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span>Ya, Batalkan Pesanan</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
