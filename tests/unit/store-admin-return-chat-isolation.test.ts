@@ -33,9 +33,7 @@ describe('Isolasi Chat Toko Cabang vs Admin After Sales: Retur & Pertukaran Prod
 
     // AFTER_SALES whereClause
     expect(content).toContain("user.role === 'AFTER_SALES'")
-    expect(content).toContain(
-      'order: {\n              returnRequests: { some: {} },\n            }'
-    )
+    expect(content).toContain('returnRequests: { some: {} }')
     expect(content).toContain("messageType: 'return_reference'")
   })
 

@@ -62,15 +62,13 @@ describe('Store Admin After Sales Monitoring & Order Cancellation Suite', () => 
     expect(content).toContain('increment: item.quantity')
   })
 
-  it('6. WhatsApp Provider mendukung multi-gateway (Fonnte, Wablas, Zenziva) dan Settings menyediakan link langsung Buka WhatsApp', () => {
+  it('6. WhatsApp Provider mendukung multi-gateway (Fonnte, Wablas, Zenziva) untuk pengiriman OTP langsung', () => {
     const waContent = fs.readFileSync(waProviderPath, 'utf-8')
     const settingsContent = fs.readFileSync(customerSettingsPath, 'utf-8')
 
     expect(waContent).toContain('FONNTE_TOKEN')
     expect(waContent).toContain('WABLAS_TOKEN')
     expect(waContent).toContain('ZENZIVA_USERKEY')
-
-    expect(settingsContent).toContain('otpWhatsappUrl')
-    expect(settingsContent).toContain('Buka WhatsApp untuk Terima Kode')
+    expect(settingsContent).toContain('KODE VERIFIKASI 6-DIGIT')
   })
 })

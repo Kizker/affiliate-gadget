@@ -385,31 +385,14 @@ export default function AfterSalesReturnsPage() {
 
     setIsSubmitting(true)
     try {
-      const isReplacementApprove =
-        decisionType === 'APPROVE' && decisionModalTarget.type === 'REPLACEMENT'
-
-      const requestBody = isReplacementApprove
-        ? {
-            action: 'REPLACEMENT',
-            resolutionAction: 'REPLACEMENT',
-            replacementCourier: 'JNE',
-            replacementTrackingNumber: 'AUTO',
-            notes: notesTrimmed,
-            qcImages: decisionImages,
-          }
-        : decisionType === 'REJECT'
-          ? {
-              action: 'REJECT',
-              rejectionReason: notesTrimmed,
-              notes: notesTrimmed,
-              qcImages: decisionImages,
-            }
-          : {
-              action: 'AFTER_SALES_CONFIRM',
-              decision: decisionType,
-              notes: notesTrimmed,
-              qcImages: decisionImages,
-            }
+      // Semua keputusan After Sales (baik Tukar Unit maupun Refund, baik Setujui maupun Tolak)
+      // SELALU berupa rekomendasi yang WAJIB di-ACC oleh Superadmin terlebih dahulu sebelum dieksekusi ke customer!
+      const requestBody = {
+        action: 'AFTER_SALES_CONFIRM',
+        decision: decisionType, // 'APPROVE' | 'REJECT'
+        notes: notesTrimmed,
+        qcImages: decisionImages,
+      }
 
       const res = await fetch(`/api/returns/${decisionModalTarget.id}`, {
         method: 'PUT',
@@ -419,11 +402,9 @@ export default function AfterSalesReturnsPage() {
       const json = await res.json()
       if (res.ok && json.success) {
         toast.success(
-          isReplacementApprove
-            ? 'Unit baru pengganti berhasil diproses dan dikirim via Biteship!'
-            : decisionType === 'APPROVE'
-              ? 'Rekomendasi refund berhasil diteruskan ke Superadmin!'
-              : 'Pengajuan retur berhasil ditolak!'
+          decisionType === 'APPROVE'
+            ? 'Rekomendasi persetujuan berhasil diteruskan ke Superadmin untuk di-ACC final!'
+            : 'Rekomendasi penolakan berhasil diteruskan ke Superadmin untuk ditinjau!'
         )
         setDecisionModalTarget(null)
         setDecisionNotes('')
@@ -723,6 +704,28 @@ export default function AfterSalesReturnsPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Alert jika tiket dikembalikan Superadmin ke After Sales untuk ditinjau ulang */}
+              {item.storeResponse?.includes(
+                '[Dikembalikan Superadmin ke After Sales]'
+              ) && (
+                <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-rose-200/90 bg-rose-50/80 p-3 text-xs text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                  <div>
+                    <strong className="font-bold">
+                      Keputusan Ditolak oleh Superadmin &amp; Dikembalikan:
+                    </strong>{' '}
+                    Superadmin tidak meng-ACC rekomendasi ini dan mengembalikan
+                    tiket untuk ditinjau ulang oleh tim After Sales.
+                    <p className="mt-1 font-mono text-[11px] italic text-rose-800 dark:text-rose-300">
+                      {item.storeResponse.match(
+                        /\[Dikembalikan Superadmin ke After Sales\]\s*([^\n]+)/
+                      )?.[1] ||
+                        'Harap periksa ulang alasan atau kelengkapan bukti QC sebelum mengirim rekomendasi baru.'}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Collapsible Details Card Body */}
               {expandedItems[item.id] && (
