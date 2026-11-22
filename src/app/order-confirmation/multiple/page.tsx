@@ -92,8 +92,19 @@ function MultipleOrderConfirmationContent() {
     null
   )
 
+  const pendingOrders = orders.filter((o) => o.status === 'PENDING_PAYMENT')
+  const allPendingIds = pendingOrders.map((o) => o.id)
+  const totalAllPending = pendingOrders.reduce((sum, o) => sum + o.total, 0)
+  const isMultiPending = pendingOrders.length > 1
+
   const handleOpenPayment = (order: Order) => {
     setActivePaymentOrder(order)
+    setPaymentModalOpen(true)
+  }
+
+  const handleOpenAllPendingPayment = () => {
+    if (pendingOrders.length === 0) return
+    setActivePaymentOrder(pendingOrders[0])
     setPaymentModalOpen(true)
   }
 
@@ -152,19 +163,23 @@ function MultipleOrderConfirmationContent() {
     if (
       !autoPayHandledRef.current &&
       orders.length > 0 &&
-      searchParams.get('autoPay') === '1' &&
-      orders[0]?.status === 'PENDING_PAYMENT' &&
-      orders[0]?.payment?.method === 'MIDTRANS'
+      searchParams.get('autoPay') === '1'
     ) {
-      autoPayHandledRef.current = true
-      setActivePaymentOrder(orders[0])
-      setPaymentModalOpen(true)
+      const activePending = orders.filter((o) => o.status === 'PENDING_PAYMENT')
+      if (
+        activePending.length > 0 &&
+        activePending[0]?.payment?.method === 'MIDTRANS'
+      ) {
+        autoPayHandledRef.current = true
+        setActivePaymentOrder(activePending[0])
+        setPaymentModalOpen(true)
 
-      // Clean autoPay query parameter from URL so it doesn't re-trigger on subsequent updates
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href)
-        url.searchParams.delete('autoPay')
-        window.history.replaceState({}, '', url.toString())
+        // Clean autoPay query parameter from URL so it doesn't re-trigger on subsequent updates
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href)
+          url.searchParams.delete('autoPay')
+          window.history.replaceState({}, '', url.toString())
+        }
       }
     }
   }, [orders, searchParams])
@@ -300,6 +315,34 @@ function MultipleOrderConfirmationContent() {
               </p>
             </div>
           </div>
+
+          {/* Multi-Store Pending Orders Notice */}
+          {isMultiPending && (
+            <div className="mb-4 flex flex-col items-center justify-between gap-3 rounded-2xl border border-orange-200/90 bg-orange-50/80 p-4 text-xs dark:border-orange-900/60 dark:bg-orange-950/30 sm:flex-row">
+              <div className="flex items-center gap-2.5">
+                <CreditCard className="h-5 w-5 shrink-0 text-orange-600" />
+                <div>
+                  <p className="font-bold text-slate-900 dark:text-white">
+                    Pembayaran {pendingOrders.length} Pesanan Toko Sekaligus
+                  </p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    Total tagihan seluruh toko:{' '}
+                    <strong className="text-orange-600">
+                      Rp {totalAllPending.toLocaleString('id-ID')}
+                    </strong>
+                    . Anda cukup membayar 1 kali.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenAllPendingPayment}
+                className="w-full shrink-0 rounded-xl bg-orange-600 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/25 transition hover:bg-orange-700 active:scale-95 sm:w-auto"
+              >
+                Bayar Semua (Rp {totalAllPending.toLocaleString('id-ID')})
+              </button>
+            </div>
+          )}
 
           {/* Multi-Order Navigation (If > 1 store orders) */}
           {orders.length > 1 && (
@@ -617,11 +660,19 @@ function MultipleOrderConfirmationContent() {
           isOpen={paymentModalOpen}
           onClose={handleClosePaymentModal}
           orderId={activePaymentOrder.id}
-          orderNumber={activePaymentOrder.orderNumber}
-          totalAmount={activePaymentOrder.total}
+          orderIds={isMultiPending ? allPendingIds : undefined}
+          orderNumber={
+            isMultiPending
+              ? `${pendingOrders.length} Pesanan Gabungan`
+              : activePaymentOrder.orderNumber
+          }
+          totalAmount={
+            isMultiPending ? totalAllPending : activePaymentOrder.total
+          }
           orderCreatedAt={activePaymentOrder.createdAt}
           onPaymentSuccess={() => {
             fetchOrders()
+            toast.success('Semua pesanan berhasil dibayar lunas!')
           }}
           onPaymentExpired={() => {
             fetchOrders()

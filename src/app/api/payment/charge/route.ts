@@ -88,21 +88,25 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { orderId, paymentType } = body as {
-      orderId: string
+    const { orderId, orderIds, paymentType } = body as {
+      orderId?: string
+      orderIds?: string[]
       paymentType: CustomPaymentMethod
     }
 
-    if (!orderId || !paymentType) {
+    const effectiveOrderId = orderId || (orderIds && orderIds[0])
+
+    if (!effectiveOrderId || !paymentType) {
       return NextResponse.json(
         { error: 'orderId dan paymentType wajib diisi' },
         { status: 400 }
       )
     }
 
+    // Ambil order utama
     const order = await prisma.order.findFirst({
       where: {
-        OR: [{ id: orderId }, { orderNumber: orderId }],
+        OR: [{ id: effectiveOrderId }, { orderNumber: effectiveOrderId }],
       },
       include: {
         user: true,
@@ -140,11 +144,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Deteksi apakah ini pembayaran multi-order (gabungan pesanan dari beberapa toko)
+    const allOrderIdsToCharge: string[] =
+      Array.isArray(orderIds) && orderIds.length > 0
+        ? Array.from(new Set([order.id, ...orderIds]))
+        : [order.id]
+
+    let allOrders = [order]
+    if (allOrderIdsToCharge.length > 1) {
+      const additionalOrders = await prisma.order.findMany({
+        where: {
+          id: { in: allOrderIdsToCharge },
+          userId: order.userId,
+          status: 'PENDING_PAYMENT',
+        },
+        include: {
+          user: true,
+          payment: true,
+        },
+      })
+      if (additionalOrders.length > 0) {
+        allOrders = additionalOrders
+      }
+    }
+
+    const totalGrossAmount = allOrders.reduce((sum, o) => sum + o.total, 0)
+    const isMultiOrder = allOrders.length > 1
+
     // Jika sudah ada tagihan aktif untuk metode yang sama dan belum kedaluwarsa, kembalikan data yang sama agar timer & VA tidak tereset!
     if (order.payment?.notes && order.payment.notes.startsWith('{')) {
       try {
         const existing = JSON.parse(order.payment.notes)
-        if (existing.type === paymentType && existing.expiryTime) {
+        if (
+          existing.type === paymentType &&
+          existing.expiryTime &&
+          Number(existing.grossAmount) === Number(totalGrossAmount)
+        ) {
           const expMs = new Date(existing.expiryTime).getTime()
           const remainingSeconds = Math.max(
             0,
@@ -164,12 +199,13 @@ export async function POST(request: NextRequest) {
 
     // Generate unique Midtrans transaction attempt ID per channel/attempt to prevent 406 Conflict
     const methodTag = paymentType.replace('_va', '').slice(0, 4).toUpperCase()
-    const midtransOrderId = `${order.orderNumber}-${methodTag}-${Date.now().toString().slice(-4)}`
+    const prefix = isMultiOrder ? 'GRP' : order.orderNumber
+    const midtransOrderId = `${prefix}-${methodTag}-${Date.now().toString().slice(-4)}`
 
     // Call Midtrans Core API Charge
     const chargeRes = await chargeMidtransTransaction({
       orderId: midtransOrderId,
-      grossAmount: order.total,
+      grossAmount: totalGrossAmount,
       paymentType,
       customerDetails: {
         firstName: session.user.name || 'Pelanggan',
@@ -209,12 +245,20 @@ export async function POST(request: NextRequest) {
       billKey?: string
       billerCode?: string
       deepLinkUrl?: string
+      isMultiOrder?: boolean
+      relatedOrderNumbers?: string[]
+      relatedOrderIds?: string[]
     } = {
       type: paymentType,
-      orderNumber: order.orderNumber,
+      orderNumber: isMultiOrder
+        ? `${allOrders.length} Pesanan Gabungan`
+        : order.orderNumber,
       midtransOrderId,
-      grossAmount: order.total,
+      grossAmount: totalGrossAmount,
       expiryTime: calculatedExpiry,
+      isMultiOrder,
+      relatedOrderNumbers: allOrders.map((o) => o.orderNumber),
+      relatedOrderIds: allOrders.map((o) => o.id),
     }
 
     if (paymentType === 'qris') {
@@ -247,26 +291,34 @@ export async function POST(request: NextRequest) {
       result.qrString = chargeRes.qr_string
     }
 
-    // Record the full active charge details in the order payment record so it persists across refreshes
+    // Record the full active charge details in ALL related order payment records
     try {
-      if (order.payment) {
-        await prisma.payment.update({
-          where: { id: order.payment.id },
-          data: {
-            notes: JSON.stringify(result),
-            updatedAt: new Date(),
-          },
-        })
-      } else {
-        await prisma.payment.create({
-          data: {
-            orderId: order.id,
-            method: 'MIDTRANS',
-            amount: order.total,
-            status: 'PENDING',
-            notes: JSON.stringify(result),
-          },
-        })
+      for (const ord of allOrders) {
+        const orderChargeData = {
+          ...result,
+          thisOrderId: ord.id,
+          thisOrderNumber: ord.orderNumber,
+          thisOrderTotal: ord.total,
+        }
+        if (ord.payment) {
+          await prisma.payment.update({
+            where: { id: ord.payment.id },
+            data: {
+              notes: JSON.stringify(orderChargeData),
+              updatedAt: new Date(),
+            },
+          })
+        } else {
+          await prisma.payment.create({
+            data: {
+              orderId: ord.id,
+              method: 'MIDTRANS',
+              amount: ord.total,
+              status: 'PENDING',
+              notes: JSON.stringify(orderChargeData),
+            },
+          })
+        }
       }
     } catch (dbErr) {
       console.warn(

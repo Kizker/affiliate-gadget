@@ -26,6 +26,7 @@ export interface CustomPaymentModalProps {
   isOpen: boolean
   onClose: () => void
   orderId: string
+  orderIds?: string[]
   orderNumber: string
   totalAmount: number
   orderCreatedAt?: string | Date
@@ -52,6 +53,7 @@ export function CustomPaymentModal({
   isOpen,
   onClose,
   orderId,
+  orderIds,
   orderNumber,
   totalAmount,
   orderCreatedAt,
@@ -340,6 +342,10 @@ export function CustomPaymentModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: orderId || orderNumber,
+          orderIds:
+            Array.isArray(orderIds) && orderIds.length > 0
+              ? orderIds
+              : undefined,
           paymentType: method,
         }),
       })

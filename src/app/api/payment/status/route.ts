@@ -118,25 +118,51 @@ export async function GET(request: NextRequest) {
       (txStatus === 'capture' && fraudStatus === 'accept')
 
     if (isSuccess) {
-      // Atomically update DB order and payment
-      await prisma.$transaction(async (tx: any) => {
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'PAID',
-            updatedAt: new Date(),
-          },
-        })
+      // Cari seluruh pesanan yang terhubung dengan transaksi ini (baik single order maupun multi-order)
+      const lookupIds = [order.id, order.orderNumber]
+      if (idToCheck) lookupIds.push(idToCheck)
+      if (midtransStatus?.order_id) lookupIds.push(midtransStatus.order_id)
 
-        if (order.payment) {
-          await tx.payment.update({
-            where: { id: order.payment.id },
+      const relatedOrders = await prisma.order.findMany({
+        where: {
+          OR: [
+            { id: order.id },
+            { orderNumber: order.orderNumber },
+            ...(idToCheck
+              ? [{ payment: { notes: { contains: idToCheck } } }]
+              : []),
+            ...(midtransStatus?.order_id
+              ? [{ payment: { notes: { contains: midtransStatus.order_id } } }]
+              : []),
+          ],
+        },
+        include: { payment: true },
+      })
+
+      const targetOrdersToUpdate =
+        relatedOrders.length > 0 ? relatedOrders : [order]
+
+      // Atomically update DB orders and payments
+      await prisma.$transaction(async (tx: any) => {
+        for (const ord of targetOrdersToUpdate) {
+          await tx.order.update({
+            where: { id: ord.id },
             data: {
-              status: 'VERIFIED',
+              status: 'PAID',
               updatedAt: new Date(),
-              notes: `Midtrans Core API Settlement - TxID: ${midtransStatus.transaction_id}`,
             },
           })
+
+          if (ord.payment) {
+            await tx.payment.update({
+              where: { id: ord.payment.id },
+              data: {
+                status: 'VERIFIED',
+                updatedAt: new Date(),
+                notes: `Midtrans Core API Settlement - TxID: ${midtransStatus.transaction_id}`,
+              },
+            })
+          }
         }
       })
 
@@ -145,6 +171,7 @@ export async function GET(request: NextRequest) {
         orderStatus: 'PAID',
         paymentStatus: 'VERIFIED',
         transactionStatus: txStatus,
+        updatedOrderCount: targetOrdersToUpdate.length,
       })
     }
 

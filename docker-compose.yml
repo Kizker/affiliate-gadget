@@ -171,6 +171,22 @@ services:
     networks:
       - affiliate-network
 
+  # ── 5. OpenWA (Self-Hosted WhatsApp Gateway) ───────────────────
+  openwa:
+    image: ghcr.io/rmyndharis/openwa:latest
+    container_name: affiliate-gadget-openwa
+    restart: unless-stopped
+    ports:
+      - "2785:2785"
+    volumes:
+      - openwa_data:/app/data
+    environment:
+      - PORT=2785
+      - NODE_ENV=production
+      - CSP_UPGRADE_INSECURE_REQUESTS=false
+    networks:
+      - affiliate-network
+
 volumes:
   postgres_data:
     name: affiliate_gadget_postgres_data
@@ -178,6 +194,8 @@ volumes:
     name: affiliate_gadget_redis_data
   nginx_logs:
     name: affiliate_gadget_nginx_logs
+  openwa_data:
+    name: affiliate_gadget_openwa_data
 
 networks:
   affiliate-network:

@@ -123,54 +123,79 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Update database in atomic transaction
+    // Cari semua pesanan yang terhubung dalam transaksi ini (termasuk pesanan toko lain dalam 1 checkout keranjang)
+    const relatedOrders = await prisma.order.findMany({
+      where: {
+        OR: [
+          { id: order.id },
+          { orderNumber: order.orderNumber },
+          { payment: { notes: { contains: order_id } } },
+        ],
+      },
+      include: {
+        payment: true,
+        items: true,
+        user: true,
+        store: true,
+      },
+    })
+
+    const ordersToUpdate = relatedOrders.length > 0 ? relatedOrders : [order]
+
     await prisma.$transaction(async (tx: any) => {
-      // Update order status
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: orderStatus,
-        },
-      })
-
-      // Update or create payment record
-      const paymentNotes = body.transaction_id
-        ? `Midtrans TX: ${body.transaction_id}`
-        : order.payment?.notes || undefined
-
-      if (order.payment) {
-        await tx.payment.update({
-          where: { id: order.payment.id },
+      for (const ord of ordersToUpdate) {
+        // Update order status
+        await tx.order.update({
+          where: { id: ord.id },
           data: {
-            status: paymentStatus,
-            notes: paymentNotes,
+            status: orderStatus,
           },
         })
-      } else {
-        await tx.payment.create({
-          data: {
-            orderId: order.id,
-            method: 'MIDTRANS',
-            amount: order.total,
-            status: paymentStatus,
-            notes: paymentNotes,
-          },
-        })
-      }
 
-      // If payment failed or expired, restore stock back to inventory
-      if (orderStatus === 'CANCELLED' && order.status !== 'CANCELLED') {
-        for (const item of order.items) {
-          if (item.variantId) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: { stock: { increment: item.quantity } },
-            })
-          }
-          if (item.productId) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
-            })
+        // Update or create payment record
+        const paymentNotes = body.transaction_id
+          ? `Midtrans TX: ${body.transaction_id}`
+          : ord.payment?.notes || undefined
+
+        if (ord.payment) {
+          await tx.payment.update({
+            where: { id: ord.payment.id },
+            data: {
+              status: paymentStatus,
+              notes: paymentNotes,
+            },
+          })
+        } else {
+          await tx.payment.create({
+            data: {
+              orderId: ord.id,
+              method: 'MIDTRANS',
+              amount: ord.total,
+              status: paymentStatus,
+              notes: paymentNotes,
+            },
+          })
+        }
+
+        // If payment failed or expired, restore stock back to inventory
+        if (orderStatus === 'CANCELLED' && ord.status !== 'CANCELLED') {
+          for (const item of ord.items || []) {
+            if (item.variantId) {
+              await tx.productVariant
+                .update({
+                  where: { id: item.variantId },
+                  data: { stock: { increment: item.quantity } },
+                })
+                .catch(() => {})
+            }
+            if (item.productId) {
+              await tx.product
+                .update({
+                  where: { id: item.productId },
+                  data: { stock: { increment: item.quantity } },
+                })
+                .catch(() => {})
+            }
           }
         }
       }

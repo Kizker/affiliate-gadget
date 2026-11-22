@@ -31,7 +31,77 @@ export async function sendWhatsApp(
     }
   }
 
-  // 1. Support Fonnte WhatsApp Gateway API
+  // 1. Primary: OpenWA Self-Hosted WhatsApp API Gateway (Free & Unlimited)
+  const openwaUrl = process.env.OPENWA_URL || 'http://openwa:2785'
+  const openwaApiKey =
+    process.env.OPENWA_API_KEY ||
+    'owa_k1_3f49466bccc0dc23cb7d1851bbb9fce5137ecf31e8a716281ab4170c8814f6ab'
+  const openwaSessionId =
+    process.env.OPENWA_SESSION_ID || '3c68a0be-cc2c-4ff0-86c3-ee1e17141693'
+
+  if (openwaApiKey) {
+    try {
+      const chatId = `${normalizedTo}@c.us`
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 12000)
+
+      // Cari sesi yang aktif jika sessionId belum pasti
+      let targetSessionId = openwaSessionId
+      try {
+        const sessionsRes = await fetch(`${openwaUrl}/api/sessions`, {
+          headers: { 'X-API-Key': openwaApiKey },
+          signal: controller.signal,
+        })
+        if (sessionsRes.ok) {
+          const sessions = await sessionsRes.json()
+          if (Array.isArray(sessions) && sessions.length > 0) {
+            const connectedSession =
+              sessions.find((s: any) => s.status === 'connected') || sessions[0]
+            if (connectedSession?.id) {
+              targetSessionId = connectedSession.id
+            }
+          }
+        }
+      } catch {}
+
+      const openwaRes = await fetch(
+        `${openwaUrl}/api/sessions/${targetSessionId}/messages/send-text`,
+        {
+          method: 'POST',
+          headers: {
+            'X-API-Key': openwaApiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId,
+            text: message,
+          }),
+          signal: controller.signal,
+        }
+      )
+      clearTimeout(timeoutId)
+
+      const openwaData = await openwaRes.json().catch(() => null)
+      if (
+        openwaRes.ok &&
+        !openwaData?.error &&
+        (openwaData?.id || openwaData?.messageId || !openwaData?.statusCode)
+      ) {
+        return {
+          success: true,
+          provider: 'OPENWA',
+          messageId:
+            openwaData?.id || openwaData?.messageId || `openwa-${Date.now()}`,
+          cost: 0,
+        }
+      }
+      console.warn('[OPENWA Response]:', openwaData)
+    } catch (openwaErr) {
+      console.error('[OPENWA Error]:', openwaErr)
+    }
+  }
+
+  // 2. Secondary: Fonnte WhatsApp Gateway API
   const fonnteToken = process.env.FONNTE_TOKEN
   if (fonnteToken) {
     try {
