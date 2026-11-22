@@ -50,4 +50,13 @@ describe('Mass Update Basic Info, Varian Original Price, Map 503 Removal & Live 
     expect(content).not.toContain('Chat WhatsApp')
     expect(content).not.toContain('translateY(-${keyboardInset}px)')
   })
+
+  it('5. Import Excel tidak membuat produk baru jika produk tidak ada di katalog saat update massal / basic info', () => {
+    const content = fs.readFileSync(importExcelApiPath, 'utf-8')
+    expect(content).toContain('isShopeeBasicInfo ||')
+    expect(content).toContain('isShopeeFormat ||')
+    expect(content).toContain('item.harga <= 0')
+    expect(content).toContain('skippedCount++')
+    expect(content).toContain('isMirrorMode && !isShopeeBasicInfo')
+  })
 })

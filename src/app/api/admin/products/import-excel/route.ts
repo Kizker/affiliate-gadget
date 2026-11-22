@@ -907,24 +907,25 @@ export async function POST(request: Request) {
             if (!product && cleanKodeProduk) {
               product = await tx.product.findFirst({
                 where: {
-                  id: cleanKodeProduk,
+                  OR: [
+                    { id: cleanKodeProduk },
+                    {
+                      specs: {
+                        path: ['shopeeItemId'],
+                        equals: cleanKodeProduk,
+                      },
+                    },
+                    {
+                      specs: {
+                        path: ['shopeeItemId'],
+                        string_contains: cleanKodeProduk,
+                      },
+                    },
+                  ],
                   ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
                 },
                 include: { variants: true },
               })
-
-              if (!product) {
-                product = await tx.product.findFirst({
-                  where: {
-                    specs: {
-                      path: ['shopeeItemId'],
-                      equals: cleanKodeProduk,
-                    },
-                    ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
-                  },
-                  include: { variants: true },
-                })
-              }
             }
 
             // If still not found, query database by Name
@@ -939,6 +940,20 @@ export async function POST(request: Request) {
                 },
                 include: { variants: true },
               })
+
+              // Fallback: search by trimmed name contains if exact match not found
+              if (!product && item.namaProduk.trim().length >= 8) {
+                product = await tx.product.findFirst({
+                  where: {
+                    name: {
+                      contains: item.namaProduk.trim(),
+                      mode: 'insensitive',
+                    },
+                    ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+                  },
+                  include: { variants: true },
+                })
+              }
             }
 
             // If still not found and skuInduk is provided, query by model
@@ -1105,7 +1120,21 @@ export async function POST(request: Request) {
                 processed = true
               }
             } else {
-              // ─── 4. Product does not exist -> CREATE NEW PRODUCT & VARIANT (Catalog Migration)
+              // ─── 4. Product does not exist in catalog
+              // User requirement: Jika tidak ada barangnya di katalog, JANGAN ditambahkan barang baru.
+              // Hanya update deskripsi/data jika barangnya sudah ada saja di katalog.
+              if (
+                isShopeeBasicInfo ||
+                isShopeeFormat ||
+                item.harga === null ||
+                item.harga === undefined ||
+                item.harga <= 0
+              ) {
+                skippedCount++
+                processed = true
+                continue
+              }
+
               const brand = item.brand || extractBrand(item.namaProduk)
               const model =
                 item.skuInduk || extractModel(item.namaProduk, item.model)
@@ -1215,7 +1244,7 @@ export async function POST(request: Request) {
         }
 
         // ─── 5. FULL CATALOG MIRRORING (Two-Way Reconciliation Sync) ──
-        if (isMirrorMode && rowsToProcess.length > 0) {
+        if (isMirrorMode && !isShopeeBasicInfo && rowsToProcess.length > 0) {
           // A. Variant-Level Pruning: Delete old variants from touched products that were NOT in Excel
           for (const prodId of touchedProductIds) {
             const existingVariants = await tx.productVariant.findMany({
