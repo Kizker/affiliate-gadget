@@ -56,7 +56,9 @@ export async function sendWhatsApp(
           const sessions = await sessionsRes.json()
           if (Array.isArray(sessions) && sessions.length > 0) {
             const connectedSession =
-              sessions.find((s: any) => s.status === 'connected') || sessions[0]
+              sessions.find(
+                (s: any) => s.status === 'connected' || s.status === 'ready'
+              ) || sessions[0]
             if (connectedSession?.id) {
               targetSessionId = connectedSession.id
             }

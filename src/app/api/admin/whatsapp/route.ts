@@ -65,11 +65,9 @@ export async function GET() {
       })
     }
 
-    // Jika sesi belum terhubung dan belum siap scan QR (misal disconnected, stopped, created, dll.), otomatis nyalakan sesi
-    if (
-      activeSession.status !== 'connected' &&
-      activeSession.status !== 'qr_ready'
-    ) {
+    // Hanya panggil /start jika sesi benar-benar dalam kondisi mati/stopped (jangan mengganggu saat authenticating/ready/starting)
+    const deadStatuses = ['created', 'stopped', 'disconnected', 'failed']
+    if (deadStatuses.includes(activeSession.status)) {
       try {
         const startRes = await fetch(
           `${OPENWA_URL}/api/sessions/${activeSession.id}/start`,
@@ -86,9 +84,12 @@ export async function GET() {
       }
     }
 
-    // Ambil QR Code jika status qr_ready atau jika baru saja di-start
+    const isConnected =
+      activeSession.status === 'connected' || activeSession.status === 'ready'
+
+    // Ambil QR Code hanya jika sesi belum terhubung dan tidak sedang sinkronisasi login (authenticating)
     let qrCode = null
-    if (activeSession.status !== 'connected') {
+    if (!isConnected && activeSession.status !== 'authenticating') {
       try {
         const qrRes = await fetch(
           `${OPENWA_URL}/api/sessions/${activeSession.id}/qr`,
@@ -110,7 +111,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       gateway: 'OPENWA',
-      status: activeSession.status, // 'connected' | 'qr_ready' | 'starting'
+      status: isConnected ? 'connected' : activeSession.status,
       phone: activeSession.phone || null,
       pushName: activeSession.pushName || null,
       sessionId: activeSession.id,

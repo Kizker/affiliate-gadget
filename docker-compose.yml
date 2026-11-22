@@ -188,6 +188,8 @@ services:
       - PORT=2785
       - NODE_ENV=production
       - CSP_UPGRADE_INSECURE_REQUESTS=false
+      - ENGINE_TYPE=baileys
+      - WWEBJS_ONBOARDING_CONTINUE_LABELS=Continue,Lanjutkan,Oke,OK,Mengerti,Selanjutnya,Tutup
     networks:
       - affiliate-network
 

@@ -103,7 +103,11 @@ export default function WhatsAppGatewayPage() {
   useEffect(() => {
     if (!isAllowed) return
     const interval = setInterval(() => {
-      if (data?.status === 'qr_ready' || data?.status === 'starting') {
+      if (
+        data?.status === 'qr_ready' ||
+        data?.status === 'starting' ||
+        data?.status === 'authenticating'
+      ) {
         fetchStatus(true)
       }
     }, 3500)
@@ -150,8 +154,9 @@ export default function WhatsAppGatewayPage() {
     )
   }
 
-  const isConnected = data?.status === 'connected'
+  const isConnected = data?.status === 'connected' || data?.status === 'ready'
   const isQrReady = data?.status === 'qr_ready' && Boolean(data?.qrCode)
+  const isAuthenticating = data?.status === 'authenticating'
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-12">
@@ -291,6 +296,16 @@ export default function WhatsAppGatewayPage() {
                     (Ganti QR Baru)
                   </button>
                 </div>
+              </div>
+            ) : isAuthenticating ? (
+              <div className="flex flex-col items-center py-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+                <p className="mt-3 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  Menyinkronkan koneksi dengan smartphone Anda...
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Mohon tunggu beberapa detik, jangan tekan tombol muat ulang.
+                </p>
               </div>
             ) : (
               <div className="flex flex-col items-center py-8 text-center text-slate-400">
