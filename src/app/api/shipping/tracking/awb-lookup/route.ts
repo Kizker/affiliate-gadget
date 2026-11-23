@@ -74,20 +74,70 @@ export async function GET(request: NextRequest) {
           .includes('GOJEK')
         const trackingNumber = returnReq.returnTrackingNumber || cleanInput
 
+        const isDelivered =
+          Boolean(returnReq.packageReceivedAt) ||
+          returnReq.status === 'COMPLETED' ||
+          Boolean(
+            returnReq.storeResponse?.includes('[Paket Fisik Tiba di Cabang]')
+          )
+
+        const checkpoints: any[] = [
+          {
+            id: 'CP-RET-1',
+            status: 'ALLOCATED',
+            description: `Nomor resi retur resmi (${trackingNumber}) diterbitkan otomatis via Biteship cashless drop-off.`,
+            location: 'Sistem Logistik Affiliate Gadget',
+            timestamp: new Date(returnReq.createdAt).toISOString(),
+          },
+          {
+            id: 'CP-RET-2',
+            status: isDelivered ? 'DROPPING_OFF' : 'PICKED_UP',
+            description: `Paket retur diserahkan oleh pembeli (${returnReq.user?.name || 'Customer'}) ke kurir ${returnReq.returnCourier || 'JNE'}.`,
+            location: returnReq.user?.city || 'Gerai Ekspedisi Terdekat',
+            timestamp: new Date(returnReq.createdAt).toISOString(),
+          },
+        ]
+
+        if (isDelivered) {
+          checkpoints.push({
+            id: 'CP-RET-3',
+            status: 'DELIVERED',
+            description:
+              returnReq.status === 'COMPLETED'
+                ? `Paket retur telah diterima di ${order.store?.name || 'Toko Cabang'} dan seluruh proses solusi garansi telah tuntas diselesaikan.`
+                : `Paket retur fisik telah tiba di ${order.store?.name || 'Toko Cabang'} dan sedang dalam pengujian teknis (QC).`,
+            location: order.store?.city || 'Toko Cabang',
+            timestamp: (
+              returnReq.packageReceivedAt ||
+              returnReq.resolvedAt ||
+              new Date()
+            ).toISOString(),
+          })
+        } else {
+          checkpoints.push({
+            id: 'CP-RET-3',
+            status: 'DROPPING_OFF',
+            description: `Paket retur dalam perjalanan menuju alamat toko cabang ${order.store?.name || 'Toko Cabang'} (${order.store?.city || ''}).`,
+            location: 'Hub Transit Logistik Antar-Kota',
+            timestamp: new Date().toISOString(),
+          })
+        }
+
         record = {
           orderId: order.id,
           orderNumber: order.orderNumber,
           courierCode: isGojek ? 'GOJEK' : 'JNE',
           courierService: isGojek ? 'INSTANT' : 'REG',
           trackingNumber,
-          status:
-            returnReq.status === 'COMPLETED' ? 'DELIVERED' : 'DROPPING_OFF',
+          status: isDelivered ? 'DELIVERED' : 'DROPPING_OFF',
           statusLabel:
             returnReq.status === 'COMPLETED'
-              ? 'Paket Retur Telah Diterima Toko Cabang'
-              : isGojek
-                ? 'Driver Gojek Sedang Mengantar Paket Retur ke Toko Cabang'
-                : 'Paket Retur Dalam Pengiriman ke Toko Cabang',
+              ? 'Retur Tuntas: Solusi Garansi Selesai Dieksekusi'
+              : isDelivered
+                ? 'Paket Retur Telah Tiba di Cabang (Sedang QC)'
+                : isGojek
+                  ? 'Driver Gojek Sedang Mengantar Paket Retur ke Toko Cabang'
+                  : 'Paket Retur Dalam Pengiriman ke Toko Cabang',
           driver: isGojek
             ? {
                 name: 'Andi Saputra (Kurir Retur)',
@@ -110,28 +160,9 @@ export async function GET(request: NextRequest) {
             province: order.store?.city || 'Indonesia',
             phone: order.store?.phone || '081234567890',
           },
-          checkpoints: [
-            {
-              id: 'CP-RET-1',
-              status: 'PICKED_UP',
-              description: `Paket retur diserahkan oleh pembeli (${returnReq.user?.name || 'Customer'}) ke kurir ${returnReq.returnCourier || 'Ekspedisi'}.`,
-              location: 'Gerai Ekspedisi / Lokasi Penjemputan',
-              timestamp: new Date(returnReq.createdAt).toISOString(),
-            },
-            {
-              id: 'CP-RET-2',
-              status:
-                returnReq.status === 'COMPLETED' ? 'DELIVERED' : 'DROPPING_OFF',
-              description:
-                returnReq.status === 'COMPLETED'
-                  ? `Paket retur tiba di ${order.store?.name || 'Toko Cabang'} dan telah diterima untuk verifikasi fisik / QC.`
-                  : `Paket retur sedang dalam perjalanan menuju alamat ${order.store?.name || 'Toko Cabang'} (${order.store?.city || ''}).`,
-              location: order.store?.city || 'Pusat Logistik',
-              timestamp: new Date().toISOString(),
-            },
-          ],
+          checkpoints,
           bookedAt: new Date(returnReq.createdAt).toISOString(),
-          estimatedDelivery: isGojek ? '1-2 Jam' : '2-3 Hari',
+          estimatedDelivery: isGojek ? '1-2 Jam' : '1-2 Hari',
           items: (order.items || []).map((i) => ({
             name:
               i.product?.name ||

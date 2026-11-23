@@ -706,7 +706,7 @@ export default function SuperAdminReturnsPage() {
                         <span>
                           {isRecRejected
                             ? 'Kembalikan ke After Sales'
-                            : 'Tolak & Kembalikan'}
+                            : 'Tolak &amp; Kembalikan'}
                         </span>
                       </button>
                       <button

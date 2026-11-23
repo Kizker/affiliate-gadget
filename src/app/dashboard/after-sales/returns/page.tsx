@@ -390,14 +390,22 @@ export default function AfterSalesReturnsPage() {
 
     setIsSubmitting(true)
     try {
-      // Semua keputusan After Sales (baik Tukar Unit maupun Refund, baik Setujui maupun Tolak)
-      // SELALU berupa rekomendasi yang WAJIB di-ACC oleh Superadmin terlebih dahulu sebelum dieksekusi ke customer!
-      const requestBody = {
-        action: 'AFTER_SALES_CONFIRM',
-        decision: decisionType, // 'APPROVE' | 'REJECT'
-        notes: notesTrimmed,
-        qcImages: decisionImages,
-      }
+      // Jika status masih PENDING dan After Sales menolak pengajuan awal:
+      // Tolak langsung (karena unboxing / klaim tidak valid)
+      const isPendingDirectReject =
+        decisionModalTarget.status === 'PENDING' && decisionType === 'REJECT'
+
+      const requestBody = isPendingDirectReject
+        ? {
+            action: 'REJECT',
+            rejectionReason: notesTrimmed,
+          }
+        : {
+            action: 'AFTER_SALES_CONFIRM',
+            decision: decisionType, // 'APPROVE' | 'REJECT'
+            notes: notesTrimmed,
+            qcImages: decisionImages,
+          }
 
       const res = await fetch(`/api/returns/${decisionModalTarget.id}`, {
         method: 'PUT',
@@ -407,9 +415,11 @@ export default function AfterSalesReturnsPage() {
       const json = await res.json()
       if (res.ok && json.success) {
         toast.success(
-          decisionType === 'APPROVE'
-            ? 'Rekomendasi persetujuan berhasil diteruskan ke Superadmin untuk di-ACC final!'
-            : 'Rekomendasi penolakan berhasil diteruskan ke Superadmin untuk ditinjau!'
+          isPendingDirectReject
+            ? 'Pengajuan retur berhasil ditolak.'
+            : decisionType === 'APPROVE'
+              ? 'Rekomendasi persetujuan berhasil diteruskan ke Superadmin untuk di-ACC final!'
+              : 'Rekomendasi penolakan berhasil diteruskan ke Superadmin untuk ditinjau!'
         )
         setDecisionModalTarget(null)
         setDecisionNotes('')
@@ -493,6 +503,10 @@ export default function AfterSalesReturnsPage() {
                 : 'Manajemen Retur & Garansi After Sales'}
             </h1>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Eksekutor tunggal validasi bukti cacat produk, telaah paket retur,
+            dan rekomendasi solusi ke Superadmin.
+          </p>
           {isStoreMonitoringMode && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
               <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
@@ -1187,30 +1201,87 @@ export default function AfterSalesReturnsPage() {
                       )
                     }
 
-                    // 1. Jika barang belum dikonfirmasi tiba di cabang toko: Tombol penerimaan barang
-                    if (!isArrived) {
+                    // 1. Jika pengajuan masih PENDING (Menunggu Telaah Awal After Sales):
+                    // After Sales meninjau keluhan & unboxing -> Setujui Kirim Balik (Terbitkan AWB Biteship) atau Tolak
+                    if (item.status === 'PENDING') {
                       return (
-                        <button
-                          type="button"
-                          disabled={
-                            isReceivingPackage &&
-                            receivingPackageTarget?.id === item.id
-                          }
-                          onClick={() => {
-                            setReceivingPackageTarget(item)
-                            setPackageReceivedNotes(
-                              `Paket fisik retur pesanan #${item.order.orderNumber} telah diterima oleh staf cabang. Kondisi kardus utuh, memulai pengujian teknis (QC).`
-                            )
-                          }}
-                          className="shadow-xs flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
-                        >
-                          <Package className="h-3.5 w-3.5" />
-                          <span>Barang Diterima &amp; Mulai QC</span>
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={approvingId === item.id}
+                            onClick={() => handleApproveForReturn(item)}
+                            className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                          >
+                            {approvingId === item.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            )}
+                            <span>Setujui Kirim Balik (Terbitkan AWB)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDecisionModalTarget(item)
+                              setDecisionType('REJECT')
+                              setDecisionNotes(
+                                'Pengajuan retur ditolak karena bukti unboxing / kerusakan tidak memenuhi ketentuan garansi toko.'
+                              )
+                              setDecisionImages([])
+                            }}
+                            className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95"
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            <span>Tolak Pengajuan</span>
+                          </button>
+                        </div>
                       )
                     }
 
-                    // 2. Jika barang sudah tiba di cabang: HANYA ADA 2 PILIHAN (SETUJUI ATAU TOLAK)
+                    // 2. Jika barang dalam perjalanan kurir (belum tiba di cabang toko):
+                    if (!isArrived) {
+                      return (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {item.returnTrackingNumber && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTrackingQuery(
+                                  item.returnTrackingNumber!
+                                )
+                                setResiModalOpen(true)
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                            >
+                              <Truck className="h-3.5 w-3.5" />
+                              <span>
+                                Lacak Resi ({item.returnTrackingNumber})
+                              </span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={
+                              isReceivingPackage &&
+                              receivingPackageTarget?.id === item.id
+                            }
+                            onClick={() => {
+                              setReceivingPackageTarget(item)
+                              setPackageReceivedNotes(
+                                `Paket fisik retur pesanan #${item.order.orderNumber} telah diterima oleh staf cabang. Kondisi kardus utuh, memulai pengujian teknis (QC).`
+                              )
+                            }}
+                            className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+                          >
+                            <Package className="h-3.5 w-3.5" />
+                            <span>Barang Diterima &amp; Mulai QC</span>
+                          </button>
+                        </div>
+                      )
+                    }
+
+                    // 3. Jika barang sudah tiba di cabang (Sedang QC): HANYA ADA 2 PILIHAN (REKOMENDASIKAN SETUJUI ATAU TOLAK KE SUPERADMIN)
                     return (
                       <div className="flex flex-wrap items-center gap-2">
                         <button
@@ -1428,10 +1499,8 @@ export default function AfterSalesReturnsPage() {
                   )}
                   <span>
                     {decisionType === 'APPROVE'
-                      ? decisionModalTarget.type === 'REPLACEMENT'
-                        ? 'Kirim Unit Baru Pengganti Sekarang'
-                        : 'Kirim Persetujuan Refund ke Superadmin'
-                      : 'Kirim Penolakan Retur'}
+                      ? 'Kirim Persetujuan ke Superadmin'
+                      : 'Kirim Penolakan ke Superadmin'}
                   </span>
                 </button>
               </div>

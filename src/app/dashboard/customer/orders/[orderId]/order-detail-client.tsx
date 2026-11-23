@@ -263,31 +263,32 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   }
 
   const getDetailStatus = () => {
-    if (order.status === 'RETURNED') {
-      return statusConfig.RETURNED
-    }
     if (latestReturnRequest) {
       if (latestReturnRequest.status === 'PENDING') {
-        return statusConfig.PENDING_PAYMENT
-      }
-      if (latestReturnRequest.status === 'IN_REVIEW') {
-        return statusConfig.PROCESSING
+        return statusConfig.RETURN_PENDING
       }
       if (latestReturnRequest.status === 'APPROVED') {
-        return statusConfig.PAID
+        return statusConfig.RETURN_APPROVED
+      }
+      if (latestReturnRequest.status === 'IN_REVIEW') {
+        const isArrived = Boolean(
+          latestReturnRequest.packageReceivedAt ||
+          latestReturnRequest.storeResponse?.includes(
+            '[Paket Fisik Tiba di Cabang]'
+          )
+        )
+        return isArrived
+          ? statusConfig.RETURN_IN_QC
+          : statusConfig.RETURN_IN_TRANSIT
       }
       if (latestReturnRequest.status === 'REJECTED') {
-        return statusConfig.CANCELLED
+        return statusConfig.RETURN_REJECTED
       }
-      if (order.status === 'SHIPPED') {
-        return statusConfig.IN_PROGRESS
+      if (latestReturnRequest.status === 'COMPLETED') {
+        return statusConfig.RETURN_COMPLETED
       }
-      if (order.status === 'DELIVERED') {
-        return statusConfig.COMPLETED
-      }
-      if (order.status === 'COMPLETED') {
-        return statusConfig.COMPLETED
-      }
+    }
+    if (order.status === 'RETURNED') {
       return statusConfig.RETURNED
     }
     return statusConfig[order.status] || statusConfig.PROCESSING

@@ -545,14 +545,14 @@ export async function PUT(
         existing.packageReceivedAt ||
         existing.storeResponse?.includes('[Paket Fisik Tiba di Cabang]')
       )
-      const hasAfterSalesApproval = Boolean(
+      const hasAfterSalesRecommendation = Boolean(
         existing.storeResponse?.includes('[Rekomendasi After Sales: DISETUJUI]')
       )
 
       if (
         isSuperAdmin &&
         isApprove &&
-        (isPackageArrived || hasAfterSalesApproval)
+        (isPackageArrived || hasAfterSalesRecommendation)
       ) {
         const resolutionType = existing.type || 'REPLACEMENT'
 
@@ -933,10 +933,82 @@ export async function PUT(
         }
       }
 
+      // Tentukan kurir pengembalian sesuai dengan kurir pilihan awal saat checkout
+      let returnCourierCode: 'GOJEK' | 'JNE' = 'JNE'
+      if ((existing.order?.courierCode || '').toUpperCase().includes('GOJEK')) {
+        returnCourierCode = 'GOJEK'
+      }
+      const returnCourierService =
+        returnCourierCode === 'GOJEK'
+          ? 'INSTANT'
+          : existing.order?.courierService || 'REG'
+
+      let generatedTrackingNumber = existing.returnTrackingNumber
+      if (isApprove && !generatedTrackingNumber) {
+        const orderUser = (existing.order as any)?.user
+        const defaultAddr = orderUser?.addresses?.[0]
+        const customerName = orderUser?.name || 'Customer'
+        const userAddress = {
+          address: defaultAddr?.fullAddress || 'Alamat Pelanggan',
+          city: defaultAddr?.city || 'Jakarta',
+          province: defaultAddr?.province || 'Indonesia',
+          postalCode: defaultAddr?.postalCode || '10110',
+          phone: defaultAddr?.phone || orderUser?.phone || '08123456789',
+        }
+        const storeAddress = existing.order?.store || {
+          name: 'Toko Cabang Affiliate Gadget',
+          companyName: 'Toko Cabang',
+          address: 'Alamat Toko Cabang Pengirim',
+          city: 'Jakarta',
+          phone: '081299887766',
+          postalCode: '10150',
+        }
+
+        try {
+          const booking = await bookShippingPickup({
+            orderId: `RET-${existing.id}`,
+            orderNumber: `RET-${existing.order.orderNumber}`,
+            courierCode: returnCourierCode,
+            courierService: returnCourierService,
+            originStore: {
+              name: `${customerName} (Pengirim Retur)`,
+              companyName: 'Pelanggan Retur',
+              address: userAddress.address,
+              city: userAddress.city,
+              phone: userAddress.phone,
+              postalCode: userAddress.postalCode,
+            },
+            destinationCustomer: {
+              name: `${storeAddress.name} (Penerima Retur Cabang)`,
+              address: storeAddress.address,
+              city: storeAddress.city,
+              province: storeAddress.city,
+              postalCode: storeAddress.postalCode,
+              phone: storeAddress.phone || '08123456789',
+            },
+            items: (existing.order?.items || []).map((i: any) => ({
+              name:
+                i.product?.name ||
+                i.rentalItem?.name ||
+                i.service?.name ||
+                'Unit Gadget Retur',
+              quantity: i.quantity || 1,
+              weightGram: i.product?.weightGram || 500,
+              price: i.price,
+            })),
+          })
+          generatedTrackingNumber = booking.trackingNumber
+        } catch {
+          const { generateWaybill } =
+            await import('@/lib/shipping/biteship-client')
+          generatedTrackingNumber = generateWaybill(returnCourierCode)
+        }
+      }
+
       // Default approval / reject note untuk alur standar awal
       const defaultApproveNote = isSuperAdmin
-        ? '[Disetujui Superadmin] Pengajuan retur telah disetujui Superadmin. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
-        : 'Pengajuan retur telah disetujui After Sales. Silakan kemas unit dan kirimkan ke alamat toko cabang yang tertera.'
+        ? `[Disetujui Superadmin] Resi retur cashless resmi telah diterbitkan via Biteship (${returnCourierCode} ${returnCourierService}): ${generatedTrackingNumber}. Ongkos kirim tercover escrow garansi. Silakan tunjukkan resi/barcode ke gerai ${returnCourierCode} terdekat tanpa membayar tunai.`
+        : `[Disetujui After Sales] Resi retur cashless resmi telah diterbitkan via Biteship (${returnCourierCode} ${returnCourierService}): ${generatedTrackingNumber}. Ongkos kirim tercover escrow garansi. Silakan tunjukkan resi/barcode ke gerai ${returnCourierCode} terdekat tanpa membayar tunai.`
 
       const defaultRejectNote = isSuperAdmin
         ? '[Ditolak Superadmin] Pengajuan pengembalian ditolak oleh Superadmin.'
@@ -946,6 +1018,8 @@ export async function PUT(
         where: { id },
         data: {
           status: isApprove ? 'APPROVED' : 'REJECTED',
+          returnCourier: isApprove ? returnCourierCode : null,
+          returnTrackingNumber: isApprove ? generatedTrackingNumber : null,
           resolvedAt: isApprove ? null : new Date(),
           storeResponse: isApprove
             ? body.adminNotes || defaultApproveNote
@@ -957,6 +1031,15 @@ export async function PUT(
         },
       })
 
+      if (existing.orderId) {
+        await prisma.order
+          .update({
+            where: { id: existing.orderId },
+            data: { updatedAt: new Date() },
+          })
+          .catch(() => {})
+      }
+
       // Send notification to customer
       await prisma.notification
         .create({
@@ -966,12 +1049,12 @@ export async function PUT(
             title: isApprove
               ? isSuperAdmin
                 ? 'Pengajuan Retur Disetujui Superadmin'
-                : 'Pengajuan Retur Disetujui'
+                : `Pengajuan Retur Disetujui (Resi: ${generatedTrackingNumber})`
               : isSuperAdmin
                 ? 'Pengajuan Retur Ditolak Superadmin'
                 : 'Pengajuan Retur Ditolak',
             message: isApprove
-              ? `Pengajuan retur untuk pesanan #${existing.order.orderNumber} telah DISETUJUI oleh ${isSuperAdmin ? 'Superadmin' : 'After Sales'}. Silakan kirimkan unit fisik gadget ke alamat toko cabang tujuan yang tertera di detail pesanan.`
+              ? `Pengajuan retur untuk pesanan #${existing.order.orderNumber} telah DISETUJUI. No. Resi resmi ${returnCourierCode} (${generatedTrackingNumber}) telah diterbitkan otomatis (Gratis / Cashless). Tunjukkan kode AWB ini ke agen kurir terdekat.`
               : `Pengajuan pengembalian untuk pesanan #${existing.order.orderNumber} DITOLAK oleh ${isSuperAdmin ? 'Superadmin' : 'After Sales'}: ${body.rejectionReason || 'Tidak memenuhi kriteria'}`,
             link: `/dashboard/customer/orders/${existing.orderId}`,
           },
@@ -981,8 +1064,8 @@ export async function PUT(
       return NextResponse.json({
         success: true,
         message: isApprove
-          ? 'Pengembalian berhasil disetujui'
-          : 'Pengembalian berhasil ditolak',
+          ? `Pengembalian berhasil disetujui. No. Resi AWB ${generatedTrackingNumber} telah diterbitkan otomatis.`
+          : 'Pengajuan pengembalian ditolak',
         data: updatedReturn,
       })
     }

@@ -178,10 +178,17 @@ export default async function CustomerOrderDetailPage({
     paymentStatus:
       order.status === 'CANCELLED' || order.payment?.status === 'REJECTED'
         ? 'CANCELLED'
-        : order.status === 'PENDING_PAYMENT' ||
-            order.payment?.status === 'PENDING'
-          ? 'PENDING'
-          : 'PAID',
+        : order.status === 'COMPLETED' ||
+            order.status === 'SHIPPED' ||
+            order.status === 'IN_PROGRESS' ||
+            order.status === 'PAID' ||
+            order.status === 'RETURNED' ||
+            order.payment?.status === 'VERIFIED'
+          ? 'PAID'
+          : order.status === 'PENDING_PAYMENT' ||
+              order.payment?.status === 'PENDING'
+            ? 'PENDING'
+            : 'PAID',
     store: order.store
       ? {
           id: order.store.id,

@@ -17,7 +17,9 @@ import {
   Package,
   MessageSquare,
   MapPin,
+  Copy,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   OrderData,
   OrderReturnRequest,
@@ -482,48 +484,121 @@ export function OrderDesktopReturnCard({
               </p>
             </div>
 
-            {/* Form Input Resi Pengiriman Balik */}
-            <div className="rounded-xl border border-orange-200/80 bg-orange-50/60 p-3.5 dark:border-orange-900/60 dark:bg-orange-950/30">
-              <div className="flex items-center gap-2 font-bold text-orange-950 dark:text-orange-100">
-                <Truck className="h-4 w-4 text-orange-600" />
-                <span>Input Resi Pengiriman Balik Unit Rusak</span>
+            {/* Kartu Resi Pengembalian Resmi (Cashless Drop-Off) atau Form Input Fallback */}
+            {latestReturnRequest.returnTrackingNumber ? (
+              <div className="shadow-2xs rounded-xl border border-emerald-200/90 bg-white p-4 dark:border-emerald-800 dark:bg-slate-900">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-emerald-600" />
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      Resi Pengembalian Resmi (Cashless / Drop-Off)
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10.5px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    Gratis / Tercover Escrow
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <span className="text-[11px] text-slate-400">
+                      Ekspedisi &amp; No. Resi (AWB):
+                    </span>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <span className="font-mono text-base font-black tracking-wider text-slate-900 dark:text-white">
+                        {latestReturnRequest.returnCourier || 'JNE'} —{' '}
+                        {latestReturnRequest.returnTrackingNumber}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            latestReturnRequest.returnTrackingNumber!
+                          )
+                          toast.success('Nomor resi retur berhasil disalin!')
+                        }}
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>Salin</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenResiModal(
+                        latestReturnRequest.returnTrackingNumber!,
+                        latestReturnRequest.returnCourier || 'JNE'
+                      )
+                    }
+                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 active:scale-95"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    <span>Lacak Pengiriman Balik (Live)</span>
+                  </button>
+                </div>
+
+                <div className="mt-3 rounded-lg bg-emerald-50/70 p-2.5 text-[11px] text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                  <p className="font-semibold">
+                    Instruksi Penyerahan Paket ke Kurir:
+                  </p>
+                  <p className="mt-0.5 leading-relaxed">
+                    Tunjukkan nomor resi ini ke kurir atau petugas gerai{' '}
+                    <strong>
+                      {latestReturnRequest.returnCourier || 'JNE'}
+                    </strong>{' '}
+                    terdekat. Ongkos kirim pengembalian otomatis
+                    dipotong/dicover dari dana escrow proteksi transaksi
+                    garansi, Anda <strong>TIDAK PERLU</strong> membayar biaya
+                    kirim secara tunai di counter.
+                  </p>
+                </div>
               </div>
-              <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
-                Setelah menyerahkan paket ke kurir, pilih ekspedisi dan simpan
-                nomor resi pengiriman di bawah:
-              </p>
-              <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <select
-                  value={returnCourier || 'JNE'}
-                  onChange={(e) => setReturnCourier?.(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-36"
-                >
-                  <option value="JNE">JNE Express</option>
-                  <option value="J&T">J&T Express</option>
-                  <option value="SICEPAT">SiCepat</option>
-                  <option value="GOJEK">Gojek Instant</option>
-                  <option value="GRAB">Grab Express</option>
-                  <option value="ANTERAJA">Anteraja</option>
-                  <option value="POS">Pos Indonesia</option>
-                </select>
-                <input
-                  type="text"
-                  placeholder="Ketik nomor resi pengiriman balik..."
-                  value={returnTrackingNumber}
-                  onChange={(e) => setReturnTrackingNumber(e.target.value)}
-                  className="w-full flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-900 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
-                <button
-                  onClick={handleSaveReturnTracking}
-                  disabled={
-                    isSavingReturnTracking || !returnTrackingNumber.trim()
-                  }
-                  className="w-full rounded-xl bg-orange-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-700 disabled:opacity-50 sm:w-auto"
-                >
-                  {isSavingReturnTracking ? 'Menyimpan...' : 'Kirim Resi'}
-                </button>
+            ) : (
+              <div className="rounded-xl border border-orange-200/80 bg-orange-50/60 p-3.5 dark:border-orange-900/60 dark:bg-orange-950/30">
+                <div className="flex items-center gap-2 font-bold text-orange-950 dark:text-orange-100">
+                  <Truck className="h-4 w-4 text-orange-600" />
+                  <span>Input Resi Pengiriman Balik Unit Rusak</span>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                  Setelah menyerahkan paket ke kurir, pilih ekspedisi dan simpan
+                  nomor resi pengiriman di bawah:
+                </p>
+                <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <select
+                    value={returnCourier || 'JNE'}
+                    onChange={(e) => setReturnCourier?.(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-36"
+                  >
+                    <option value="JNE">JNE Express</option>
+                    <option value="J&T">J&T Express</option>
+                    <option value="SICEPAT">SiCepat</option>
+                    <option value="GOJEK">Gojek Instant</option>
+                    <option value="GRAB">Grab Express</option>
+                    <option value="ANTERAJA">Anteraja</option>
+                    <option value="POS">Pos Indonesia</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Ketik nomor resi pengiriman balik..."
+                    value={returnTrackingNumber}
+                    onChange={(e) => setReturnTrackingNumber(e.target.value)}
+                    className="w-full flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-900 outline-none focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                  <button
+                    onClick={handleSaveReturnTracking}
+                    disabled={
+                      isSavingReturnTracking || !returnTrackingNumber.trim()
+                    }
+                    className="w-full rounded-xl bg-orange-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-orange-700 disabled:opacity-50 sm:w-auto"
+                  >
+                    {isSavingReturnTracking ? 'Menyimpan...' : 'Kirim Resi'}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
