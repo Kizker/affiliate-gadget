@@ -1480,7 +1480,7 @@ export async function POST(request: Request) {
           })
         } catch {}
       },
-      { timeout: 60000 }
+      { timeout: 300000, maxWait: 60000 }
     )
 
     // Invalidate public gadgets & etalases cache so frontend reflects updated prices & stocks instantly
