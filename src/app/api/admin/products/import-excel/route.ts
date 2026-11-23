@@ -468,11 +468,26 @@ export async function POST(request: Request) {
     }
 
     // Fetch all stores in memory to resolve store matching
-    const allStores = await prisma.store.findMany({
+    let allStores = await prisma.store.findMany({
       select: { id: true, name: true, city: true },
     })
-    const defaultStoreId =
-      storeScope !== 'ALL' ? storeScope : allStores[0]?.id || null
+    if (allStores.length === 0) {
+      const defaultStore = await prisma.store.create({
+        data: {
+          name: 'Affiliate Gadget Pusat',
+          companyName: 'PT Affiliate Gadget Indonesia',
+          address: 'ITC Roxy Mas Lt. 2 No. 15, Jl. KH. Hasyim Ashari',
+          city: 'Jakarta Pusat',
+          province: 'DKI Jakarta',
+          phone: '081299887766',
+          email: 'store.pusat@affiliategadget.com',
+          isActive: true,
+          slug: 'affiliate-gadget-pusat',
+        },
+      })
+      allStores = [defaultStore]
+    }
+    const defaultStoreId = storeScope !== 'ALL' ? storeScope : allStores[0].id
 
     const findStoreId = (rawStore: string): string | null => {
       if (storeScope !== 'ALL') return storeScope
@@ -734,100 +749,41 @@ export async function POST(request: Request) {
         // Key: kodeProduk OR normalized namaProduk OR normalized model
         const cachedProducts = new Map<string, any>()
 
-        for (const item of rowsToProcess) {
-          let processed = false
+        const isAutoOrEmpty = (idStr: string) =>
+          !idStr ||
+          idStr.startsWith('AUTO-') ||
+          idStr.startsWith('NEW') ||
+          idStr.startsWith('cvar') ||
+          idStr.startsWith('cprd') ||
+          idStr.startsWith('VAR-') ||
+          idStr.startsWith('PROD-') ||
+          idStr === '-'
 
-          const isAutoOrEmpty = (idStr: string) =>
-            !idStr ||
-            idStr.startsWith('AUTO-') ||
-            idStr.startsWith('NEW') ||
-            idStr.startsWith('cvar') ||
-            idStr.startsWith('cprd') ||
-            idStr.startsWith('VAR-') ||
-            idStr.startsWith('PROD-') ||
-            idStr === '-'
+        // ─── RULE 3: TEMPLATE INFORMATION / DESKRIPSI (BASIC_INFO) ───
+        // Baik dicentang atau tidak: semua informasi GADGET DENGAN NOMOR SKU YANG SESUAI, informasinya terupdate.
+        // Tapi jika tidak ada SKU nya, maka dilewatkan.
+        if (isShopeeBasicInfo) {
+          for (const item of rowsToProcess) {
+            const targetSku =
+              (item.skuInduk && item.skuInduk.trim()) ||
+              (item.sku && item.sku.trim()) ||
+              null
 
-          const cleanSku =
-            item.sku && !item.sku.startsWith('SKU-AUTO-')
-              ? item.sku.trim()
-              : null
-          const cleanKodeVariasi =
-            item.kodeVariasi && !isAutoOrEmpty(item.kodeVariasi)
-              ? item.kodeVariasi.trim()
-              : null
-          const cleanKodeProduk =
-            item.kodeProduk && !isAutoOrEmpty(item.kodeProduk)
-              ? item.kodeProduk.trim()
-              : null
-
-          // ─── 1. Match by Existing Variant ID ────────────────────────
-          if (cleanKodeVariasi) {
-            const variant = await tx.productVariant.findUnique({
-              where: { id: cleanKodeVariasi },
-              include: { product: true },
-            })
-
+            // Rule 3: Jika tidak ada SKU-nya, maka dilewatkan
             if (
-              variant &&
-              (storeScope === 'ALL' || variant.product.storeId === storeScope)
+              !targetSku ||
+              targetSku === '-' ||
+              targetSku.startsWith('AUTO-') ||
+              targetSku.startsWith('SKU-AUTO-')
             ) {
-              let hasChanges = false
-              const variantUpdates: any = {}
-
-              if (Number(variant.price) !== Number(item.harga)) {
-                variantUpdates.price = item.harga
-                hasChanges = true
-              }
-              if (Number(variant.stock) !== Number(item.stok)) {
-                variantUpdates.stock = item.stok
-                hasChanges = true
-              }
-              if (cleanSku && cleanSku !== variant.sku) {
-                variantUpdates.sku = cleanSku
-                hasChanges = true
-              }
-              if (
-                item.namaVariasi &&
-                item.namaVariasi.trim() !== (variant.name || '').trim()
-              ) {
-                variantUpdates.name = item.namaVariasi.trim()
-                hasChanges = true
-              }
-
-              if (
-                item.description &&
-                item.description.trim() !== '' &&
-                item.description.trim() !==
-                  (variant.product.description || '').trim()
-              ) {
-                await tx.product.update({
-                  where: { id: variant.productId },
-                  data: { description: item.description.trim() },
-                })
-                hasChanges = true
-              }
-
-              if (hasChanges) {
-                await tx.productVariant.update({
-                  where: { id: variant.id },
-                  data: variantUpdates,
-                })
-                updatedCount++
-              } else {
-                unchangedCount++
-              }
-
-              touchedProductIds.add(variant.productId)
-              touchedVariantIds.add(variant.id)
-              processed = true
+              skippedCount++
+              continue
             }
-          }
 
-          // ─── 2. Match by Existing SKU ───────────────────────────────
-          if (!processed && cleanSku) {
+            // Cari produk / varian dengan nomor SKU yang sesuai
             const variant = await tx.productVariant.findFirst({
               where: {
-                sku: cleanSku,
+                sku: { equals: targetSku, mode: 'insensitive' },
                 ...(storeScope !== 'ALL'
                   ? { product: { storeId: storeScope } }
                   : {}),
@@ -835,144 +791,35 @@ export async function POST(request: Request) {
               include: { product: true },
             })
 
-            if (variant) {
-              let hasChanges = false
-              const variantUpdates: any = {}
+            const cleanKodeProduk =
+              item.kodeProduk && !isAutoOrEmpty(item.kodeProduk)
+                ? item.kodeProduk.trim()
+                : null
 
-              if (Number(variant.price) !== Number(item.harga)) {
-                variantUpdates.price = item.harga
-                hasChanges = true
-              }
-              if (Number(variant.stock) !== Number(item.stok)) {
-                variantUpdates.stock = item.stok
-                hasChanges = true
-              }
-              if (
-                item.namaVariasi &&
-                item.namaVariasi.trim() !== (variant.name || '').trim()
-              ) {
-                variantUpdates.name = item.namaVariasi.trim()
-                hasChanges = true
-              }
-
-              if (
-                item.description &&
-                item.description.trim() !== '' &&
-                item.description.trim() !==
-                  (variant.product.description || '').trim()
-              ) {
-                await tx.product.update({
-                  where: { id: variant.productId },
-                  data: { description: item.description.trim() },
-                })
-                hasChanges = true
-              }
-
-              if (hasChanges) {
-                await tx.productVariant.update({
-                  where: { id: variant.id },
-                  data: variantUpdates,
-                })
-                updatedCount++
-              } else {
-                unchangedCount++
-              }
-
-              touchedProductIds.add(variant.productId)
-              touchedVariantIds.add(variant.id)
-              processed = true
-            }
-          }
-
-          // ─── 3. Match Product by Kode Produk / Shopee Item ID / Name ─
-          if (!processed) {
-            let product: any = null
-
-            // Check cache by Kode Produk or Name or Model
-            if (cleanKodeProduk && cachedProducts.has(cleanKodeProduk)) {
-              product = cachedProducts.get(cleanKodeProduk)
-            } else if (
-              item.namaProduk &&
-              cachedProducts.has(item.namaProduk.toLowerCase().trim())
-            ) {
-              product = cachedProducts.get(item.namaProduk.toLowerCase().trim())
-            } else if (
-              item.skuInduk &&
-              cachedProducts.has(item.skuInduk.toLowerCase().trim())
-            ) {
-              product = cachedProducts.get(item.skuInduk.toLowerCase().trim())
-            }
-
-            // If not in cache, query database by ID or Shopee Item ID
-            if (!product && cleanKodeProduk) {
-              product = await tx.product.findFirst({
+            const product =
+              variant?.product ||
+              (await tx.product.findFirst({
                 where: {
                   OR: [
-                    { id: cleanKodeProduk },
-                    {
-                      specs: {
-                        path: ['shopeeItemId'],
-                        equals: cleanKodeProduk,
-                      },
-                    },
-                    {
-                      specs: {
-                        path: ['shopeeItemId'],
-                        string_contains: cleanKodeProduk,
-                      },
-                    },
+                    { model: { equals: targetSku, mode: 'insensitive' } },
+                    ...(cleanKodeProduk
+                      ? [
+                          { id: cleanKodeProduk },
+                          {
+                            specs: {
+                              path: ['shopeeItemId'],
+                              equals: cleanKodeProduk,
+                            },
+                          },
+                        ]
+                      : []),
                   ],
                   ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
                 },
-                include: { variants: true },
-              })
-            }
-
-            // If still not found, query database by Name
-            if (!product && item.namaProduk) {
-              product = await tx.product.findFirst({
-                where: {
-                  name: {
-                    equals: item.namaProduk.trim(),
-                    mode: 'insensitive',
-                  },
-                  ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
-                },
-                include: { variants: true },
-              })
-
-              // Fallback: search by trimmed name contains if exact match not found
-              if (!product && item.namaProduk.trim().length >= 8) {
-                product = await tx.product.findFirst({
-                  where: {
-                    name: {
-                      contains: item.namaProduk.trim(),
-                      mode: 'insensitive',
-                    },
-                    ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
-                  },
-                  include: { variants: true },
-                })
-              }
-            }
-
-            // If still not found and skuInduk is provided, query by model
-            if (!product && item.skuInduk) {
-              product = await tx.product.findFirst({
-                where: {
-                  model: {
-                    equals: item.skuInduk.trim(),
-                    mode: 'insensitive',
-                  },
-                  ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
-                },
-                include: { variants: true },
-              })
-            }
+              }))
 
             if (product) {
-              // Update product-level fields: description, name, model
-              let productHasChanges = false
+              let hasChanges = false
               const productUpdates: any = {}
               if (
                 item.description &&
@@ -980,7 +827,7 @@ export async function POST(request: Request) {
                 item.description.trim() !== (product.description || '').trim()
               ) {
                 productUpdates.description = item.description.trim()
-                productHasChanges = true
+                hasChanges = true
               }
               if (
                 item.namaProduk &&
@@ -988,109 +835,471 @@ export async function POST(request: Request) {
                 item.namaProduk.trim() !== (product.name || '').trim()
               ) {
                 productUpdates.name = item.namaProduk.trim()
-                productHasChanges = true
-              }
-              if (
-                item.skuInduk &&
-                item.skuInduk.trim() !== '' &&
-                item.skuInduk.trim() !== (product.model || '').trim()
-              ) {
-                productUpdates.model = item.skuInduk.trim()
-                productHasChanges = true
+                hasChanges = true
               }
 
-              if (productHasChanges) {
+              if (hasChanges) {
                 await tx.product.update({
                   where: { id: product.id },
                   data: productUpdates,
                 })
-                product = { ...product, ...productUpdates }
                 updatedCount++
+              } else {
+                unchangedCount++
               }
+              touchedProductIds.add(product.id)
+            } else {
+              // Jika SKU tidak ditemukan di katalog produk, dilewatkan
+              skippedCount++
+            }
+          }
+        } else {
+          // ─── RULES 1 & 2: KATALOG PRODUK / SALES_INFO ───
+          for (const item of rowsToProcess) {
+            let processed = false
 
-              // Product exists: Search for variant inside this product
-              const variants: any[] = product.variants || []
-              let matchedVariant: any = null
+            const cleanSku =
+              item.sku && !item.sku.startsWith('SKU-AUTO-')
+                ? item.sku.trim()
+                : null
+            const cleanKodeVariasi =
+              item.kodeVariasi && !isAutoOrEmpty(item.kodeVariasi)
+                ? item.kodeVariasi.trim()
+                : null
+            const cleanKodeProduk =
+              item.kodeProduk && !isAutoOrEmpty(item.kodeProduk)
+                ? item.kodeProduk.trim()
+                : null
 
-              if (cleanSku) {
-                matchedVariant = variants.find((v) => v.sku === cleanSku)
-              }
-              if (!matchedVariant && item.namaVariasi) {
-                matchedVariant = variants.find(
-                  (v) =>
-                    (v.name || '').toLowerCase().trim() ===
-                    item.namaVariasi.toLowerCase().trim()
-                )
-              }
+            // ─── 1. Match by Existing Variant ID ────────────────────────
+            if (cleanKodeVariasi) {
+              const variant = await tx.productVariant.findUnique({
+                where: { id: cleanKodeVariasi },
+                include: { product: true },
+              })
+
               if (
-                !matchedVariant &&
-                variants.length === 1 &&
-                (!item.namaVariasi || item.namaVariasi === 'Standar')
+                variant &&
+                (storeScope === 'ALL' || variant.product.storeId === storeScope)
               ) {
-                matchedVariant = variants[0]
-              }
-
-              if (matchedVariant) {
-                // Existing variant found -> Update price / stock / sku
                 let hasChanges = false
                 const variantUpdates: any = {}
 
-                if (
-                  item.harga !== null &&
-                  item.harga !== undefined &&
-                  Number(matchedVariant.price) !== Number(item.harga)
-                ) {
+                if (Number(variant.price) !== Number(item.harga)) {
                   variantUpdates.price = item.harga
                   hasChanges = true
                 }
-                if (
-                  item.stok !== null &&
-                  item.stok !== undefined &&
-                  Number(matchedVariant.stock) !== Number(item.stok)
-                ) {
+                if (Number(variant.stock) !== Number(item.stok)) {
                   variantUpdates.stock = item.stok
                   hasChanges = true
                 }
-                if (cleanSku && cleanSku !== matchedVariant.sku) {
+                if (cleanSku && cleanSku !== variant.sku) {
                   variantUpdates.sku = cleanSku
+                  hasChanges = true
+                }
+                if (
+                  item.namaVariasi &&
+                  item.namaVariasi.trim() !== (variant.name || '').trim()
+                ) {
+                  variantUpdates.name = item.namaVariasi.trim()
+                  hasChanges = true
+                }
+
+                if (
+                  item.description &&
+                  item.description.trim() !== '' &&
+                  item.description.trim() !==
+                    (variant.product.description || '').trim()
+                ) {
+                  await tx.product.update({
+                    where: { id: variant.productId },
+                    data: { description: item.description.trim() },
+                  })
                   hasChanges = true
                 }
 
                 if (hasChanges) {
                   await tx.productVariant.update({
-                    where: { id: matchedVariant.id },
+                    where: { id: variant.id },
                     data: variantUpdates,
                   })
-                  if (!productHasChanges) updatedCount++
-                } else if (!productHasChanges) {
+                  updatedCount++
+                } else {
                   unchangedCount++
                 }
 
-                touchedProductIds.add(product.id)
-                touchedVariantIds.add(matchedVariant.id)
+                touchedProductIds.add(variant.productId)
+                touchedVariantIds.add(variant.id)
                 processed = true
-              } else if (isShopeeBasicInfo) {
-                // Template basic_info tidak berisi varian, tandai produk berhasil diproses
-                touchedProductIds.add(product.id)
+              }
+            }
+
+            // ─── 2. Match by Existing SKU ───────────────────────────────
+            if (!processed && cleanSku) {
+              const variant = await tx.productVariant.findFirst({
+                where: {
+                  sku: cleanSku,
+                  ...(storeScope !== 'ALL'
+                    ? { product: { storeId: storeScope } }
+                    : {}),
+                },
+                include: { product: true },
+              })
+
+              if (variant) {
+                let hasChanges = false
+                const variantUpdates: any = {}
+
+                if (Number(variant.price) !== Number(item.harga)) {
+                  variantUpdates.price = item.harga
+                  hasChanges = true
+                }
+                if (Number(variant.stock) !== Number(item.stok)) {
+                  variantUpdates.stock = item.stok
+                  hasChanges = true
+                }
+                if (
+                  item.namaVariasi &&
+                  item.namaVariasi.trim() !== (variant.name || '').trim()
+                ) {
+                  variantUpdates.name = item.namaVariasi.trim()
+                  hasChanges = true
+                }
+
+                if (
+                  item.description &&
+                  item.description.trim() !== '' &&
+                  item.description.trim() !==
+                    (variant.product.description || '').trim()
+                ) {
+                  await tx.product.update({
+                    where: { id: variant.productId },
+                    data: { description: item.description.trim() },
+                  })
+                  hasChanges = true
+                }
+
+                if (hasChanges) {
+                  await tx.productVariant.update({
+                    where: { id: variant.id },
+                    data: variantUpdates,
+                  })
+                  updatedCount++
+                } else {
+                  unchangedCount++
+                }
+
+                touchedProductIds.add(variant.productId)
+                touchedVariantIds.add(variant.id)
                 processed = true
+              }
+            }
+
+            // ─── 3. Match Product by Kode Produk / Shopee Item ID / Name ─
+            if (!processed) {
+              let product: any = null
+
+              // Check cache by Kode Produk or Name or Model
+              if (cleanKodeProduk && cachedProducts.has(cleanKodeProduk)) {
+                product = cachedProducts.get(cleanKodeProduk)
+              } else if (
+                item.namaProduk &&
+                cachedProducts.has(item.namaProduk.toLowerCase().trim())
+              ) {
+                product = cachedProducts.get(
+                  item.namaProduk.toLowerCase().trim()
+                )
+              } else if (
+                item.skuInduk &&
+                cachedProducts.has(item.skuInduk.toLowerCase().trim())
+              ) {
+                product = cachedProducts.get(item.skuInduk.toLowerCase().trim())
+              }
+
+              // If not in cache, query database by ID or Shopee Item ID
+              if (!product && cleanKodeProduk) {
+                product = await tx.product.findFirst({
+                  where: {
+                    OR: [
+                      { id: cleanKodeProduk },
+                      {
+                        specs: {
+                          path: ['shopeeItemId'],
+                          equals: cleanKodeProduk,
+                        },
+                      },
+                      {
+                        specs: {
+                          path: ['shopeeItemId'],
+                          string_contains: cleanKodeProduk,
+                        },
+                      },
+                    ],
+                    ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+                  },
+                  include: { variants: true },
+                })
+              }
+
+              // If still not found, query database by Name
+              if (!product && item.namaProduk) {
+                product = await tx.product.findFirst({
+                  where: {
+                    name: {
+                      equals: item.namaProduk.trim(),
+                      mode: 'insensitive',
+                    },
+                    ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+                  },
+                  include: { variants: true },
+                })
+
+                // Fallback: search by trimmed name contains if exact match not found
+                if (!product && item.namaProduk.trim().length >= 8) {
+                  product = await tx.product.findFirst({
+                    where: {
+                      name: {
+                        contains: item.namaProduk.trim(),
+                        mode: 'insensitive',
+                      },
+                      ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+                    },
+                    include: { variants: true },
+                  })
+                }
+              }
+
+              // If still not found and skuInduk is provided, query by model
+              if (!product && item.skuInduk) {
+                product = await tx.product.findFirst({
+                  where: {
+                    model: {
+                      equals: item.skuInduk.trim(),
+                      mode: 'insensitive',
+                    },
+                    ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+                  },
+                  include: { variants: true },
+                })
+              }
+
+              if (product) {
+                // Update product-level fields: description, name, model
+                let productHasChanges = false
+                const productUpdates: any = {}
+                if (
+                  item.description &&
+                  item.description.trim() !== '' &&
+                  item.description.trim() !== (product.description || '').trim()
+                ) {
+                  productUpdates.description = item.description.trim()
+                  productHasChanges = true
+                }
+                if (
+                  item.namaProduk &&
+                  item.namaProduk.trim() !== '' &&
+                  item.namaProduk.trim() !== (product.name || '').trim()
+                ) {
+                  productUpdates.name = item.namaProduk.trim()
+                  productHasChanges = true
+                }
+                if (
+                  item.skuInduk &&
+                  item.skuInduk.trim() !== '' &&
+                  item.skuInduk.trim() !== (product.model || '').trim()
+                ) {
+                  productUpdates.model = item.skuInduk.trim()
+                  productHasChanges = true
+                }
+
+                if (productHasChanges) {
+                  await tx.product.update({
+                    where: { id: product.id },
+                    data: productUpdates,
+                  })
+                  product = { ...product, ...productUpdates }
+                  updatedCount++
+                }
+
+                // Product exists: Search for variant inside this product
+                const variants: any[] = product.variants || []
+                let matchedVariant: any = null
+
+                if (cleanSku) {
+                  matchedVariant = variants.find((v) => v.sku === cleanSku)
+                }
+                if (!matchedVariant && item.namaVariasi) {
+                  matchedVariant = variants.find(
+                    (v) =>
+                      (v.name || '').toLowerCase().trim() ===
+                      item.namaVariasi.toLowerCase().trim()
+                  )
+                }
+                if (
+                  !matchedVariant &&
+                  variants.length === 1 &&
+                  (!item.namaVariasi || item.namaVariasi === 'Standar')
+                ) {
+                  matchedVariant = variants[0]
+                }
+
+                if (matchedVariant) {
+                  // Existing variant found -> Update price / stock / sku
+                  let hasChanges = false
+                  const variantUpdates: any = {}
+
+                  if (
+                    item.harga !== null &&
+                    item.harga !== undefined &&
+                    Number(matchedVariant.price) !== Number(item.harga)
+                  ) {
+                    variantUpdates.price = item.harga
+                    hasChanges = true
+                  }
+                  if (
+                    item.stok !== null &&
+                    item.stok !== undefined &&
+                    Number(matchedVariant.stock) !== Number(item.stok)
+                  ) {
+                    variantUpdates.stock = item.stok
+                    hasChanges = true
+                  }
+                  if (cleanSku && cleanSku !== matchedVariant.sku) {
+                    variantUpdates.sku = cleanSku
+                    hasChanges = true
+                  }
+
+                  if (hasChanges) {
+                    await tx.productVariant.update({
+                      where: { id: matchedVariant.id },
+                      data: variantUpdates,
+                    })
+                    if (!productHasChanges) updatedCount++
+                  } else if (!productHasChanges) {
+                    unchangedCount++
+                  }
+
+                  touchedProductIds.add(product.id)
+                  touchedVariantIds.add(matchedVariant.id)
+                  processed = true
+                } else if (isShopeeBasicInfo) {
+                  // Template basic_info tidak berisi varian, tandai produk berhasil diproses
+                  touchedProductIds.add(product.id)
+                  processed = true
+                } else {
+                  // Variant not found in existing product -> Create new variant
+                  // Auto-generate smart structured SKU conforming to template
+                  const finalSku =
+                    cleanSku ||
+                    generateSmartSku(
+                      product.name,
+                      item.namaVariasi,
+                      item.skuInduk || product.model
+                    )
+
+                  // Auto-generate Shopee 12-digit variation ID if not provided
+                  const newVarCode =
+                    cleanKodeVariasi || generateShopeeVariationId()
+
+                  const newVariant = await tx.productVariant.create({
+                    data: {
+                      productId: product.id,
+                      name: item.namaVariasi || 'Standar',
+                      ram: item.ram || null,
+                      storage: item.storage || null,
+                      color: item.color || null,
+                      price: item.harga ?? 0,
+                      stock: item.stok,
+                      sku: finalSku,
+                    },
+                  })
+
+                  // Save variation code in specs.shopeeVariationMap
+                  const prodSpecs = (product.specs as any) || {}
+                  prodSpecs.shopeeVariationMap = {
+                    ...(prodSpecs.shopeeVariationMap || {}),
+                    [newVariant.id]: newVarCode,
+                    [newVariant.name]: newVarCode,
+                  }
+                  await tx.product.update({
+                    where: { id: product.id },
+                    data: { specs: prodSpecs },
+                  })
+
+                  variants.push(newVariant)
+                  touchedProductIds.add(product.id)
+                  touchedVariantIds.add(newVariant.id)
+                  createdCount++
+                  processed = true
+                }
               } else {
-                // Variant not found in existing product -> Create new variant
+                // ─── 4. Product does not exist in catalog ───
+                // Rule 1: Jika tidak dicentang, semua produk yang ada ditambah dengan update mass yang ada
+                // Rule 2: Jika dicentang, semua katalog dihapus dan digantikan dengan yang ada di update mass
+                if (
+                  item.harga === null ||
+                  item.harga === undefined ||
+                  item.harga <= 0
+                ) {
+                  skippedCount++
+                  processed = true
+                  continue
+                }
+
+                const brand = item.brand || extractBrand(item.namaProduk)
+                const model =
+                  item.skuInduk || extractModel(item.namaProduk, item.model)
+                const condition =
+                  item.condition ||
+                  extractCondition(item.namaProduk, item.namaVariasi)
+                const storeId = findStoreId(item.storeName || '')
+
+                // Auto-generate authentic 11-digit Shopee Item ID if blank
+                const finalKodeProduk =
+                  cleanKodeProduk || generateShopeeItemId()
+                // Auto-generate authentic 12-digit Shopee Variation ID if blank
+                const finalKodeVariasi =
+                  cleanKodeVariasi || generateShopeeVariationId()
+
+                const specsObj: any = {
+                  shopeeItemId: finalKodeProduk,
+                  shopeeVariationMap: {},
+                  Brand: brand,
+                  Model: model,
+                }
+                if (item.chipset) specsObj.Chipset = item.chipset
+                if (item.layar) specsObj.Layar = item.layar
+                if (item.kamera) specsObj.Kamera = item.kamera
+                if (item.baterai) specsObj.Baterai = item.baterai
+
+                const newProduct = await tx.product.create({
+                  data: {
+                    name: item.namaProduk || 'Gadget Baru',
+                    model: model,
+                    brand: brand,
+                    category: 'Smartphone',
+                    condition: condition,
+                    price: item.harga ?? 0,
+                    stock: item.stok,
+                    storeId: storeId,
+                    description:
+                      item.description ||
+                      `Unit ${item.namaProduk} resmi teruji fungsional 100%, garansi toko 30 hari tukar unit terjamin.`,
+                    specs: specsObj,
+                    images: [
+                      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
+                    ],
+                  },
+                })
+
                 // Auto-generate smart structured SKU conforming to template
                 const finalSku =
                   cleanSku ||
-                  generateSmartSku(
-                    product.name,
-                    item.namaVariasi,
-                    item.skuInduk || product.model
-                  )
-
-                // Auto-generate Shopee 12-digit variation ID if not provided
-                const newVarCode =
-                  cleanKodeVariasi || generateShopeeVariationId()
+                  generateSmartSku(newProduct.name, item.namaVariasi, model)
 
                 const newVariant = await tx.productVariant.create({
                   data: {
-                    productId: product.id,
+                    productId: newProduct.id,
                     name: item.namaVariasi || 'Standar',
                     ram: item.ram || null,
                     storage: item.storage || null,
@@ -1101,145 +1310,49 @@ export async function POST(request: Request) {
                   },
                 })
 
-                // Save variation code in specs.shopeeVariationMap
-                const prodSpecs = (product.specs as any) || {}
-                prodSpecs.shopeeVariationMap = {
-                  ...(prodSpecs.shopeeVariationMap || {}),
-                  [newVariant.id]: newVarCode,
-                  [newVariant.name]: newVarCode,
-                }
+                // Map variation code into specs.shopeeVariationMap
+                specsObj.shopeeVariationMap[newVariant.id] = finalKodeVariasi
+                specsObj.shopeeVariationMap[newVariant.name] = finalKodeVariasi
                 await tx.product.update({
-                  where: { id: product.id },
-                  data: { specs: prodSpecs },
+                  where: { id: newProduct.id },
+                  data: { specs: specsObj },
                 })
 
-                variants.push(newVariant)
-                touchedProductIds.add(product.id)
+                // Cache product to link subsequent rows of the same product
+                const productEntry = {
+                  id: newProduct.id,
+                  name: newProduct.name,
+                  model: newProduct.model,
+                  specs: specsObj,
+                  variants: [newVariant],
+                }
+
+                cachedProducts.set(finalKodeProduk, productEntry)
+                if (item.namaProduk) {
+                  cachedProducts.set(
+                    item.namaProduk.toLowerCase().trim(),
+                    productEntry
+                  )
+                }
+                if (model) {
+                  cachedProducts.set(model.toLowerCase().trim(), productEntry)
+                }
+
+                touchedProductIds.add(newProduct.id)
                 touchedVariantIds.add(newVariant.id)
                 createdCount++
                 processed = true
               }
-            } else {
-              // ─── 4. Product does not exist in catalog
-              // User requirement: Jika tidak ada barangnya di katalog, JANGAN ditambahkan barang baru.
-              // Hanya update deskripsi/data jika barangnya sudah ada saja di katalog.
-              if (
-                isShopeeBasicInfo ||
-                isShopeeFormat ||
-                item.harga === null ||
-                item.harga === undefined ||
-                item.harga <= 0
-              ) {
-                skippedCount++
-                processed = true
-                continue
-              }
-
-              const brand = item.brand || extractBrand(item.namaProduk)
-              const model =
-                item.skuInduk || extractModel(item.namaProduk, item.model)
-              const condition =
-                item.condition ||
-                extractCondition(item.namaProduk, item.namaVariasi)
-              const storeId = findStoreId(item.storeName || '')
-
-              // Auto-generate authentic 11-digit Shopee Item ID if blank
-              const finalKodeProduk = cleanKodeProduk || generateShopeeItemId()
-              // Auto-generate authentic 12-digit Shopee Variation ID if blank
-              const finalKodeVariasi =
-                cleanKodeVariasi || generateShopeeVariationId()
-
-              const specsObj: any = {
-                shopeeItemId: finalKodeProduk,
-                shopeeVariationMap: {},
-                Brand: brand,
-                Model: model,
-              }
-              if (item.chipset) specsObj.Chipset = item.chipset
-              if (item.layar) specsObj.Layar = item.layar
-              if (item.kamera) specsObj.Kamera = item.kamera
-              if (item.baterai) specsObj.Baterai = item.baterai
-
-              const newProduct = await tx.product.create({
-                data: {
-                  name: item.namaProduk || 'Gadget Baru',
-                  model: model,
-                  brand: brand,
-                  category: 'Smartphone',
-                  condition: condition,
-                  price: item.harga ?? 0,
-                  stock: item.stok,
-                  storeId: storeId,
-                  description:
-                    item.description ||
-                    `Unit ${item.namaProduk} resmi teruji fungsional 100%, garansi toko 30 hari tukar unit terjamin.`,
-                  specs: specsObj,
-                  images: [
-                    'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
-                  ],
-                },
-              })
-
-              // Auto-generate smart structured SKU conforming to template
-              const finalSku =
-                cleanSku ||
-                generateSmartSku(newProduct.name, item.namaVariasi, model)
-
-              const newVariant = await tx.productVariant.create({
-                data: {
-                  productId: newProduct.id,
-                  name: item.namaVariasi || 'Standar',
-                  ram: item.ram || null,
-                  storage: item.storage || null,
-                  color: item.color || null,
-                  price: item.harga ?? 0,
-                  stock: item.stok,
-                  sku: finalSku,
-                },
-              })
-
-              // Map variation code into specs.shopeeVariationMap
-              specsObj.shopeeVariationMap[newVariant.id] = finalKodeVariasi
-              specsObj.shopeeVariationMap[newVariant.name] = finalKodeVariasi
-              await tx.product.update({
-                where: { id: newProduct.id },
-                data: { specs: specsObj },
-              })
-
-              // Cache product to link subsequent rows of the same product
-              const productEntry = {
-                id: newProduct.id,
-                name: newProduct.name,
-                model: newProduct.model,
-                specs: specsObj,
-                variants: [newVariant],
-              }
-
-              cachedProducts.set(finalKodeProduk, productEntry)
-              if (item.namaProduk) {
-                cachedProducts.set(
-                  item.namaProduk.toLowerCase().trim(),
-                  productEntry
-                )
-              }
-              if (model) {
-                cachedProducts.set(model.toLowerCase().trim(), productEntry)
-              }
-
-              touchedProductIds.add(newProduct.id)
-              touchedVariantIds.add(newVariant.id)
-              createdCount++
-              processed = true
             }
-          }
 
-          if (!processed) {
-            skippedCount++
-            errors.push({
-              row: item.rowNumber,
-              sku: item.sku || item.namaProduk || item.kodeProduk || '-',
-              reason: 'Gagal memproses baris produk ke database.',
-            })
+            if (!processed) {
+              skippedCount++
+              errors.push({
+                row: item.rowNumber,
+                sku: item.sku || item.namaProduk || item.kodeProduk || '-',
+                reason: 'Gagal memproses baris produk ke database.',
+              })
+            }
           }
         }
 
@@ -1315,6 +1428,16 @@ export async function POST(request: Request) {
               }
             }
           }
+
+          // Bersihkan etalase kosong tanpa produk
+          try {
+            await tx.etalase.deleteMany({
+              where: {
+                items: { none: {} },
+                ...(storeScope !== 'ALL' ? { storeId: storeScope } : {}),
+              },
+            })
+          } catch {}
         }
 
         // ─── 6. Synchronize Total Stock & Lowest Price for Touched Products ────
