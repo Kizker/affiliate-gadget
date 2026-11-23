@@ -15,6 +15,66 @@ export async function GET() {
       console.error('[Orders API] Error running batchCancelExpiredOrders:', err)
     })
 
+    // Rekonsiliasi otomatis live status Midtrans untuk pesanan pending pengguna ini
+    try {
+      const pendingOrdersWithPayment = await prisma.order.findMany({
+        where: {
+          userId: session.user.id,
+          status: 'PENDING_PAYMENT',
+          payment: { isNot: null },
+        },
+        include: { payment: true },
+        take: 10,
+      })
+
+      if (pendingOrdersWithPayment.length > 0) {
+        const { checkMidtransTransactionStatus } =
+          await import('@/lib/midtrans')
+        for (const ord of pendingOrdersWithPayment) {
+          const parsedId = ord.payment?.notes?.match(
+            /"midtransOrderId"\s*:\s*"([^"]+)"/
+          )?.[1]
+          if (parsedId) {
+            try {
+              const tx = await checkMidtransTransactionStatus(parsedId)
+              const isPaid =
+                tx?.transaction_status === 'settlement' ||
+                (tx?.transaction_status === 'capture' &&
+                  tx?.fraud_status === 'accept')
+              if (isPaid) {
+                const siblings = await prisma.order.findMany({
+                  where: {
+                    payment: { notes: { contains: parsedId } },
+                    status: 'PENDING_PAYMENT',
+                  },
+                  include: { payment: true },
+                })
+                const listToUpdate = siblings.length > 0 ? siblings : [ord]
+                await prisma.$transaction(async (dbTx) => {
+                  for (const s of listToUpdate) {
+                    await dbTx.order.update({
+                      where: { id: s.id },
+                      data: { status: 'PAID', updatedAt: new Date() },
+                    })
+                    if (s.payment) {
+                      await dbTx.payment.update({
+                        where: { id: s.payment.id },
+                        data: {
+                          status: 'VERIFIED',
+                          notes: `Midtrans Settlement - TxID: ${tx.transaction_id}`,
+                          updatedAt: new Date(),
+                        },
+                      })
+                    }
+                  }
+                })
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+
     // Get all orders for this user with reviews included (fixes N+1 problem)
     const orders = await prisma.order.findMany({
       where: { userId: session.user.id },

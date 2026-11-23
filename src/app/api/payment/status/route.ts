@@ -16,18 +16,35 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams
     const orderNumber = searchParams.get('orderNumber')
+    const orderId = searchParams.get('orderId')
     const midtransOrderId = searchParams.get('midtransOrderId')
 
-    if (!orderNumber) {
+    if (!orderNumber && !orderId && !midtransOrderId) {
       return NextResponse.json(
-        { error: 'orderNumber wajib diisi' },
+        { error: 'orderNumber atau midtransOrderId wajib diisi' },
         { status: 400 }
       )
     }
 
+    const isSyntheticOrderNumber =
+      !orderNumber ||
+      orderNumber.includes('Pesanan Gabungan') ||
+      orderNumber.includes('Pesanan')
+
     const order = await prisma.order.findFirst({
       where: {
-        OR: [{ orderNumber }, { id: orderNumber }],
+        OR: [
+          ...(orderId ? [{ id: orderId }] : []),
+          ...(!isSyntheticOrderNumber
+            ? [{ orderNumber: orderNumber! }, { id: orderNumber! }]
+            : []),
+          ...(midtransOrderId
+            ? [
+                { payment: { notes: { contains: midtransOrderId } } },
+                { notes: { contains: midtransOrderId } },
+              ]
+            : []),
+        ],
       },
       include: { payment: true },
     })
@@ -83,9 +100,12 @@ export async function GET(request: NextRequest) {
 
     // Query live transaction status from Midtrans Core API
     let midtransStatus: any = null
-    const parsedMidtransId = order.payment?.notes?.match(
-      /Midtrans Transaction ID:\s*([^\s]+)/
+    const parsedJsonMidtransId = order.payment?.notes?.match(
+      /"midtransOrderId"\s*:\s*"([^"]+)"/
     )?.[1]
+    const parsedMidtransId =
+      parsedJsonMidtransId ||
+      order.payment?.notes?.match(/Midtrans Transaction ID:\s*([^\s]+)/)?.[1]
     const idToCheck = midtransOrderId || parsedMidtransId || order.orderNumber
 
     try {

@@ -156,6 +156,19 @@ function MultipleOrderConfirmationContent() {
     }
   }, [status, router, fetchOrders])
 
+  // Polling otomatis untuk mendeteksi pembayaran lunas dari Midtrans saat customer selesai bayar di tab simulator/bank
+  useEffect(() => {
+    if (orders.length === 0) return
+    const hasPending = orders.some((o) => o.status === 'PENDING_PAYMENT')
+    if (!hasPending) return
+
+    const timer = setInterval(() => {
+      fetchOrders()
+    }, 3500)
+
+    return () => clearInterval(timer)
+  }, [orders, fetchOrders])
+
   const autoPayHandledRef = useRef(false)
 
   // Automatically open CustomPaymentModal if autoPay=1 is in URL (only once on initial entry)
@@ -631,7 +644,9 @@ function MultipleOrderConfirmationContent() {
               <span>Belanja Gadget Lainnya</span>
             </Link>
 
-            {currentOrder.status === 'PENDING_PAYMENT' &&
+            {/* Tombol Bayar Sekarang di bawah HANYA muncul jika pesanan tunggal (bukan multi-pending) */}
+            {!isMultiPending &&
+            currentOrder.status === 'PENDING_PAYMENT' &&
             currentOrder.payment?.method === 'MIDTRANS' ? (
               <button
                 type="button"

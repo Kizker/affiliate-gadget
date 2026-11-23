@@ -152,6 +152,56 @@ export async function GET(
           }
         )
       }
+
+      // Live reconciliation: Jika sudah ada tagihan Midtrans, cek apakah sudah dibayar di Midtrans
+      const parsedMidtransId = order.payment?.notes?.match(
+        /"midtransOrderId"\s*:\s*"([^"]+)"/
+      )?.[1]
+      if (parsedMidtransId) {
+        try {
+          const { checkMidtransTransactionStatus } =
+            await import('@/lib/midtrans')
+          const midtransStatus =
+            await checkMidtransTransactionStatus(parsedMidtransId)
+          const isSettled =
+            midtransStatus?.transaction_status === 'settlement' ||
+            (midtransStatus?.transaction_status === 'capture' &&
+              midtransStatus?.fraud_status === 'accept')
+
+          if (isSettled) {
+            const related = await prisma.order.findMany({
+              where: {
+                payment: { notes: { contains: parsedMidtransId } },
+                status: 'PENDING_PAYMENT',
+              },
+              include: { payment: true },
+            })
+            const toUpdate = related.length > 0 ? related : [order]
+            await prisma.$transaction(async (tx) => {
+              for (const ord of toUpdate) {
+                await tx.order.update({
+                  where: { id: ord.id },
+                  data: { status: 'PAID', updatedAt: new Date() },
+                })
+                if (ord.payment) {
+                  await tx.payment.update({
+                    where: { id: ord.payment.id },
+                    data: {
+                      status: 'VERIFIED',
+                      notes: `Midtrans Core API Settlement - TxID: ${midtransStatus.transaction_id}`,
+                      updatedAt: new Date(),
+                    },
+                  })
+                }
+              }
+            })
+            order.status = 'PAID'
+            if (order.payment) {
+              order.payment.status = 'VERIFIED'
+            }
+          }
+        } catch (_) {}
+      }
     }
 
     // No cache for order data to ensure price updates are reflected immediately
