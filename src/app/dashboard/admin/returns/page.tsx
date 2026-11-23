@@ -21,10 +21,12 @@ import {
   Play,
   ShieldCheck,
   ChevronDown,
+  Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePageGuard } from '@/hooks/use-page-guard'
 import { CheckResiModal } from '@/components/shipping/check-resi-modal'
+import { ThermalShippingLabel } from '@/components/shipping/thermal-shipping-label'
 import AfterSalesReturnsPage from '@/app/dashboard/after-sales/returns/page'
 
 // Backward compatibility references for legacy test runners and Biteship logistics
@@ -78,6 +80,7 @@ interface ReturnItem {
     orderNumber: string
     total: number
     status: string
+    trackingNumber?: string | null
     store?: { id: string; name: string; city: string; address?: string } | null
     items?: Array<{
       id?: string
@@ -130,6 +133,31 @@ export default function SuperAdminReturnsPage() {
   const [activeImage, setActiveImage] = useState<string | null>(null)
   const [resiModalOpen, setResiModalOpen] = useState(false)
   const [activeTrackingQuery, setActiveTrackingQuery] = useState('')
+  const [activeThermalLabel, setActiveThermalLabel] = useState<any>(null)
+  const [loadingThermalLabel, setLoadingThermalLabel] = useState(false)
+
+  const handleViewThermalLabel = async (item: ReturnItem) => {
+    const awb = item.returnTrackingNumber || item.order.trackingNumber
+    if (!awb) return
+    try {
+      setLoadingThermalLabel(true)
+      const res = await fetch(
+        `/api/shipping/tracking/awb-lookup?awb=${encodeURIComponent(awb)}`
+      )
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data) {
+          setActiveThermalLabel(json.data)
+          return
+        }
+      }
+      toast.info('Menyiapkan label pengiriman...')
+    } catch {
+      toast.error('Gagal memuat label pengiriman')
+    } finally {
+      setLoadingThermalLabel(false)
+    }
+  }
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {}
   )
@@ -706,7 +734,7 @@ export default function SuperAdminReturnsPage() {
                         <span>
                           {isRecRejected
                             ? 'Kembalikan ke After Sales'
-                            : 'Tolak &amp; Kembalikan'}
+                            : 'Tolak dan Kembalikan'}
                         </span>
                       </button>
                       <button
@@ -734,6 +762,48 @@ export default function SuperAdminReturnsPage() {
                       </button>
                     </div>
                   )}
+
+                  {!isPendingDecision && item.status === 'COMPLETED' && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        {item.type === 'REPLACEMENT'
+                          ? 'Resi Pengganti Terbit'
+                          : 'Refund Selesai'}
+                      </span>
+                      {(item.returnTrackingNumber ||
+                        item.order.trackingNumber) && (
+                        <>
+                          {item.type === 'REPLACEMENT' && (
+                            <button
+                              type="button"
+                              onClick={() => handleViewThermalLabel(item)}
+                              disabled={loadingThermalLabel}
+                              className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                            >
+                              <Printer className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                              <span>Cetak Air Waybill</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTrackingQuery(
+                                item.returnTrackingNumber ||
+                                  item.order.trackingNumber ||
+                                  ''
+                              )
+                              setResiModalOpen(true)
+                            }}
+                            className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                          >
+                            <Search className="h-3.5 w-3.5" />
+                            <span>Lacak Biteship</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -747,6 +817,14 @@ export default function SuperAdminReturnsPage() {
         onClose={() => setResiModalOpen(false)}
         initialQuery={activeTrackingQuery}
       />
+
+      {/* Printable Thermal Shipping Label Modal */}
+      {activeThermalLabel && (
+        <ThermalShippingLabel
+          data={activeThermalLabel}
+          onClose={() => setActiveThermalLabel(null)}
+        />
+      )}
 
       {/* Media Lightbox */}
       {activeImage && (

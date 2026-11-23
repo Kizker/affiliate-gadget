@@ -225,7 +225,7 @@ export function CheckResiModal({
               <button
                 type="submit"
                 disabled={loading || !awbInput.trim()}
-                className="shadow-2xs flex shrink-0 items-center gap-1.5 rounded-2xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                className="shadow-2xs flex shrink-0 items-center gap-1.5 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
               >
                 {loading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -246,7 +246,7 @@ export function CheckResiModal({
           {/* Loading state */}
           {loading && (
             <div className="flex flex-col items-center justify-center space-y-3 py-10 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
               <div>
@@ -262,13 +262,13 @@ export function CheckResiModal({
 
           {/* Error / Not Found state */}
           {!loading && searched && !result?.success && (
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/40">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
               <div className="space-y-1">
-                <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
                   Data Pelacakan Tidak Ditemukan
                 </p>
-                <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
                   {result?.error ||
                     'Nomor resi atau pesanan belum terdaftar pada sistem ekspedisi. Pastikan nomor sudah sesuai atau coba beberapa saat lagi.'}
                 </p>
@@ -281,24 +281,24 @@ export function CheckResiModal({
             <div className="space-y-4">
               {/* Header Overview Card */}
               <div className="shadow-xs overflow-hidden rounded-2xl border border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-900">
-                <div className="bg-gradient-to-r from-blue-700 to-indigo-600 p-4 text-white">
+                <div className="border-b border-slate-200/80 bg-slate-50/80 p-4 text-slate-900 dark:border-slate-800 dark:bg-slate-800/40 dark:text-white">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                         Nomor Resi / AWB
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-base font-black tracking-wide text-white">
+                        <span className="font-mono text-base font-black tracking-wide text-slate-900 dark:text-white">
                           {data.trackingNumber}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleCopyAwb(data.trackingNumber)}
-                          className="rounded-md bg-white/10 p-1 text-white transition hover:bg-white/20 active:scale-95"
+                          className="rounded-md border border-slate-200 bg-white p-1 text-slate-600 transition hover:bg-slate-100 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                           title="Salin Resi"
                         >
                           {copiedAwb ? (
-                            <Check className="h-3 w-3 text-emerald-300" />
+                            <Check className="h-3 w-3 text-emerald-600" />
                           ) : (
                             <Copy className="h-3 w-3" />
                           )}
@@ -306,9 +306,9 @@ export function CheckResiModal({
                       </div>
 
                       {data.orderNumber && (
-                        <p className="mt-1 text-[11px] text-blue-100">
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                           Pesanan:{' '}
-                          <span className="font-mono font-bold text-white">
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                             #{data.orderNumber}
                           </span>
                         </p>
@@ -316,16 +316,16 @@ export function CheckResiModal({
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] font-semibold text-blue-200">
-                        Kurir & Layanan
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                        Kurir &amp; Layanan
                       </span>
-                      <p className="text-xs font-bold text-white">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         {data.courierCode === 'GOJEK'
-                          ? '🏍️ Gojek Instant'
-                          : '📦 JNE Express'}
+                          ? 'Gojek Instant'
+                          : 'JNE Express'}
                       </p>
                       {data.courierService && (
-                        <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-white">
+                        <span className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           {data.courierService}
                         </span>
                       )}
@@ -341,12 +341,12 @@ export function CheckResiModal({
                         Status:
                       </span>
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                           data.status === 'DELIVERED'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300'
                             : data.status === 'CANCELLED'
-                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                              ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300'
+                              : 'border-slate-200 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
                         }`}
                       >
                         {data.statusLabel}
@@ -355,7 +355,7 @@ export function CheckResiModal({
 
                     {data.estimatedDelivery && (
                       <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-                        <Clock className="h-3.5 w-3.5 text-orange-500" />
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
                         <span>Estimasi Tiba: {data.estimatedDelivery}</span>
                       </div>
                     )}
@@ -432,8 +432,8 @@ export function CheckResiModal({
                           <div
                             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
                               idx === 0
-                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-400/40'
-                                : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+                                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
                             }`}
                           >
                             {STATUS_ICON[cp.status] || '📍'}
@@ -443,13 +443,7 @@ export function CheckResiModal({
                           )}
                         </div>
                         <div className="min-w-0 pb-3.5">
-                          <p
-                            className={`text-xs font-bold ${
-                              idx === 0
-                                ? 'text-blue-700 dark:text-blue-400'
-                                : 'text-slate-800 dark:text-slate-200'
-                            }`}
-                          >
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">
                             {cp.description}
                           </p>
                           <p className="mt-0.5 flex items-center gap-1 text-[10.5px] text-slate-400">

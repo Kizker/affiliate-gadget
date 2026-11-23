@@ -748,7 +748,7 @@ export async function PUT(
               type: 'REPLACEMENT',
               returnCourier: courierCode,
               returnTrackingNumber: tracking,
-              storeResponse: `${adminNote} Unit baru pengganti otomatis dikirim via Biteship (${courierCode} ${courierService}) dengan resi ${tracking}. Garansi toko 30 hari aktif kembali.`,
+              storeResponse: `${adminNote} Resi unit baru pengganti telah diterbitkan via Biteship (${courierCode} ${courierService}) dengan no. resi ${tracking}. Siap cetak label air waybill dan menunggu penjemputan/scan kurir.`,
               resolvedAt: new Date(),
             },
             include: {

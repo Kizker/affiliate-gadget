@@ -86,6 +86,6 @@ describe('Alur Keputusan After Sales Murni: 2 Pilihan (Setuju & Tolak) + QC 5 Fo
     expect(superAdminPage).toContain('Lampiran Foto Bukti QC After Sales')
     expect(superAdminPage).toContain('ACC Final: Kirim Unit Baru')
     expect(superAdminPage).toContain('ACC Final: Cairkan Dana')
-    expect(superAdminPage).toContain('Tolak &amp; Kembalikan')
+    expect(superAdminPage).toContain('Tolak dan Kembalikan')
   })
 })

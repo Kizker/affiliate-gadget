@@ -88,6 +88,29 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     }
   }
 
+  const handleViewReturnThermalLabel = async () => {
+    const awb = latestReturnRequest?.returnTrackingNumber
+    if (!awb) return
+    try {
+      setViewingLabel(true)
+      const res = await fetch(
+        `/api/shipping/tracking/awb-lookup?awb=${encodeURIComponent(awb)}`
+      )
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data) {
+          setActiveThermalLabel(json.data)
+          return
+        }
+      }
+      toast.info('Menyiapkan label pengiriman retur...')
+    } catch {
+      toast.error('Gagal memuat label pengiriman retur')
+    } finally {
+      setViewingLabel(false)
+    }
+  }
+
   // Review state
   const [currentReview, setCurrentReview] = useState(order.review ?? null)
 
@@ -464,6 +487,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             isSavingReturnTracking={isSavingReturnTracking}
             onOpenResiModal={handleOpenResiModal}
             handleViewThermalLabel={handleViewThermalLabel}
+            handleViewReturnThermalLabel={handleViewReturnThermalLabel}
             viewingLabel={viewingLabel}
             auditTimeline={auditTimeline}
             chatParams={chatParams}
@@ -514,6 +538,8 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                 handleSaveReturnTracking={handleSaveReturnTracking}
                 isSavingReturnTracking={isSavingReturnTracking}
                 onOpenResiModal={handleOpenResiModal}
+                onViewThermalLabel={handleViewReturnThermalLabel}
+                viewingThermalLabel={viewingLabel}
               />
             )}
 

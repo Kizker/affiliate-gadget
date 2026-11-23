@@ -768,8 +768,11 @@ export async function POST(request: Request) {
           returnStatus: effectiveStatus,
           returnType: effectiveType,
           note:
-            retReq?.description ||
-            'Pengajuan komplain / retur barang dari pembeli.',
+            (retReq?.description
+              ? retReq.description
+                  .replace(/\[Unit yang Diretur:[^\]]+\]\s*/gi, '')
+                  .trim()
+              : '') || 'Pengajuan komplain / retur barang dari pembeli.',
         }
 
         await prisma.adminChatMessage.create({

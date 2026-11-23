@@ -1672,7 +1672,9 @@ function AdminChatContent() {
               !data.note.includes('ingin mengonfirmasi pesanan') && (
                 <div className="mt-1 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
                   <p className="whitespace-pre-wrap break-words leading-relaxed">
-                    {data.note}
+                    {data.note
+                      .replace(/\[Unit yang Diretur:[^\]]+\]\s*/gi, '')
+                      .trim()}
                   </p>
                 </div>
               )}
