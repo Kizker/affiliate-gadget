@@ -874,11 +874,20 @@ export async function PUT(
             },
           })
 
+          const isPartialOrderRefund = Boolean(
+            (existing.order.items && existing.order.items.length > 1) ||
+            (existing.refundAmount &&
+              existing.order.total &&
+              existing.refundAmount < existing.order.total * 0.95)
+          )
+
           if (existing.orderId) {
             await prisma.order.update({
               where: { id: existing.orderId },
               data: {
-                status: 'RETURNED',
+                status: isPartialOrderRefund
+                  ? existing.order.status
+                  : 'RETURNED',
                 updatedAt: new Date(),
               },
             })
@@ -1678,11 +1687,20 @@ export async function PUT(
           )} telah berhasil ditransfer balik via Midtrans ke rekening tujuan.`
         updateData.resolvedAt = new Date()
 
-        // Update order status to RETURNED (reversing escrow completely)
+        const isPartialOrderRefund = Boolean(
+          (existing.order.items && existing.order.items.length > 1) ||
+          (existing.refundAmount &&
+            existing.order.total &&
+            existing.refundAmount < existing.order.total * 0.95)
+        )
+
+        // Update order status to RETURNED if full return, or keep current status if partial
         if (existing.orderId) {
           await prisma.order.update({
             where: { id: existing.orderId },
-            data: { status: 'RETURNED' },
+            data: {
+              status: isPartialOrderRefund ? existing.order.status : 'RETURNED',
+            },
           })
 
           // Update payment if exists

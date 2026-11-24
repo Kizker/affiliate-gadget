@@ -67,6 +67,19 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-24 (Resolusi Hilangnya Tombol Retur & Implementasi Retur Parsial Berbasis Kuantitas Unit [1, 2, Semua] Serta Penyesuaian Dana/Unit Pengganti):**
+  - **1. Resolusi Akar Masalah Hilangnya Tombol Retur (`order-detail-client.tsx` & `order-desktop-payment-card.tsx`):**
+    - Memperbaiki kalkulasi `isCompleted`: sebelumnya keliru mensyaratkan `isWarrantyOver === true` (garansi harus habis > 30 hari), sehingga pesanan yang baru diterima dan garansinya masih aktif dianggap belum selesai dan memblokir tombol retur. Kini `isCompleted` murni mengevaluasi `order.status === 'COMPLETED' || Boolean(order.customerConfirmedAt) || Boolean(order.completedAt)`.
+    - Menghapus pembatas kaku `{order.items.length <= 1 && (` di panel kanan (_Aksi Pesanan_). Tombol utama `[ Ajukan Komplain / Klaim Garansi ]` kini selalu tampil di panel kanan untuk seluruh pesanan yang memenuhi syarat retur garansi 30 hari, baik pesanan 1 barang maupun multi-barang.
+    - Tombol `[ Ajukan Retur Unit Ini ]` pada setiap baris item produk di sebelah kiri kini langsung aktif dan dapat ditekan oleh pembeli untuk meretur barang spesifik.
+  - **2. Pilihan Kuantitas Retur Unit Parsial & Opsi Cepat (`return-modal.tsx`):**
+    - Jika pembeli membeli > 1 unit (seperti 2 unit Z Flip/Z Fold), modal retur menyediakan pilihan kuantitas dengan tombol opsi cepat: `[ 1 Unit Saja ]`, `[ Keduanya (2 Unit) ]`, `[ Ketiganya (3 Unit) ]`, hingga `[ Semua (X Unit) ]`, lengkap dengan stepper manual `-` dan `+`.
+    - Menampilkan informasi dinamis transparan: nominal dana pengembalian bersih untuk unit yang diretur, serta rincian bahwa sisa unit yang tidak diretur tetap aman menjadi milik pembeli tanpa ditarik.
+  - **3. Penyesuaian Dana Refund & Stok Pengganti Parsial Tanpa Potongan (`/api/returns` & `/api/returns/[id]`):**
+    - Pada retur sebagian (_partial return_), dana refund dihitung murni $100\%$ dari harga barang yang diretur (`jumlah_retur × harga_satuan`) tanpa potongan ongkir, asuransi, atau biaya operasional pesanan lainnya.
+    - Pada opsi _Tukar Unit Baru (Replacement)_, validasi dan pemotongan stok toko cabang pengirim disesuaikan secara presisi hanya sejumlah unit yang diajukan retur (`returnQuantity`).
+    - Status pesanan induk tidak dibatalkan total (_tidak dipaksa RETURNED_) jika hanya meretur sebagian unit, sehingga transaksi unit lainnya tetap sah berstatus selesai/diterima.
+  - **4. Health Verification:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/multi-item-quantity-return-and-button-fix.test.ts` dan 5 test suite terkait retur/garansi lulus 100% (49/49 tests pass).
 - **2026-11-15 (Penyempurnaan Total: Otomatisasi Etalase Mass Update 1:1, Reset Servis, Responsivitas Judul Toko, Peta Alamat Realistis, Jarak Pengiriman Antar-Pulau, dan Resolusi Chat After Sales):**
   - **1. Otomasi Etalase Mass Update 1:1 (`import-excel/route.ts` & `etalase-db.ts`):** Setiap produk yang di-mass update otomatis dibuatkan/disinkronkan ke 1 Etalase tersendiri (1 etalase menampung 1 produk beserta seluruh varian lengkapnya) sehingga menu Etalase tidak kosong dan pembeli langsung memilih varian di dalam etalase tersebut.
   - **2. Reset Servis (`mitra-service-data.ts`):** Menghapus fallback dummy `DEFAULT_MITRAS` saat database kosong, sehingga halaman `/servis` menampilkan empty state bersih saat belum ada mitra servis yang mendaftar.

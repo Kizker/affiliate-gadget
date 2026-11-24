@@ -344,8 +344,9 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     !order.customerConfirmedAt
   const isWarrantyOver = isWarrantyExpired(order)
   const isCompleted = Boolean(
-    (order.status === 'COMPLETED' && (order.completedAt || isWarrantyOver)) ||
-    (order.customerConfirmedAt && isWarrantyOver)
+    order.status === 'COMPLETED' ||
+    Boolean(order.completedAt) ||
+    Boolean(order.customerConfirmedAt)
   )
   const canManuallyComplete = Boolean(
     order.customerConfirmedAt &&

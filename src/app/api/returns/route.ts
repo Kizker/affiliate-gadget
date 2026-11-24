@@ -464,17 +464,36 @@ export async function POST(request: NextRequest) {
 
     const refundCalc =
       type === 'REFUND'
-        ? calculateNetRefundAmount({
-            total: isPartialOrder ? effectiveItemTotal : order.total,
-            subtotal: isPartialOrder ? effectiveItemTotal : order.subtotal,
-            shippingCost: isPartialOrder ? 0 : order.shippingCost,
-            tax: isPartialOrder ? 0 : order.tax,
-            insuranceFee: isPartialOrder ? 0 : order.insuranceFee,
-          })
+        ? isPartialOrder
+          ? {
+              originalTotal: effectiveItemTotal,
+              subtotal: effectiveItemTotal,
+              shippingCost: 0,
+              taxDeduction: 0,
+              insuranceFee: 0,
+              operationalFee: 0,
+              totalDeductions: 0,
+              netRefundAmount: effectiveItemTotal,
+              deductionBreakdown: {
+                shippingCost: 0,
+                tax: 0,
+                insurance: 0,
+                operational: 0,
+              },
+            }
+          : calculateNetRefundAmount({
+              total: order.total,
+              subtotal: order.subtotal,
+              shippingCost: order.shippingCost,
+              tax: order.tax,
+              insuranceFee: order.insuranceFee,
+            })
         : null
 
     const initialStoreResponse = refundCalc
-      ? `[ESTIMASI_REFUND] Total: Rp ${refundCalc.originalTotal.toLocaleString('id-ID')}. Potongan: Ongkir Rp ${refundCalc.shippingCost.toLocaleString('id-ID')} + Pajak Rp ${refundCalc.taxDeduction.toLocaleString('id-ID')} + Asuransi Rp ${refundCalc.insuranceFee.toLocaleString('id-ID')} + Operasional & QC Rp ${refundCalc.operationalFee.toLocaleString('id-ID')}. Pengembalian Bersih: Rp ${refundCalc.netRefundAmount.toLocaleString('id-ID')}.`
+      ? isPartialOrder
+        ? `[ESTIMASI_REFUND_PARSIAL] Total Nilai Unit Diretur: Rp ${effectiveItemTotal.toLocaleString('id-ID')} (${effectiveReturnQty} unit @ Rp ${(targetOrderItem?.price || 0).toLocaleString('id-ID')}). Pengembalian Bersih: Rp ${effectiveItemTotal.toLocaleString('id-ID')}.`
+        : `[ESTIMASI_REFUND] Total: Rp ${refundCalc.originalTotal.toLocaleString('id-ID')}. Potongan: Ongkir Rp ${refundCalc.shippingCost.toLocaleString('id-ID')} + Pajak Rp ${refundCalc.taxDeduction.toLocaleString('id-ID')} + Asuransi Rp ${refundCalc.insuranceFee.toLocaleString('id-ID')} + Operasional & QC Rp ${refundCalc.operationalFee.toLocaleString('id-ID')}. Pengembalian Bersih: Rp ${refundCalc.netRefundAmount.toLocaleString('id-ID')}.`
       : null
 
     // Create the ReturnRequest in a transaction
