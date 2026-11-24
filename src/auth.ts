@@ -109,7 +109,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const isPendingStoreApplicant =
           (user.role === 'STORE_ADMIN' || user.role === 'MITRA') &&
           (user.mitraStatus === 'PENDING' ||
-            user.mitraStatus === 'NEEDS_STORE_DATA') &&
+            user.mitraStatus === 'NEEDS_STORE_DATA' ||
+            !user.mitraStatus) &&
           !user.storeId
 
         if (!user.isActive && !isPendingStoreApplicant) {
@@ -270,8 +271,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
             select: {
-              storeId: true,
               role: true,
+              storeId: true,
+              mitraStatus: true,
               store: { select: { slug: true } },
             },
           })
@@ -279,6 +281,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.role = dbUser.role || 'CUSTOMER'
             if (dbUser.storeId) {
               token.storeId = dbUser.storeId
+            }
+            if (dbUser.mitraStatus) {
+              token.mitraStatus = dbUser.mitraStatus
             }
           }
         } catch {

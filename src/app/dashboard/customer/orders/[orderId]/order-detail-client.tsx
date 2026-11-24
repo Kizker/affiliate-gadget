@@ -343,15 +343,21 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     (order.status === 'IN_PROGRESS' || order.status === 'SHIPPED') &&
     !order.customerConfirmedAt
   const isWarrantyOver = isWarrantyExpired(order)
+  const isReceived = Boolean(
+    order.customerConfirmedAt ||
+    order.status === 'COMPLETED' ||
+    Boolean(order.completedAt)
+  )
   const isCompleted = Boolean(
     order.status === 'COMPLETED' ||
     Boolean(order.completedAt) ||
-    Boolean(order.customerConfirmedAt)
+    (Boolean(order.customerConfirmedAt) && isWarrantyOver)
   )
   const canManuallyComplete = Boolean(
     order.customerConfirmedAt &&
     !order.completedAt &&
     !isWarrantyOver &&
+    order.status !== 'COMPLETED' &&
     order.status !== 'CANCELLED' &&
     order.status !== 'RETURNED'
   )
@@ -361,11 +367,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
       latestReturnRequest.status === 'IN_REVIEW' ||
       latestReturnRequest.status === 'APPROVED')
   const canRequestReturnOrComplaint =
-    (Boolean(order.customerConfirmedAt) ||
-      order.status === 'SHIPPED' ||
-      order.status === 'COMPLETED') &&
-    !hasActiveClaim &&
-    !isWarrantyOver
+    isReceived && !isCompleted && !hasActiveClaim && !isWarrantyOver
 
   // Construct chat parameters for all chat entry points
   const firstItem = order.items?.[0]

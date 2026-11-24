@@ -20,20 +20,16 @@ describe('Spesifikasi Terpadu: Klaim Garansi, Resolusi Refund & Replacement, dan
     'src/components/customer/order-detail/order-desktop-return-card.tsx'
   )
 
-  it('1. Halaman Detail Pesanan Pembeli (Desktop): Tombol terintegrasi "Ajukan Komplain / Klaim Garansi" hanya aktif setelah pesanan diterima (isCompleted)', () => {
+  it('1. Halaman Detail Pesanan Pembeli (Desktop): Tombol terintegrasi "Ajukan Komplain / Klaim Garansi" aktif saat pesanan diterima dalam masa garansi 30 hari', () => {
     const content = fs.readFileSync(paymentCardPath, 'utf8')
-    expect(content).toContain(
-      'canRequestReturnOrComplaint && !hasActiveClaim && isCompleted'
-    )
+    expect(content).toContain('canRequestReturnOrComplaint && !hasActiveClaim')
     expect(content).toContain('Ajukan Komplain / Klaim Garansi')
     expect(content).toContain('onClick={onOpenReturn}')
   })
 
   it('2. Halaman Detail Pesanan Pembeli (Mobile): Tombol terintegrasi "Ajukan Komplain / Klaim Garansi" dan Chat Admin After Sales', () => {
     const content = fs.readFileSync(mobileViewPath, 'utf8')
-    expect(content).toContain(
-      'isCompleted && canRequestReturnOrComplaint && !hasActiveClaim'
-    )
+    expect(content).toContain('canRequestReturnOrComplaint && !hasActiveClaim')
     expect(content).toContain('Ajukan Komplain / Klaim Garansi')
     expect(content).toContain('Chat Admin After Sales')
   })

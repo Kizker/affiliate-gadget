@@ -47,7 +47,9 @@ describe('Admin Users Mitra Activation & Nonaktif Lifecycle Suite', () => {
 
   it('3. API PATCH /api/admin/users/[id] otomatis meng-acc pendaftaran mitra saat akun diaktifkan (isActive: true)', () => {
     expect(usersApiContent).toContain("if (targetRole === 'MITRA')")
-    expect(usersApiContent).toContain('if (isActive === true)')
+    expect(usersApiContent).toContain(
+      "if (isActive === true || (role === 'MITRA' && isActive !== false))"
+    )
     expect(usersApiContent).toContain("updateData.mitraStatus = 'APPROVED'")
     expect(usersApiContent).toContain('isApproved: true')
     expect(usersApiContent).toContain('isActive: true')
@@ -55,7 +57,32 @@ describe('Admin Users Mitra Activation & Nonaktif Lifecycle Suite', () => {
 
   it('4. Pendaftaran mitra baru secara otomatis berstatus nonaktif (isActive: false) hingga diaktifkan Superadmin', () => {
     expect(registerApiContent).toContain(
-      "isActive: role === 'MITRA' ? false : true"
+      "const isApplicantNonActive = role === 'MITRA' || role === 'STORE_ADMIN'"
+    )
+    expect(registerApiContent).toContain(
+      'isActive: isApplicantNonActive ? false : true'
+    )
+  })
+
+  it('5. Modal Tambah & Edit Akun Pengguna menyediakan opsi role MITRA (Mitra Servis)', () => {
+    const createModalPath = path.resolve(
+      process.cwd(),
+      'src/components/admin/create-user-modal.tsx'
+    )
+    const editModalPath = path.resolve(
+      process.cwd(),
+      'src/components/admin/edit-user-modal.tsx'
+    )
+    const createModalContent = fs.readFileSync(createModalPath, 'utf-8')
+    const editModalContent = fs.readFileSync(editModalPath, 'utf-8')
+
+    expect(createModalContent).toContain("value: 'MITRA'")
+    expect(createModalContent).toContain(
+      "label: 'Mitra Servis (Bengkel & Promosi Servis)'"
+    )
+    expect(editModalContent).toContain("value: 'MITRA'")
+    expect(editModalContent).toContain(
+      "label: 'Mitra Servis (Bengkel & Promosi Servis)'"
     )
   })
 })

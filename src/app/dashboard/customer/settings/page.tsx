@@ -91,6 +91,7 @@ function CustomerSettingsContent() {
   const [email, setEmail] = useState('')
   const [initialEmail, setInitialEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [initialPhone, setInitialPhone] = useState('')
   const [gender, setGender] = useState<'Laki-laki' | 'Perempuan' | ''>('')
   const [birthDate, setBirthDate] = useState('')
   const [bio, setBio] = useState('')
@@ -130,10 +131,13 @@ function CustomerSettingsContent() {
   const [otherSessions, setOtherSessions] = useState<
     Array<{
       id: string
+      deviceType?: 'desktop' | 'mobile' | 'tablet'
       deviceLabel: string
       browser: string
+      os?: string
       location: string
       lastActive: string
+      loginTime?: string
       ip: string
     }>
   >([])
@@ -142,7 +146,7 @@ function CustomerSettingsContent() {
   // OTP WhatsApp Verification states
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false)
   const [otpPurpose, setOtpPurpose] = useState<
-    '2FA' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL' | 'CHANGE_PHONE'
+    '2FA' | 'CHANGE_PASSWORD' | 'CHANGE_EMAIL' | 'CHANGE_PHONE' | 'ADD_PHONE'
   >('2FA')
   const [otpCode, setOtpCode] = useState('')
   const [otpWhatsappUrl, setOtpWhatsappUrl] = useState('')
@@ -161,7 +165,9 @@ function CustomerSettingsContent() {
         setUsername(data.user.username || '')
         setEmail(data.user.email || '')
         setInitialEmail(data.user.email || '')
-        setPhone(normalizeToLocalPhone(data.user.phone || ''))
+        const normalizedPhone = normalizeToLocalPhone(data.user.phone || '')
+        setPhone(normalizedPhone)
+        setInitialPhone(normalizedPhone)
         setGender(data.user.gender || '')
         if (data.user.birthDate) {
           const date = new Date(data.user.birthDate)
@@ -440,7 +446,14 @@ function CustomerSettingsContent() {
 
       if (res.ok) {
         if (data.requiresOtp) {
-          setOtpPurpose(data.otpPurpose || 'CHANGE_EMAIL')
+          setOtpPurpose(
+            data.otpPurpose ||
+              (!initialPhone && phone.trim()
+                ? 'ADD_PHONE'
+                : initialPhone && phone.trim() !== initialPhone
+                  ? 'CHANGE_PHONE'
+                  : 'CHANGE_EMAIL')
+          )
           setOtpWhatsappUrl(data.whatsappUrl || '')
           setOtpPreview(data.otpPreview || '')
           setOtpExpiresIn(data.expiresInSeconds || 300)
@@ -453,6 +466,7 @@ function CustomerSettingsContent() {
         }
 
         setInitialEmail(email.trim())
+        setInitialPhone(normalizeToLocalPhone(phone.trim()))
         setIsOtpModalOpen(false)
         setOtpCode('')
         await update()
@@ -697,7 +711,11 @@ function CustomerSettingsContent() {
       return
     }
 
-    if (otpPurpose === 'CHANGE_EMAIL' || otpPurpose === 'CHANGE_PHONE') {
+    if (
+      otpPurpose === 'CHANGE_EMAIL' ||
+      otpPurpose === 'CHANGE_PHONE' ||
+      otpPurpose === 'ADD_PHONE'
+    ) {
       await handleSaveProfile(otpCode.trim())
       return
     }
@@ -755,14 +773,15 @@ function CustomerSettingsContent() {
         }
       } else if (
         otpPurpose === 'CHANGE_EMAIL' ||
-        otpPurpose === 'CHANGE_PHONE'
+        otpPurpose === 'CHANGE_PHONE' ||
+        otpPurpose === 'ADD_PHONE'
       ) {
         const res = await fetch('/api/user/profile', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action:
-              otpPurpose === 'CHANGE_PHONE'
+              otpPurpose === 'CHANGE_PHONE' || otpPurpose === 'ADD_PHONE'
                 ? 'request-phone-otp'
                 : 'request-email-otp',
             email: email.trim(),
@@ -1846,42 +1865,136 @@ function CustomerSettingsContent() {
               </div>
             </div>
 
-            {/* Card 3: Perangkat Aktif */}
+            {/* Card 3: Perangkat Aktif & Riwayat Login */}
             <div>
-              <h3 className="mb-2 text-xs font-bold text-slate-900 dark:text-white">
-                Perangkat Aktif
-              </h3>
-              <div className="shadow-xs flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-center gap-3">
-                  <div className="shadow-2xs flex h-10 w-7 shrink-0 flex-col items-center justify-between rounded-[7px] border-2 border-orange-500 bg-white py-1 dark:bg-slate-900">
-                    <div className="h-0.5 w-2 rounded-full bg-orange-400" />
-                    <div className="h-1 w-1 rounded-full bg-orange-400" />
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                  Perangkat Aktif ({1 + otherSessions.length})
+                </h3>
+                {otherSessions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleLogoutOtherDevices}
+                    disabled={loggingOutOther}
+                    className="cursor-pointer text-[11px] font-bold text-rose-500 transition hover:text-rose-600 disabled:opacity-50"
+                  >
+                    {loggingOutOther
+                      ? 'Memproses...'
+                      : 'Keluarkan Perangkat Lain'}
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2.5">
+                {/* Perangkat Saat Ini */}
+                <div className="shadow-xs flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {currentSession?.deviceType === 'desktop' ? (
+                      <div className="shadow-2xs flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 text-orange-500 dark:border-orange-900/50 dark:bg-orange-950/30">
+                        <Laptop className="h-5 w-5" />
+                      </div>
+                    ) : (
+                      <div className="shadow-2xs flex h-10 w-7 shrink-0 flex-col items-center justify-between rounded-[7px] border-2 border-orange-500 bg-white py-1 dark:bg-slate-900">
+                        <div className="h-0.5 w-2 rounded-full bg-orange-400" />
+                        <div className="h-1 w-1 rounded-full bg-orange-400" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                          {currentSession?.deviceLabel || 'Chrome di Android'}
+                        </span>
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                          Perangkat Ini
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                        {currentSession?.browserLabel ||
+                          currentSession?.browser ||
+                          'Browser'}{' '}
+                        • {currentSession?.location || 'Indonesia'} •{' '}
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {currentSession?.lastActive || 'Baru saja'}
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-xs font-bold text-slate-900 dark:text-white">
-                      {currentSession?.deviceLabel || 'Chrome di Android'}
-                    </span>
-                    <p className="text-[11px] text-slate-400">
-                      {currentSession?.location || 'Jakarta'} • Baru saja
-                    </p>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        cache: 'no-store',
+                        credentials: 'include',
+                      }).catch(() => {})
+                      await signOut({ redirect: false }).catch(() => {})
+                      window.location.replace('/')
+                    }}
+                    className="shrink-0 cursor-pointer text-xs font-bold text-rose-500 transition hover:text-rose-600"
+                  >
+                    Keluar
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await fetch('/api/auth/logout', {
-                      method: 'POST',
-                      cache: 'no-store',
-                      credentials: 'include',
-                    }).catch(() => {})
-                    await signOut({ redirect: false }).catch(() => {})
-                    window.location.replace('/')
-                  }}
-                  className="cursor-pointer text-xs font-bold text-rose-500 transition hover:text-rose-600"
-                >
-                  Keluar
-                </button>
+                {/* Daftar Perangkat Lain yang Pernah Login */}
+                {otherSessions.map((s) => (
+                  <div
+                    key={s.id}
+                    className="shadow-xs flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      {s.deviceType === 'desktop' ||
+                      s.deviceLabel.toLowerCase().includes('pc') ||
+                      s.deviceLabel.toLowerCase().includes('mac') ||
+                      s.deviceLabel.toLowerCase().includes('windows') ? (
+                        <div className="shadow-2xs flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <Laptop className="h-5 w-5" />
+                        </div>
+                      ) : (
+                        <div className="shadow-2xs flex h-10 w-7 shrink-0 flex-col items-center justify-between rounded-[7px] border-2 border-slate-400 bg-white py-1 dark:bg-slate-900">
+                          <div className="h-0.5 w-2 rounded-full bg-slate-400" />
+                          <div className="h-1 w-1 rounded-full bg-slate-400" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <span className="block truncate text-xs font-bold text-slate-900 dark:text-white">
+                          {s.deviceLabel}
+                        </span>
+                        <p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                          {s.browser} • {s.location} •{' '}
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            {s.lastActive}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(
+                            `/api/user/security?deviceId=${encodeURIComponent(s.id)}`,
+                            { method: 'DELETE' }
+                          )
+                          if (res.ok) {
+                            setOtherSessions((prev) =>
+                              prev.filter((item) => item.id !== s.id)
+                            )
+                            toast({
+                              title: 'Perangkat dikeluarkan dari akun',
+                            })
+                          }
+                        } catch {}
+                      }}
+                      className="shrink-0 cursor-pointer text-xs font-bold text-rose-500 transition hover:text-rose-600"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -2131,9 +2244,12 @@ function CustomerSettingsContent() {
                         {currentSession?.deviceLabel ||
                           'PC / Desktop (Windows 11 / 10)'}
                       </span>
-                      <p className="truncate text-[11px] text-slate-400">
+                      <p className="truncate text-[11px] text-slate-500">
                         {currentSession?.browserLabel || 'Google Chrome'} •{' '}
-                        {currentSession?.location || 'Jakarta, Indonesia'} •
+                        {currentSession?.location || 'Jakarta, Indonesia'} •{' '}
+                        <span className="font-semibold text-slate-700">
+                          {currentSession?.lastActive || 'Baru saja'}
+                        </span>{' '}
                         (Sesi Saat Ini)
                       </p>
                     </div>
@@ -2141,7 +2257,7 @@ function CustomerSettingsContent() {
 
                   <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    Aktif
+                    Perangkat Ini
                   </span>
                 </div>
 
@@ -2149,21 +2265,53 @@ function CustomerSettingsContent() {
                 {otherSessions.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white p-3.5 sm:p-4"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-3.5 sm:p-4"
                   >
-                    <div className="flex items-center gap-3.5">
-                      <div className="shadow-2xs flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                        <Smartphone className="h-5 w-5" />
+                    <div className="flex min-w-0 items-center gap-3.5">
+                      <div className="shadow-2xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                        {s.deviceType === 'desktop' ||
+                        s.deviceLabel.toLowerCase().includes('pc') ||
+                        s.deviceLabel.toLowerCase().includes('mac') ||
+                        s.deviceLabel.toLowerCase().includes('windows') ? (
+                          <Laptop className="h-5 w-5" />
+                        ) : (
+                          <Smartphone className="h-5 w-5" />
+                        )}
                       </div>
-                      <div>
-                        <span className="text-xs font-black text-slate-950">
+                      <div className="min-w-0">
+                        <span className="block truncate text-xs font-black text-slate-950">
                           {s.deviceLabel}
                         </span>
-                        <p className="text-[11px] text-slate-400">
-                          {s.browser} • {s.location} • {s.lastActive}
+                        <p className="truncate text-[11px] text-slate-500">
+                          {s.browser} • {s.location} •{' '}
+                          <span className="font-semibold text-slate-700">
+                            {s.lastActive}
+                          </span>
                         </p>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(
+                            `/api/user/security?deviceId=${encodeURIComponent(s.id)}`,
+                            { method: 'DELETE' }
+                          )
+                          if (res.ok) {
+                            setOtherSessions((prev) =>
+                              prev.filter((item) => item.id !== s.id)
+                            )
+                            toast({
+                              title: 'Perangkat dikeluarkan dari akun',
+                            })
+                          }
+                        } catch {}
+                      }}
+                      className="shrink-0 cursor-pointer rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600 transition hover:bg-rose-100"
+                    >
+                      Keluarkan
+                    </button>
                   </div>
                 ))}
 
@@ -2411,21 +2559,25 @@ function CustomerSettingsContent() {
                 </div>
                 <h3 className="text-base font-bold text-slate-950">
                   {otpPurpose === 'CHANGE_PASSWORD'
-                    ? 'Verifikasi Ganti Kata Sandi'
+                    ? 'Verifikasi Ubah Kata Sandi'
                     : otpPurpose === 'CHANGE_EMAIL'
-                      ? 'Verifikasi Ganti Email Akun'
-                      : otpPurpose === 'CHANGE_PHONE'
-                        ? 'Verifikasi Ganti Nomor Telepon'
-                        : 'Verifikasi OTP WhatsApp'}
+                      ? 'Verifikasi Ubah Email Akun'
+                      : otpPurpose === 'ADD_PHONE'
+                        ? 'Verifikasi Tambah Nomor WhatsApp'
+                        : otpPurpose === 'CHANGE_PHONE'
+                          ? 'Verifikasi Ganti Nomor Telepon'
+                          : 'Verifikasi OTP WhatsApp'}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
                   {otpPurpose === 'CHANGE_PASSWORD'
                     ? 'Demi keamanan akun, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
                     : otpPurpose === 'CHANGE_EMAIL'
-                      ? 'Untuk konfirmasi pergantian email, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
-                      : otpPurpose === 'CHANGE_PHONE'
-                        ? 'Untuk konfirmasi nomor telepon baru, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
-                        : 'Masukkan 6 digit kode yang dikirimkan ke nomor WhatsApp:'}{' '}
+                      ? 'Untuk konfirmasi perubahan alamat email profil, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
+                      : otpPurpose === 'ADD_PHONE'
+                        ? 'Untuk melengkapi dan menautkan nomor telepon profil Anda, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
+                        : otpPurpose === 'CHANGE_PHONE'
+                          ? 'Untuk konfirmasi penggantian ke nomor telepon baru, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'
+                          : 'Untuk mengaktifkan Verifikasi 2 Langkah, masukkan 6 digit kode OTP yang dikirimkan ke nomor WhatsApp:'}{' '}
                   <span className="font-bold text-slate-900">
                     {phone
                       ? phone.replace(/(\d{4})\d+(\d{3})/, '$1****$2')
@@ -2498,7 +2650,10 @@ function CustomerSettingsContent() {
                       ? 'Ubah Sandi'
                       : otpPurpose === 'CHANGE_EMAIL'
                         ? 'Simpan Email'
-                        : 'Verifikasi'}
+                        : otpPurpose === 'ADD_PHONE' ||
+                            otpPurpose === 'CHANGE_PHONE'
+                          ? 'Simpan Profil'
+                          : 'Verifikasi'}
                   </span>
                 </button>
               </div>

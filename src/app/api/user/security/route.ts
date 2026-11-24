@@ -4,6 +4,7 @@ import prisma from '@/lib/db'
 import { parseUserAgent } from '@/lib/user-agent-parser'
 import { extractClientIp } from '@/lib/login-security'
 import { is2FaEnabled, set2FaEnabled } from '@/lib/two-factor-store'
+import { generateDeviceToken } from '@/lib/device-fingerprint'
 
 interface StoredOtp {
   code: string
@@ -14,17 +15,35 @@ interface StoredOtp {
 
 // In-memory security state stores
 const otpStore = new Map<string, StoredOtp>()
-const otherSessionsStore = new Map<
-  string,
-  Array<{
-    id: string
-    deviceLabel: string
-    browser: string
-    location: string
-    lastActive: string
-    ip: string
-  }>
->()
+
+// Helper to format timestamp in Indonesian WIB (e.g., "19.39 WIB" or "24 Nov 2026, 19.39 WIB")
+function formatDeviceLoginTime(dateInput: Date | string): string {
+  const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+  if (isNaN(d.getTime())) return 'Baru saja'
+
+  const now = new Date()
+  const formatterTime = new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta',
+  })
+  const timeStr = formatterTime.format(d).replace(':', '.')
+
+  const formatterDate = new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  })
+  const dateStr = formatterDate.format(d)
+  const todayStr = formatterDate.format(now)
+
+  if (dateStr === todayStr) {
+    return `Hari ini, ${timeStr} WIB`
+  }
+
+  return `${dateStr}, ${timeStr} WIB`
+}
 
 // Helper to normalize phone number to standard international/ID format
 function normalizePhoneNumber(rawPhone: string): string {
@@ -66,51 +85,132 @@ export async function GET(req: NextRequest) {
       is2FaEnabled(user.id) || (user.email ? is2FaEnabled(user.email) : false)
 
     // Parse current client device from request headers
-    const userAgentString = req.headers.get('user-agent') || ''
+    const userAgentString = req.headers.get('user-agent') || 'Unknown Device'
     const parsedDevice = parseUserAgent(userAgentString)
     const clientIp = extractClientIp(req)
+    const currentLocation =
+      clientIp === '127.0.0.1' || clientIp === '::1'
+        ? 'Jakarta, Indonesia'
+        : 'Indonesia'
+
+    const currentDeviceToken = generateDeviceToken(
+      userAgentString,
+      clientIp,
+      user.id
+    )
+    const now = new Date()
+
+    // Ensure current device is registered & updated in UserDevice table so both devices see each other!
+    try {
+      const existingCurrentDevice = await prisma.userDevice.findFirst({
+        where: {
+          userId: user.id,
+          deviceToken: currentDeviceToken,
+        },
+      })
+
+      if (existingCurrentDevice) {
+        await prisma.userDevice.update({
+          where: { id: existingCurrentDevice.id },
+          data: {
+            lastLoginAt: now,
+            deviceType: parsedDevice.deviceType,
+            deviceLabel: parsedDevice.deviceLabel,
+            browser: parsedDevice.browserLabel,
+            os: parsedDevice.os,
+            ipAddress: clientIp,
+          },
+        })
+      } else {
+        await prisma.userDevice.create({
+          data: {
+            userId: user.id,
+            deviceToken: currentDeviceToken,
+            deviceType: parsedDevice.deviceType,
+            deviceLabel: parsedDevice.deviceLabel,
+            browser: parsedDevice.browserLabel,
+            os: parsedDevice.os,
+            ipAddress: clientIp,
+            location: currentLocation,
+            isTrusted: true,
+            lastLoginAt: now,
+          },
+        })
+      }
+    } catch (devErr) {
+      console.warn(
+        'Warning syncing current device in GET /api/user/security:',
+        devErr
+      )
+    }
+
+    // Fetch all real devices where this user has logged in from database
+    let allDbDevices: any[] = []
+    try {
+      allDbDevices = await prisma.userDevice.findMany({
+        where: { userId: user.id },
+        orderBy: { lastLoginAt: 'desc' },
+      })
+    } catch {
+      allDbDevices = []
+    }
+
+    const currentDbRecord = allDbDevices.find(
+      (d) => d.deviceToken === currentDeviceToken
+    )
+
+    const currentTimeFormatted = formatDeviceLoginTime(
+      currentDbRecord?.lastLoginAt || now
+    )
 
     const currentSession = {
-      id: 'current-session',
+      id: currentDbRecord?.id || 'current-session',
       deviceType: parsedDevice.deviceType,
       deviceLabel: parsedDevice.deviceLabel,
       browser: parsedDevice.browser,
       browserLabel: parsedDevice.browserLabel,
       os: parsedDevice.os,
-      location:
-        clientIp === '127.0.0.1' || clientIp === '::1'
-          ? 'Jakarta, Indonesia (Lokal)'
-          : 'Indonesia',
+      location: currentDbRecord?.location || currentLocation,
       ip: clientIp,
-      lastActive: 'Sesi Saat Ini',
+      lastActive: currentTimeFormatted,
+      loginTime: currentTimeFormatted,
       isCurrent: true,
     }
 
-    // Initialize mock other session only once if never cleared
-    let otherSessions = otherSessionsStore.get(user.id)
-    if (otherSessions === undefined) {
-      // Provide a secondary realistic device session for testing
-      const isMobileCurrent = parsedDevice.deviceType === 'mobile'
-      otherSessions = [
-        {
-          id: 'sess-secondary-1',
-          deviceLabel: isMobileCurrent
-            ? 'PC / Desktop (Windows 11)'
-            : 'Smartphone (Android / Samsung Galaxy)',
-          browser: isMobileCurrent ? 'Google Chrome' : 'Chrome Mobile',
-          location: 'Jakarta, Indonesia',
-          lastActive: 'Terakhir aktif 2 jam yang lalu',
-          ip: '182.253.14.92',
-        },
-      ]
-      otherSessionsStore.set(user.id, otherSessions)
-    }
+    // Map all other real devices from database (deduplicated by deviceLabel + os so same device doesn't duplicate if IP changed)
+    const seenOtherKeys = new Set<string>()
+    seenOtherKeys.add(`${parsedDevice.deviceLabel}|${parsedDevice.os}`)
+
+    const otherSessions = allDbDevices
+      .filter((d) => d.deviceToken !== currentDeviceToken)
+      .filter((d) => {
+        const key = `${d.deviceLabel}|${d.os}`
+        if (seenOtherKeys.has(key)) return false
+        seenOtherKeys.add(key)
+        return true
+      })
+      .map((d) => {
+        const formattedTime = formatDeviceLoginTime(d.lastLoginAt)
+        return {
+          id: d.id,
+          deviceType:
+            (d.deviceType as 'desktop' | 'mobile' | 'tablet') || 'mobile',
+          deviceLabel: d.deviceLabel,
+          browser: d.browser || 'Browser',
+          os: d.os || '',
+          location: d.location || 'Indonesia',
+          lastActive: formattedTime,
+          loginTime: formattedTime,
+          ip: d.ipAddress || '-',
+          isCurrent: false,
+        }
+      })
 
     return NextResponse.json({
       twoFactorEnabled,
       phone: user.phone || null,
       currentSession,
-      otherSessions: otherSessions || [],
+      otherSessions,
     })
   } catch (error) {
     console.error('Error fetching user security:', error)
@@ -286,9 +386,9 @@ export async function POST(req: NextRequest) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DELETE - Logout Other Devices & Invalidate Secondary Sessions
+// DELETE - Logout Other Devices / Specific Device from UserDevice Table
 // ─────────────────────────────────────────────────────────────────────────────
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
   try {
     const session = await auth()
     const userId = session?.user?.id
@@ -307,8 +407,43 @@ export async function DELETE() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Clear all other sessions for this user
-    otherSessionsStore.set(user.id, [])
+    const { searchParams } = new URL(req.url)
+    const deviceId = searchParams.get('deviceId')
+
+    if (deviceId) {
+      // Delete specific device record
+      await prisma.userDevice
+        .deleteMany({
+          where: {
+            id: deviceId,
+            userId: user.id,
+          },
+        })
+        .catch(() => {})
+
+      return NextResponse.json({
+        success: true,
+        message: 'Perangkat berhasil dikeluarkan dari riwayat akses akun',
+      })
+    }
+
+    // Keep current device, delete all other devices for this user
+    const userAgentString = req.headers.get('user-agent') || 'Unknown Device'
+    const clientIp = extractClientIp(req)
+    const currentDeviceToken = generateDeviceToken(
+      userAgentString,
+      clientIp,
+      user.id
+    )
+
+    await prisma.userDevice
+      .deleteMany({
+        where: {
+          userId: user.id,
+          deviceToken: { not: currentDeviceToken },
+        },
+      })
+      .catch(() => {})
 
     return NextResponse.json({
       success: true,

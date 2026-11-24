@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user
+    // Create user (Superadmin creation: MITRA is immediately active & approved with default Mitra profile)
     const user = await prisma.user.create({
       data: {
         name,
@@ -160,8 +160,31 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         phone,
         role,
-        isActive: role === 'MITRA' ? false : true,
-        mitraStatus: role === 'MITRA' ? 'PENDING' : null,
+        isActive: true,
+        emailVerified: new Date(),
+        mitraStatus:
+          role === 'MITRA'
+            ? 'APPROVED'
+            : role === 'STORE_ADMIN'
+              ? 'APPROVED'
+              : null,
+        mitra:
+          role === 'MITRA'
+            ? {
+                create: {
+                  businessName: name.trim(),
+                  address: 'Alamat workshop belum diatur',
+                  city: 'Jakarta',
+                  province: 'DKI Jakarta',
+                  phone: phone || '-',
+                  whatsapp: phone || null,
+                  rating: 5.0,
+                  totalReview: 0,
+                  isApproved: true,
+                  isActive: true,
+                },
+              }
+            : undefined,
       },
       select: {
         id: true,
@@ -174,6 +197,14 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     })
+
+    if (role === 'MITRA') {
+      try {
+        const { invalidateMitraServiceDataCache } =
+          await import('@/lib/mitra-service-data')
+        invalidateMitraServiceDataCache()
+      } catch {}
+    }
 
     return NextResponse.json({ user }, { status: 201 })
   } catch (error) {

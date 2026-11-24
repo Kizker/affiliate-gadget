@@ -171,9 +171,9 @@ function LoginForm() {
               redirectUrl = '/dashboard/teknisi'
             } else if (userData.role === 'MITRA') {
               redirectUrl =
-                userData.mitraStatus === 'PENDING'
-                  ? '/dashboard/mitra/pending'
-                  : '/dashboard/mitra'
+                userData.mitraStatus === 'APPROVED'
+                  ? '/dashboard/mitra'
+                  : '/dashboard/mitra/pending'
             } else if (redirectParam && redirectParam.startsWith('/')) {
               redirectUrl = redirectParam
             } else {

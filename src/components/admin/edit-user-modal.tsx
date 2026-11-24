@@ -118,6 +118,12 @@ export default function EditUserModal({
       description: 'Kelola inventori unit fisik & pesanan cabang toko',
     },
     {
+      value: 'MITRA',
+      label: 'Mitra Servis (Bengkel & Promosi Servis)',
+      description:
+        'Kelola profil bengkel, layanan servis, galeri workshop & promosi di tab Servis',
+    },
+    {
       value: 'AFTER_SALES',
       label: 'Admin After Sales (Purna Jual)',
       description:

@@ -466,7 +466,7 @@ export function ReturnModal({
 
                 {/* Pemilih Jumlah Unit yang Diretur jika beli > 1 unit barang yang sama */}
                 {selectedItem && maxItemQty > 1 && (
-                  <div className="space-y-2 rounded-xl border border-slate-200/90 bg-white p-3 dark:border-slate-800 dark:bg-slate-800">
+                  <div className="rounded-xl border border-slate-200/90 bg-white p-3 dark:border-slate-800 dark:bg-slate-800">
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100">
@@ -506,86 +506,6 @@ export function ReturnModal({
                           +
                         </button>
                       </div>
-                    </div>
-
-                    {/* Tombol Pilihan Opsi Cepat (Pill Buttons) */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {Array.from({ length: maxItemQty }, (_, idx) => {
-                        const qtyValue = idx + 1
-                        const isSelected = safeReturnQty === qtyValue
-                        let labelText = `${qtyValue} Unit`
-                        if (qtyValue === 1) {
-                          labelText = '1 Unit Saja'
-                        } else if (qtyValue === 2 && maxItemQty === 2) {
-                          labelText = 'Keduanya (2 Unit)'
-                        } else if (qtyValue === 3 && maxItemQty === 3) {
-                          labelText = 'Ketiganya (3 Unit)'
-                        } else if (qtyValue === 4 && maxItemQty === 4) {
-                          labelText = 'Keempatnya (4 Unit)'
-                        } else if (qtyValue === maxItemQty) {
-                          labelText = `Semua (${qtyValue} Unit)`
-                        }
-
-                        return (
-                          <button
-                            key={qtyValue}
-                            type="button"
-                            onClick={() => setReturnQuantity(qtyValue)}
-                            className={`cursor-pointer rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
-                              isSelected
-                                ? 'border border-orange-500 bg-orange-50 font-bold text-orange-600 dark:bg-orange-950/40 dark:text-orange-300'
-                                : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-300'
-                            }`}
-                          >
-                            {labelText}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {/* Info Dinamis Penyesuaian Dana & Sisa Barang */}
-                    <div className="rounded-lg bg-orange-50/50 p-2 text-[10.5px] leading-relaxed text-slate-600 dark:bg-orange-950/20 dark:text-slate-300">
-                      {returnType === 'REFUND' ? (
-                        <>
-                          <p className="font-semibold text-orange-700 dark:text-orange-400">
-                            • Pengembalian Dana:{' '}
-                            <span className="font-mono font-bold">
-                              {formatPrice(selectedItem.price * safeReturnQty)}
-                            </span>{' '}
-                            ({safeReturnQty} unit @{' '}
-                            {formatPrice(selectedItem.price)})
-                          </p>
-                          {safeReturnQty < maxItemQty && (
-                            <p className="mt-0.5 text-slate-500 dark:text-slate-400">
-                              • Sisa{' '}
-                              <strong className="text-slate-700 dark:text-slate-200">
-                                {maxItemQty - safeReturnQty} unit
-                              </strong>{' '}
-                              lainnya tetap menjadi milik Anda dan dana barang
-                              tersebut tidak ditarik.
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-semibold text-orange-700 dark:text-orange-400">
-                            • Unit Baru Pengganti:{' '}
-                            <span className="font-bold">
-                              {safeReturnQty} Unit
-                            </span>{' '}
-                            akan dikirimkan toko cabang.
-                          </p>
-                          {safeReturnQty < maxItemQty && (
-                            <p className="mt-0.5 text-slate-500 dark:text-slate-400">
-                              • Sisa{' '}
-                              <strong className="text-slate-700 dark:text-slate-200">
-                                {maxItemQty - safeReturnQty} unit
-                              </strong>{' '}
-                              lainnya tetap Anda gunakan tanpa penukaran.
-                            </p>
-                          )}
-                        </>
-                      )}
                     </div>
                   </div>
                 )}

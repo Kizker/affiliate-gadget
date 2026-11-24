@@ -3,40 +3,40 @@ import fs from 'fs'
 import path from 'path'
 
 describe('Multi-Item & Quantity-Based Return Flow Suite', () => {
-  it('1. order-detail-client.tsx menghitung isCompleted berdasarkan status pesanan yang diterima tanpa menuntut garansi habis', () => {
+  it('1. order-detail-client.tsx membedakan isReceived (diterima & garansi aktif) dan isCompleted (pesanan selesai & baru boleh ulasan)', () => {
     const filePath = path.join(
       process.cwd(),
       'src/app/dashboard/customer/orders/[orderId]/order-detail-client.tsx'
     )
     const content = fs.readFileSync(filePath, 'utf-8')
 
-    // isCompleted harus true saat status COMPLETED atau customerConfirmedAt ada
+    // isReceived true saat customerConfirmedAt ada
+    expect(content).toContain('const isReceived = Boolean(')
+    expect(content).toContain('order.customerConfirmedAt')
+    // isCompleted hanya true saat status COMPLETED, completedAt ada, atau garansi 30 hari sudah lewat
     expect(content).toContain("order.status === 'COMPLETED'")
-    expect(content).toContain('Boolean(order.customerConfirmedAt)')
-    // Tidak boleh menuntut isWarrantyOver untuk menandakan pesanan selesai
-    expect(content).not.toContain(
-      "(order.status === 'COMPLETED' && (order.completedAt || isWarrantyOver))"
+    expect(content).toContain('Boolean(order.completedAt)')
+    expect(content).toContain(
+      '(Boolean(order.customerConfirmedAt) && isWarrantyOver)'
     )
   })
 
-  it('2. order-desktop-payment-card.tsx selalu menampilkan tombol Ajukan Komplain / Klaim Garansi untuk pesanan multi-item', () => {
+  it('2. order-desktop-payment-card.tsx menampilkan tombol Selesaikan Pesanan dan Ajukan Komplain / Klaim Garansi', () => {
     const filePath = path.join(
       process.cwd(),
       'src/components/customer/order-detail/order-desktop-payment-card.tsx'
     )
     const content = fs.readFileSync(filePath, 'utf-8')
 
-    // Tombol Ajukan Komplain / Klaim Garansi tidak boleh dibatasi order.items.length <= 1
-    expect(content).not.toContain(
-      'order.items.length <= 1 && (\n          <>\n            {canManuallyComplete'
-    )
+    expect(content).toContain('Selesaikan Pesanan')
+    expect(content).not.toContain('Selesaikan Pesanan Manual')
     expect(content).toContain(
       'canRequestReturnOrComplaint && !hasActiveClaim && ('
     )
     expect(content).toContain('Ajukan Komplain / Klaim Garansi')
   })
 
-  it('3. order-desktop-items-card.tsx menyediakan tombol Ajukan Retur Unit Ini pada tiap baris produk', () => {
+  it('3. order-desktop-items-card.tsx menampilkan Ajukan Retur Unit Ini saat garansi aktif dan menyembunyikan Beri Ulasan hingga pesanan diselesaikan', () => {
     const filePath = path.join(
       process.cwd(),
       'src/components/customer/order-detail/order-desktop-items-card.tsx'
@@ -45,9 +45,10 @@ describe('Multi-Item & Quantity-Based Return Flow Suite', () => {
 
     expect(content).toContain('Ajukan Retur Unit Ini')
     expect(content).toContain('onOpenReturnForItem?.(item)')
+    expect(content).toContain('{isCompleted && !isItemClaimActive && (')
   })
 
-  it('4. ReturnModal menyediakan pilihan cepat untuk meretur 1 unit, keduanya, ketiganya, atau semua unit', () => {
+  it('4. ReturnModal menggunakan stepper angka (- / +) saja tanpa pill opsi tambahan dan tanpa box keterangan dana', () => {
     const filePath = path.join(
       process.cwd(),
       'src/components/customer/return-modal.tsx'
@@ -55,11 +56,14 @@ describe('Multi-Item & Quantity-Based Return Flow Suite', () => {
     const content = fs.readFileSync(filePath, 'utf-8')
 
     expect(content).toContain('Jumlah Unit Diretur:')
-    expect(content).toContain('1 Unit Saja')
-    expect(content).toContain('Keduanya (2 Unit)')
     expect(content).toContain('safeReturnQty')
     expect(content).toContain('maxItemQty')
     expect(content).toContain('isPartialReturn')
+    expect(content).not.toContain('1 Unit Saja')
+    expect(content).not.toContain('Keduanya (2 Unit)')
+    expect(content).not.toContain(
+      'lainnya tetap menjadi milik Anda dan dana barang tersebut tidak ditarik.'
+    )
   })
 
   it('5. ReturnModal menghitung dana pengembalian bersih 100% senilai barang yang diretur saat retur parsial', () => {
@@ -73,10 +77,15 @@ describe('Multi-Item & Quantity-Based Return Flow Suite', () => {
     expect(content).toContain('netRefundAmount: effectiveProductTotal')
   })
 
-  it('6. Backend API /api/returns menerapkan refund penuh tanpa potongan operasional untuk retur parsial', () => {
+  it('6. Backend API /api/returns mengizinkan retur untuk pesanan yang sudah diterima (customerConfirmedAt) dan menolak jika sudah diselesaikan (completedAt)', () => {
     const filePath = path.join(process.cwd(), 'src/app/api/returns/route.ts')
     const content = fs.readFileSync(filePath, 'utf-8')
 
+    expect(content).toContain('isOrderReceived')
+    expect(content).toContain('Boolean(order.customerConfirmedAt)')
+    expect(content).toContain(
+      "if (order.status === 'COMPLETED' && order.completedAt)"
+    )
     expect(content).toContain('isPartialOrder')
     expect(content).toContain('netRefundAmount: effectiveItemTotal')
   })

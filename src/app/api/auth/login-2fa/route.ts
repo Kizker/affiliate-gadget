@@ -90,6 +90,8 @@ export async function POST(req: NextRequest) {
         'FINANCE_ADMIN',
         'CONTENT_EDITOR',
         'AFTER_SALES',
+        'MITRA',
+        'TECHNICIAN',
       ]
 
       const isStaffOrExempt =

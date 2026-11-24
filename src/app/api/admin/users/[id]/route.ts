@@ -48,16 +48,46 @@ export async function PATCH(
     // Otomatis sinkronisasi status persetujuan jika user adalah MITRA
     const targetRole = role !== undefined ? role : user.role
     if (targetRole === 'MITRA') {
-      if (isActive === true) {
-        // Mengaktifkan akun mitra: otomatis setujui pendaftaran mitra
+      const existingMitraProfile = await prisma.mitra.findUnique({
+        where: { userId: id },
+        select: { id: true },
+      })
+
+      if (isActive === true || (role === 'MITRA' && isActive !== false)) {
+        // Mengaktifkan atau mengubah akun menjadi mitra: otomatis setujui & pastikan profil Mitra tersedia
         updateData.mitraStatus = 'APPROVED'
-        await prisma.mitra.updateMany({
-          where: { userId: id },
-          data: {
-            isApproved: true,
-            isActive: true,
-          },
-        })
+        updateData.isActive = true
+
+        if (existingMitraProfile) {
+          await prisma.mitra.updateMany({
+            where: { userId: id },
+            data: {
+              isApproved: true,
+              isActive: true,
+            },
+          })
+        } else {
+          const fullTargetUser = await prisma.user.findUnique({
+            where: { id },
+            select: { name: true, phone: true, email: true },
+          })
+          await prisma.mitra.create({
+            data: {
+              userId: id,
+              businessName: fullTargetUser?.name || 'Bengkel Mitra Servis',
+              address: 'Alamat workshop belum diatur',
+              city: 'Jakarta',
+              province: 'DKI Jakarta',
+              phone: fullTargetUser?.phone || '-',
+              whatsapp: fullTargetUser?.phone || null,
+              email: fullTargetUser?.email || null,
+              rating: 5.0,
+              totalReview: 0,
+              isApproved: true,
+              isActive: true,
+            },
+          })
+        }
       } else if (isActive === false) {
         // Menonaktifkan akun mitra
         await prisma.mitra.updateMany({
@@ -67,6 +97,12 @@ export async function PATCH(
           },
         })
       }
+
+      try {
+        const { invalidateMitraServiceDataCache } =
+          await import('@/lib/mitra-service-data')
+        invalidateMitraServiceDataCache()
+      } catch {}
     }
 
     // If mitraStatus is being updated explicitly, also update Mitra table and user role
@@ -298,6 +334,27 @@ export async function DELETE(
         .deleteMany({ where: { userId: id } })
         .catch(() => {})
 
+      // Hapus profil mitra servis beserta layanan & gambarnya jika ada
+      const userMitra = await tx.mitra.findUnique({
+        where: { userId: id },
+        select: { id: true },
+      })
+      if (userMitra) {
+        await tx.mitraService
+          .deleteMany({ where: { mitraId: userMitra.id } })
+          .catch(() => {})
+        await tx.mitraImage
+          .deleteMany({ where: { mitraId: userMitra.id } })
+          .catch(() => {})
+        await tx.review
+          .deleteMany({ where: { mitraId: userMitra.id } })
+          .catch(() => {})
+        await tx.mitra.delete({ where: { id: userMitra.id } }).catch(() => {})
+      }
+      await tx.storeApplication
+        .deleteMany({ where: { userId: id } })
+        .catch(() => {})
+
       // Unlink relasi staf / after sales
       await tx.storeGroup
         .updateMany({
@@ -391,6 +448,14 @@ export async function DELETE(
         where: { id },
       })
     })
+
+    if (targetUser.role === 'MITRA') {
+      try {
+        const { invalidateMitraServiceDataCache } =
+          await import('@/lib/mitra-service-data')
+        invalidateMitraServiceDataCache()
+      } catch {}
+    }
 
     const successMessage = managedStoreName
       ? `Akun admin toko berhasil dihapus. Toko "${managedStoreName}" dinonaktifkan sementara dan riwayat transaksinya tetap aman.`

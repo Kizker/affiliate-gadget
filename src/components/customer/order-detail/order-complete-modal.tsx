@@ -71,7 +71,7 @@ export function OrderCompleteModal({
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-950 dark:text-white">
-              Selesaikan Pesanan Manual?
+              Selesaikan Pesanan?
             </h3>
             <p className="font-mono text-xs text-slate-400">#{orderNumber}</p>
           </div>

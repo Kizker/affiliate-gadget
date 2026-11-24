@@ -213,11 +213,18 @@ export default function RegisterPage() {
         redirect: false,
       })
 
-      if (formData.role === 'STORE_ADMIN' || formData.role === 'MITRA') {
+      if (formData.role === 'STORE_ADMIN') {
         if (result?.error) {
           router.push('/login?registered=true')
         } else {
           router.push('/dashboard/admin/onboarding')
+          router.refresh()
+        }
+      } else if (formData.role === 'MITRA') {
+        if (result?.error) {
+          router.push('/login?registered=true')
+        } else {
+          router.push('/dashboard/mitra/pending')
           router.refresh()
         }
       } else {
@@ -462,33 +469,33 @@ export default function RegisterPage() {
                     Pilih Jenis Akun
                   </label>
 
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() =>
                         setFormData({ ...formData, role: 'CUSTOMER' })
                       }
-                      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
+                      className={`flex flex-col items-start gap-2 rounded-2xl border p-2.5 text-left transition-all duration-200 ${
                         formData.role === 'CUSTOMER'
                           ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                           : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
                       }`}
                     >
                       <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${
                           formData.role === 'CUSTOMER'
                             ? 'bg-orange-500 text-white'
                             : 'shadow-2xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                         }`}
                       >
-                        <User className="h-4 w-4" />
+                        <User className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold leading-tight">
+                        <p className="text-[11px] font-bold leading-tight">
                           Customer
                         </p>
-                        <p className="text-[10px] opacity-75">
-                          Beli Gadget Second
+                        <p className="mt-0.5 text-[9.5px] leading-tight opacity-75">
+                          Beli Gadget
                         </p>
                       </div>
                     </button>
@@ -498,29 +505,57 @@ export default function RegisterPage() {
                       onClick={() =>
                         setFormData({ ...formData, role: 'STORE_ADMIN' })
                       }
-                      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
-                        formData.role === 'STORE_ADMIN' ||
+                      className={`flex flex-col items-start gap-2 rounded-2xl border p-2.5 text-left transition-all duration-200 ${
+                        formData.role === 'STORE_ADMIN'
+                          ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
+                          : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
+                      }`}
+                    >
+                      <div
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${
+                          formData.role === 'STORE_ADMIN'
+                            ? 'bg-orange-500 text-white'
+                            : 'shadow-2xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <Store className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold leading-tight">
+                          Admin Toko
+                        </p>
+                        <p className="mt-0.5 text-[9.5px] leading-tight opacity-75">
+                          Cabang Toko
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({ ...formData, role: 'MITRA' })
+                      }
+                      className={`flex flex-col items-start gap-2 rounded-2xl border p-2.5 text-left transition-all duration-200 ${
                         formData.role === 'MITRA'
                           ? 'shadow-xs border-orange-500 bg-orange-50/25 text-slate-950 ring-1 ring-orange-500/30 dark:border-orange-500 dark:bg-orange-950/20 dark:text-white'
                           : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
                       }`}
                     >
                       <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-                          formData.role === 'STORE_ADMIN' ||
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${
                           formData.role === 'MITRA'
                             ? 'bg-orange-500 text-white'
                             : 'shadow-2xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                         }`}
                       >
-                        <Store className="h-4 w-4" />
+                        <ShieldCheck className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold leading-tight">
-                          Admin Toko
+                        <p className="text-[11px] font-bold leading-tight">
+                          Mitra Servis
                         </p>
-                        <p className="text-[10px] opacity-75">
-                          Daftar Cabang Toko
+                        <p className="mt-0.5 text-[9.5px] leading-tight opacity-75">
+                          Bengkel Servis
                         </p>
                       </div>
                     </button>

@@ -78,18 +78,24 @@ export default function MitraPendingPage() {
         setApplicationDetails(data.applicationDetails)
         setLastCheckedTime(new Date().toLocaleTimeString('id-ID'))
 
-        // If approved or upgraded to STORE_ADMIN, refresh session & redirect
+        // If approved or upgraded, refresh session & redirect to respective dashboard
         if (data.mitraStatus === 'APPROVED' || data.role === 'STORE_ADMIN') {
           if (!isRedirectingRef.current) {
             isRedirectingRef.current = true
+            const targetDashboard =
+              data.role === 'STORE_ADMIN'
+                ? '/dashboard/admin'
+                : '/dashboard/mitra'
             toast.success(
-              'Pendaftaran toko berhasil disetujui! Mengalihkan ke Dashboard Toko...'
+              data.role === 'STORE_ADMIN'
+                ? 'Pendaftaran toko berhasil disetujui! Mengalihkan ke Dashboard Toko...'
+                : 'Akun Mitra Servis berhasil diaktifkan! Mengalihkan ke Dashboard Mitra...'
             )
             if (updateSession) {
               await updateSession()
             }
             setTimeout(() => {
-              window.location.href = '/dashboard/admin'
+              window.location.href = targetDashboard
             }, 800)
           }
           return

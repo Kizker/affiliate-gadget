@@ -235,22 +235,20 @@ export function OrderMobileView({
                   </div>
                   {order.items.length > 1 && (
                     <div className="mt-2.5 flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100/80 pt-2 dark:border-slate-800/80">
-                      {canRequestReturnOrComplaint &&
-                        !hasActiveClaim &&
-                        isCompleted && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onOpenReturnForItem
-                                ? onOpenReturnForItem(item)
-                                : onOpenReturn()
-                            }
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-orange-200/80 bg-orange-50/80 px-2.5 py-1 text-[11px] font-bold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
-                          >
-                            <RotateCcw className="h-3 w-3" />
-                            <span>Ajukan Retur Unit Ini</span>
-                          </button>
-                        )}
+                      {canRequestReturnOrComplaint && !hasActiveClaim && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenReturnForItem
+                              ? onOpenReturnForItem(item)
+                              : onOpenReturn()
+                          }
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-orange-200/80 bg-orange-50/80 px-2.5 py-1 text-[11px] font-bold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Ajukan Retur Unit Ini</span>
+                        </button>
+                      )}
 
                       {isCompleted && !latestReturnRequest && (
                         <button
@@ -827,7 +825,31 @@ export function OrderMobileView({
           </div>
         )}
 
-        {/* Tombol ulasan, komplain, dan chat di bawah HANYA tampil jika pembelian 1 produk (order.items.length <= 1). Jika multi-produk (> 1), aksi berada di masing-masing produk */}
+        {/* Tombol Selesaikan Pesanan (jika sudah diterima tapi belum diselesaikan) */}
+        {canManuallyComplete && onOpenCompleteModal && (
+          <button
+            type="button"
+            onClick={onOpenCompleteModal}
+            className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50/90 px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.99] dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Selesaikan Pesanan</span>
+          </button>
+        )}
+
+        {/* Primary Action: Ajukan Komplain / Klaim Garansi */}
+        {canRequestReturnOrComplaint && !hasActiveClaim && (
+          <button
+            type="button"
+            onClick={onOpenReturn}
+            className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-orange-500/30 bg-orange-50/70 px-4 py-3 text-sm font-bold text-orange-600 transition hover:bg-orange-100 active:scale-[0.99] dark:border-orange-500/40 dark:bg-orange-950/30 dark:text-orange-400"
+          >
+            <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
+            <span>Ajukan Komplain / Klaim Garansi</span>
+          </button>
+        )}
+
+        {/* Tombol ulasan dan chat di bawah HANYA tampil jika pembelian 1 produk (order.items.length <= 1). Jika multi-produk (> 1), aksi berada di masing-masing produk */}
         {order.items.length <= 1 && (
           <>
             {showCompletedBadge && (
@@ -837,30 +859,6 @@ export function OrderMobileView({
                 className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-[#0F172A] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.99] dark:bg-slate-900"
               >
                 {currentReview ? 'Edit Ulasan Produk' : 'Beri Ulasan Produk'}
-              </button>
-            )}
-
-            {/* Tombol Selesaikan Pesanan Manual (jika sudah diterima tapi belum diselesaikan manual) */}
-            {canManuallyComplete && onOpenCompleteModal && (
-              <button
-                type="button"
-                onClick={onOpenCompleteModal}
-                className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50/90 px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.99] dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-              >
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Selesaikan Pesanan Manual</span>
-              </button>
-            )}
-
-            {/* Primary Action: Ajukan Komplain / Klaim Garansi */}
-            {canRequestReturnOrComplaint && !hasActiveClaim && (
-              <button
-                type="button"
-                onClick={onOpenReturn}
-                className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-orange-500/30 bg-orange-50/70 px-4 py-3 text-sm font-bold text-orange-600 transition hover:bg-orange-100 active:scale-[0.99] dark:border-orange-500/40 dark:bg-orange-950/30 dark:text-orange-400"
-              >
-                <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
-                <span>Ajukan Komplain / Klaim Garansi</span>
               </button>
             )}
 

@@ -3,10 +3,10 @@ import { PrismaClient } from '@prisma/client'
 const prismaClientSingleton = () => {
   let dbUrl = process.env.DATABASE_URL || ''
 
-  // Batasi pool koneksi agar tidak melebihi batas PostgreSQL lokal / serverless
+  // Batasi pool koneksi agar tidak kehabisan koneksi namun cukup longgar untuk burst request
   if (!dbUrl.includes('connection_limit')) {
     const separator = dbUrl.includes('?') ? '&' : '?'
-    dbUrl = `${dbUrl}${separator}connection_limit=5&pool_timeout=20&connect_timeout=10`
+    dbUrl = `${dbUrl}${separator}connection_limit=20&pool_timeout=30&connect_timeout=15`
   }
 
   return new PrismaClient({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { createWhatsAppOtp, verifyWhatsAppOtp } from '@/lib/two-factor-store'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 // GET - Retrieve full user profile
 export async function GET() {
@@ -220,17 +221,32 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // Clean phone
-    const cleanPhone =
+    // Clean phone (normalize to local 08xxxx format)
+    const rawCleanPhone =
       phone !== undefined
         ? (typeof phone === 'string' ? phone.trim() : null) || null
         : undefined
+    const cleanPhone =
+      rawCleanPhone !== undefined
+        ? rawCleanPhone
+          ? normalizeToLocalPhone(rawCleanPhone) || rawCleanPhone
+          : null
+        : undefined
+    const existingNormalizedPhone = existingSelf.phone
+      ? normalizeToLocalPhone(existingSelf.phone) || existingSelf.phone.trim()
+      : null
 
-    // Validate phone uniqueness & enforce WhatsApp OTP if changing phone
-    if (cleanPhone && cleanPhone !== existingSelf.phone) {
+    const isAddingNewPhone = Boolean(cleanPhone) && !existingNormalizedPhone
+    const isChangingExistingPhone =
+      Boolean(cleanPhone) &&
+      Boolean(existingNormalizedPhone) &&
+      cleanPhone !== existingNormalizedPhone
+
+    // Validate phone uniqueness & enforce WhatsApp OTP ONLY if adding or changing phone number
+    if (cleanPhone && (isAddingNewPhone || isChangingExistingPhone)) {
       const duplicatePhone = await prisma.user.findFirst({
         where: {
-          phone: cleanPhone,
+          OR: [{ phone: cleanPhone }, { phone: rawCleanPhone || cleanPhone }],
           id: { not: existingSelf.id },
         },
       })
@@ -241,6 +257,8 @@ export async function PATCH(request: NextRequest) {
           { status: 400 }
         )
       }
+
+      const phoneOtpPurpose = isAddingNewPhone ? 'ADD_PHONE' : 'CHANGE_PHONE'
 
       // If action is request-phone-otp or otp is not provided, trigger OTP
       if (action === 'request-phone-otp' || !otp || String(otp).trim() === '') {
@@ -257,8 +275,10 @@ export async function PATCH(request: NextRequest) {
             .then(({ sendEmail }) => {
               sendEmail(
                 existingSelf.email,
-                'Kode Verifikasi Ganti Nomor Telepon Affiliate Gadget',
-                `<p>Halo <strong>${existingSelf.name || 'Pengguna'}</strong>,</p><p>Kode verifikasi untuk konfirmasi ganti nomor telepon Anda adalah: <strong style="font-size: 20px; color: #ea580c;">${otpData.code}</strong></p><p>Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.</p>`
+                isAddingNewPhone
+                  ? 'Kode Verifikasi Tambah Nomor WhatsApp Affiliate Gadget'
+                  : 'Kode Verifikasi Ganti Nomor Telepon Affiliate Gadget',
+                `<p>Halo <strong>${existingSelf.name || 'Pengguna'}</strong>,</p><p>Kode verifikasi untuk konfirmasi ${isAddingNewPhone ? 'penambahan' : 'penggantian'} nomor telepon Anda adalah: <strong style="font-size: 20px; color: #ea580c;">${otpData.code}</strong></p><p>Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.</p>`
               ).catch(() => {})
             })
             .catch(() => {})
@@ -266,9 +286,10 @@ export async function PATCH(request: NextRequest) {
 
         return NextResponse.json({
           requiresOtp: true,
-          otpPurpose: 'CHANGE_PHONE',
-          message:
-            'Verifikasi OTP WhatsApp diperlukan untuk mengubah nomor telepon',
+          otpPurpose: phoneOtpPurpose,
+          message: isAddingNewPhone
+            ? 'Verifikasi OTP WhatsApp diperlukan untuk menambahkan nomor telepon'
+            : 'Verifikasi OTP WhatsApp diperlukan untuk mengubah nomor telepon',
           phone: cleanPhone,
           maskedPhone: masked,
           whatsappUrl: otpData.whatsappUrl,
@@ -288,7 +309,7 @@ export async function PATCH(request: NextRequest) {
           {
             error:
               verifyRes.error ||
-              'Kode OTP WhatsApp untuk ganti nomor telepon tidak cocok',
+              'Kode OTP WhatsApp untuk verifikasi nomor telepon tidak cocok',
           },
           { status: 400 }
         )
@@ -313,24 +334,45 @@ export async function PATCH(request: NextRequest) {
         ? (typeof name === 'string' ? name.trim() : null) || null
         : undefined
 
-    // Update user in DB
-    const updatedUser = await prisma.user.update({
-      where: { id: existingSelf.id },
-      data: {
-        ...(cleanName !== undefined && { name: cleanName }),
-        ...(cleanUsername !== undefined && { username: cleanUsername }),
-        ...(cleanEmail && { email: cleanEmail }),
-        ...(cleanPhone !== undefined && {
-          phone: cleanPhone,
-          ...(cleanPhone && cleanPhone !== existingSelf.phone
-            ? { phoneVerified: new Date() }
-            : {}),
-        }),
-        ...(cleanGender !== undefined && { gender: cleanGender }),
-        ...(parsedBirthDate !== undefined && { birthDate: parsedBirthDate }),
-        ...(cleanBio !== undefined && { bio: cleanBio }),
-      },
-    })
+    // Build safe update payload
+    const updatePayload: Record<string, any> = {
+      ...(cleanName !== undefined && { name: cleanName }),
+      ...(cleanUsername !== undefined && { username: cleanUsername }),
+      ...(cleanEmail && { email: cleanEmail }),
+      ...(cleanPhone !== undefined && {
+        phone: cleanPhone,
+        ...(isAddingNewPhone || isChangingExistingPhone
+          ? { phoneVerified: new Date() }
+          : {}),
+      }),
+      ...(cleanGender !== undefined && { gender: cleanGender }),
+      ...(parsedBirthDate !== undefined && { birthDate: parsedBirthDate }),
+      ...(cleanBio !== undefined && { bio: cleanBio }),
+    }
+
+    // Update user in DB with fallback if phoneVerified column is unavailable
+    let updatedUser
+    try {
+      updatedUser = await prisma.user.update({
+        where: { id: existingSelf.id },
+        data: updatePayload,
+      })
+    } catch (updateErr: any) {
+      const errMsg = String(updateErr?.message || '')
+      if (updatePayload.phoneVerified) {
+        const fallbackPayload = { ...updatePayload }
+        delete fallbackPayload.phoneVerified
+        updatedUser = await prisma.user.update({
+          where: { id: existingSelf.id },
+          data: fallbackPayload,
+        })
+      } else {
+        console.error('Prisma user.update failed:', errMsg)
+        throw new Error(
+          'Gagal memperbarui data profil ke database. Silakan coba sesaat lagi.'
+        )
+      }
+    }
 
     // Update technician if exists
     const technician = await prisma.technician.findUnique({

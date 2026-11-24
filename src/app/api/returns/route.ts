@@ -347,12 +347,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if order is completed
-    if (order.status !== 'COMPLETED' && order.status !== 'COMPLAINED') {
+    // Check if order has been received / confirmed by customer
+    const isOrderReceived =
+      order.status === 'COMPLETED' ||
+      order.status === 'COMPLAINED' ||
+      Boolean(order.customerConfirmedAt) ||
+      Boolean(order.completedAt)
+
+    if (!isOrderReceived) {
       return NextResponse.json(
         {
           error:
             'Pengajuan pengembalian hanya dapat dilakukan untuk pesanan yang telah selesai diterima',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Check if order was manually completed (which relinquishes warranty and releases escrow)
+    if (order.status === 'COMPLETED' && order.completedAt) {
+      return NextResponse.json(
+        {
+          error:
+            'Pesanan telah diselesaikan dan garansi toko 30 hari telah berakhir.',
         },
         { status: 400 }
       )

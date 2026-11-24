@@ -67,18 +67,18 @@ export function CustomerWishlistView({
   }
 
   return (
-    <div className="w-full space-y-4 pb-20">
+    <div className="w-full max-w-full space-y-3.5 overflow-hidden pb-20">
       {/* Top Header Card matching Screenshot 2 (Hidden on standalone desktop header to prevent duplicate Kosongkan button) */}
       <div
-        className={`shadow-xs flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 ${
+        className={`shadow-xs flex w-full items-center justify-between gap-2 rounded-2xl border border-slate-100 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900 sm:p-4 ${
           isStandalonePage ? 'md:hidden' : ''
         }`}
       >
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
             {items.length} Gadget Tersimpan
           </h3>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
             Daftar produk incaran Anda
           </p>
         </div>
@@ -87,7 +87,7 @@ export function CustomerWishlistView({
           <button
             type="button"
             onClick={handleClearAll}
-            className="flex items-center gap-1.5 rounded-full border border-rose-100 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-500 transition hover:bg-rose-100 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-rose-100 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-500 transition hover:bg-rose-100 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400"
           >
             <Trash2 className="h-3.5 w-3.5" />
             <span>Kosongkan</span>
@@ -152,18 +152,20 @@ export function CustomerWishlistView({
             return (
               <div
                 key={item.id}
-                className="shadow-2xs hover:shadow-xs group relative flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all hover:border-orange-300 dark:border-slate-800 dark:bg-slate-900 sm:p-4"
+                className="shadow-2xs hover:shadow-xs group relative flex w-full max-w-full items-center justify-between gap-2.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 transition-all hover:border-orange-300 dark:border-slate-800 dark:bg-slate-900 sm:gap-3.5 sm:p-4"
               >
                 {/* Clickable Area: Redirects directly to product page */}
                 <Link
                   href={productHref}
-                  className="flex min-w-0 flex-1 items-center gap-3.5 sm:gap-4"
+                  className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
                 >
-                  {/* Clean Thumbnail Image Box */}
-                  <div className="h-18 w-18 relative shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800 sm:h-20 sm:w-20">
+                  {/* Clean Thumbnail Image Box (Fixed explicit dimensions 64x64px on mobile, 80x80px on desktop) */}
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800 sm:h-20 sm:w-20">
                     <img
                       src={imgSrc}
                       alt={item.name}
+                      width={80}
+                      height={80}
                       loading="lazy"
                       onError={(e) => {
                         ;(e.currentTarget as HTMLImageElement).src =
@@ -174,18 +176,18 @@ export function CustomerWishlistView({
                   </div>
 
                   {/* Product Details */}
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
                     <h4 className="line-clamp-2 text-xs font-bold leading-snug text-slate-900 transition-colors group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-sm">
                       {item.name}
                     </h4>
 
                     {/* Price Row */}
-                    <div className="mt-1 flex items-baseline gap-2 font-mono">
-                      <span className="text-xs font-bold text-orange-600 dark:text-orange-400 sm:text-sm">
+                    <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono">
+                      <span className="whitespace-nowrap text-xs font-bold text-orange-600 dark:text-orange-400 sm:text-sm">
                         {displayPrice}
                       </span>
                       {displayOriginalPrice && (
-                        <span className="text-[11px] text-slate-400 line-through">
+                        <span className="whitespace-nowrap text-[10.5px] text-slate-400 line-through sm:text-[11px]">
                           {displayOriginalPrice}
                         </span>
                       )}
@@ -201,11 +203,11 @@ export function CustomerWishlistView({
                     e.stopPropagation()
                     handleRemove(item.id, item.name, e)
                   }}
-                  className="shrink-0 cursor-pointer rounded-xl p-2.5 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-90 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                  className="shrink-0 cursor-pointer rounded-xl p-2 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-90 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 sm:p-2.5"
                   title="Hapus dari Wishlist"
                   aria-label={`Hapus ${item.name} dari Wishlist`}
                 >
-                  <Trash2 className="sm:h-4.5 sm:w-4.5 h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             )

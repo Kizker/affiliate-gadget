@@ -243,10 +243,17 @@ export default function UsersPage() {
         </span>
       )
     }
-    if (user.role === 'STORE_ADMIN' || user.role === 'MITRA') {
+    if (user.role === 'STORE_ADMIN') {
       return (
         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-indigo-200/60 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-300">
           Admin Toko
+        </span>
+      )
+    }
+    if (user.role === 'MITRA') {
+      return (
+        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+          Mitra Servis
         </span>
       )
     }
@@ -397,6 +404,7 @@ export default function UsersPage() {
             { id: 'SUPER_ADMIN', label: 'Superadmin' },
             { id: 'AFTER_SALES', label: 'After Sales' },
             { id: 'STORE_ADMIN', label: 'Admin Toko' },
+            { id: 'MITRA', label: 'Mitra Servis' },
             { id: 'CUSTOMER', label: 'Customer' },
           ].map((tab) => (
             <button

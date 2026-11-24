@@ -249,7 +249,10 @@ export function isOrderItemReturnEligible(
   item: MatchableOrderItem,
   totalOrderItemsCount: number = 1
 ): boolean {
-  if (order.status !== 'COMPLETED') return false
+  const isReceived =
+    order.status === 'COMPLETED' || Boolean(order.customerConfirmedAt)
+  if (!isReceived) return false
+  if (order.status === 'COMPLETED' && order.completedAt) return false
   if (isWarrantyExpired(order)) return false
 
   const matchingReturn = findReturnForOrderItem(
@@ -353,7 +356,10 @@ export function isWarrantyExpired(order: OrderWarrantyInfo): boolean {
  * 3. No active, completed, or approved return requests
  */
 export function isReturnEligible(order: OrderWarrantyInfo): boolean {
-  if (order.status !== 'COMPLETED') return false
+  const isReceived =
+    order.status === 'COMPLETED' || Boolean(order.customerConfirmedAt)
+  if (!isReceived) return false
+  if (order.status === 'COMPLETED' && order.completedAt) return false
   if (isWarrantyExpired(order)) return false
 
   if (order.returnRequests && order.returnRequests.length > 0) {

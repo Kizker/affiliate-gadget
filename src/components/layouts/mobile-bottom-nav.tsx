@@ -139,11 +139,13 @@ export function MobileBottomNav({
   const accountHref = isLoggedIn
     ? session?.user?.role === 'AFTER_SALES'
       ? '/dashboard/after-sales'
-      : session?.user?.role === 'SUPER_ADMIN' ||
-          session?.user?.role === 'ADMIN' ||
-          session?.user?.role === 'STORE_ADMIN'
-        ? '/dashboard/admin'
-        : '/dashboard/customer/settings'
+      : session?.user?.role === 'MITRA'
+        ? '/dashboard/mitra'
+        : session?.user?.role === 'SUPER_ADMIN' ||
+            session?.user?.role === 'ADMIN' ||
+            session?.user?.role === 'STORE_ADMIN'
+          ? '/dashboard/admin'
+          : '/dashboard/customer/settings'
     : '/login?callbackUrl=/dashboard/customer/settings'
 
   return (

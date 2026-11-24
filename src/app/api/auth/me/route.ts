@@ -19,6 +19,8 @@ export async function GET() {
         role: true,
         image: true,
         storeId: true,
+        mitraStatus: true,
+        isActive: true,
         store: {
           select: {
             id: true,

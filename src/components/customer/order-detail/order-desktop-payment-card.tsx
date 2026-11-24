@@ -131,15 +131,15 @@ export function OrderDesktopPaymentCard({
           </button>
         )}
 
-        {/* Tombol Selesaikan Pesanan Manual */}
+        {/* Tombol Selesaikan Pesanan */}
         {canManuallyComplete && onOpenCompleteModal && (
           <button
             type="button"
             onClick={onOpenCompleteModal}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50/90 py-3 text-xs font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50/90 py-3 text-xs font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
           >
             <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Selesaikan Pesanan Manual</span>
+            <span>Selesaikan Pesanan</span>
           </button>
         )}
 

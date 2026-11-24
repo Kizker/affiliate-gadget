@@ -149,8 +149,7 @@ export function OrderDesktopItemsCard({
 
                             {/* 1. Ajukan Komplain / Retur per Item */}
                             {canRequestReturnOrComplaint &&
-                              !isItemClaimActive &&
-                              isCompleted && (
+                              !isItemClaimActive && (
                                 <button
                                   type="button"
                                   onClick={() => onOpenReturnForItem?.(item)}
@@ -161,7 +160,7 @@ export function OrderDesktopItemsCard({
                                 </button>
                               )}
 
-                            {/* 2. Beri Ulasan per Item */}
+                            {/* 2. Beri Ulasan per Item (Hanya muncul setelah pesanan diselesaikan) */}
                             {isCompleted && !isItemClaimActive && (
                               <button
                                 type="button"
