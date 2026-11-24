@@ -213,6 +213,7 @@ export interface ResolvedStorePageContent {
     mobileImage: string
     priceText: string | null
     priceNumber: number | null
+    targetVariantId?: string | null
   }
   editorial1: {
     hasCustomBanner: boolean
@@ -222,6 +223,7 @@ export interface ResolvedStorePageContent {
     subtitle?: string
     description: string
     campaignProduct: StoreProductPublic | null
+    targetVariantId?: string | null
   }
   editorial2: {
     imageUrl: string
@@ -336,13 +338,48 @@ export function resolveStorePageContent(
       ? `Unit unggulan ${topFlagship.name} di gerai ${storeName}. Garansi 30 hari tukar unit baru.`
       : STORE_PAGE_DEFAULTS.hero.mobileDesc(storeName))
 
-  const priceNumber =
-    topFlagship?.price || (topFlagship as any)?.minPrice || null
+  // Tentukan varian target untuk produk hero agar harga di cover dan varian yang terbuka 100% SAMA
+  let heroTargetVariantId: string | null = null
+  let priceNumber: number | null = null
+
+  if (Array.isArray(topFlagship?.variants) && topFlagship.variants.length > 0) {
+    const inStockVars = topFlagship.variants.filter(
+      (v: any) => (Number(v.stock) || 0) > 0
+    )
+    const candidates =
+      inStockVars.length > 0 ? inStockVars : topFlagship.variants
+    const sorted = [...candidates].sort(
+      (a: any, b: any) => (Number(a.price) || 0) - (Number(b.price) || 0)
+    )
+    const bestVar = sorted[0] || topFlagship.variants[0]
+    heroTargetVariantId = bestVar?.id || null
+    priceNumber = Number(bestVar?.price) || null
+  }
+
+  if (!priceNumber) {
+    priceNumber = topFlagship?.price || (topFlagship as any)?.minPrice || null
+  }
+
   const priceText = priceNumber
     ? `Mulai Rp ${Number(priceNumber).toLocaleString('id-ID')}`
     : null
 
   // 2. Editorial 1 (Campaign Banner)
+  let campaignTargetVariantId: string | null = null
+  if (
+    Array.isArray(campaignProduct?.variants) &&
+    campaignProduct.variants.length > 0
+  ) {
+    const inStockVars = campaignProduct.variants.filter(
+      (v: any) => (Number(v.stock) || 0) > 0
+    )
+    const candidates =
+      inStockVars.length > 0 ? inStockVars : campaignProduct.variants
+    const sorted = [...candidates].sort(
+      (a: any, b: any) => (Number(a.price) || 0) - (Number(b.price) || 0)
+    )
+    campaignTargetVariantId = sorted[0]?.id || null
+  }
   const customBannerUrl = store?.banner
     ? sanitizeStoreImageUrl(store.banner, '')
     : ''
@@ -413,6 +450,7 @@ export function resolveStorePageContent(
       mobileImage: heroMobileImage,
       priceText,
       priceNumber,
+      targetVariantId: heroTargetVariantId,
     },
     editorial1: {
       hasCustomBanner,
@@ -422,6 +460,7 @@ export function resolveStorePageContent(
       subtitle: ed1Subtitle,
       description: ed1Desc,
       campaignProduct,
+      targetVariantId: campaignTargetVariantId,
     },
     editorial2: {
       imageUrl: ed2ImageUrl,

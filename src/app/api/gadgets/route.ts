@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       )
     }
 
-    // Tampilan Depan Publik (!scoped & !rawProducts): Hanya menampilkan Etalase Aktif!
+    // Tampilan Depan Publik (!scoped & !rawProducts): HANYA menampilkan Etalase Aktif!
     if (!scoped && !rawProducts) {
       const etalases = await getEtalases({
         storeId,
@@ -70,27 +70,26 @@ export async function GET(request: Request) {
         sort,
       })
 
-      if (etalases.length > 0) {
-        if (isDefaultPublicRequest) {
-          publicGadgetsCache = {
-            data: etalases,
-            timestamp: Date.now(),
-            version: getPublicGadgetsCacheVersion(),
-          }
+      if (isDefaultPublicRequest) {
+        publicGadgetsCache = {
+          data: etalases,
+          timestamp: Date.now(),
+          version: getPublicGadgetsCacheVersion(),
         }
-        return NextResponse.json(
-          {
-            success: true,
-            data: etalases,
-          },
-          {
-            headers: {
-              'Cache-Control':
-                'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
-            },
-          }
-        )
       }
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: etalases,
+        },
+        {
+          headers: {
+            'Cache-Control':
+              'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+          },
+        }
+      )
     }
 
     if (scoped && !storeId) {

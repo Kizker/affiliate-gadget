@@ -785,8 +785,14 @@ export function ShopeeMobileProductDetail({
           </span>
 
           {(() => {
-            const effectiveOriginalPrice =
-              selectedVariant?.originalPrice || product.originalPrice
+            const effectiveOriginalPrice = selectedVariant
+              ? selectedVariant.originalPrice &&
+                Number(selectedVariant.originalPrice) > 0
+                ? Number(selectedVariant.originalPrice)
+                : null
+              : product.originalPrice && Number(product.originalPrice) > 0
+                ? Number(product.originalPrice)
+                : null
             if (
               effectiveOriginalPrice &&
               effectiveOriginalPrice > currentPrice

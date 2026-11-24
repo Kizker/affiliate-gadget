@@ -179,17 +179,16 @@ export async function getStoreDetailData(
       ? [...store.products]
       : []
 
-    // Tampilkan Etalase Aktif toko di halaman publik /toko/[slug]
+    // Halaman publik /toko/[slug] HANYA menampilkan Etalase Aktif toko!
     try {
       const storeEtalases = await getEtalases({
         storeId: String((store as any).id),
         onlyActive: true,
       })
-      if (storeEtalases.length > 0) {
-        ;(store as any).products = storeEtalases
-      }
+      ;(store as any).products = storeEtalases || []
     } catch (etaErr) {
       console.warn('Store etalase load warning:', etaErr)
+      ;(store as any).products = []
     }
 
     return JSON.parse(JSON.stringify(store))

@@ -399,7 +399,6 @@ export async function getEtalases(options?: {
   sort?: string
 }): Promise<EvaluatedEtalase[]> {
   if (typeof (prisma as any)?.$queryRawUnsafe !== 'function') return []
-  await ensureInitialEtalasesSeeded()
 
   const storeId = options?.storeId || ''
   const brand = options?.brand || ''
@@ -599,7 +598,6 @@ export async function getEtalaseByIdOrProductId(
   id: string
 ): Promise<EvaluatedEtalase | null> {
   if (typeof (prisma as any)?.$queryRawUnsafe !== 'function') return null
-  await ensureInitialEtalasesSeeded()
 
   let rawEtalase: any = null
   let requestedProductId: string | null = null

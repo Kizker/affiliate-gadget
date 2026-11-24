@@ -427,11 +427,7 @@ export async function POST(request: NextRequest) {
               v.originalPrice !== null &&
               String(v.originalPrice).trim() !== ''
                 ? parseFloat(String(v.originalPrice).replace(/\./g, '')) || null
-                : originalPrice !== undefined &&
-                    originalPrice !== null &&
-                    String(originalPrice).trim() !== ''
-                  ? parseFloat(String(originalPrice).replace(/\./g, '')) || null
-                  : null,
+                : null,
             stock: parseInt(String(v.stock || stock)) || 0,
             sku: v.sku
               ? String(v.sku).trim()

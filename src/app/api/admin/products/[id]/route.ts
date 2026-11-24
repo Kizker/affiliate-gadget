@@ -158,6 +158,12 @@ export async function PATCH(
                     ? parseFloat(v.costPrice)
                     : null,
               }),
+              ...(v.originalPrice !== undefined && {
+                originalPrice:
+                  v.originalPrice !== null && v.originalPrice !== ''
+                    ? parseFloat(String(v.originalPrice).replace(/\./g, ''))
+                    : null,
+              }),
             },
           })
         }

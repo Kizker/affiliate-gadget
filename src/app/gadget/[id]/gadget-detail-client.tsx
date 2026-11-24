@@ -115,11 +115,25 @@ export default function GadgetDetailClient({
   const defaultVariant = useMemo(() => {
     const targetProd = defaultEtalaseItem?.product || initialProduct
     if (!targetProd?.variants || targetProd.variants.length === 0) return null
-    const firstWithStock = targetProd.variants.find(
+
+    const requestedVariantId = searchParams?.get('variant')
+    if (requestedVariantId) {
+      const byReq = targetProd.variants.find(
+        (v: any) => v.id === requestedVariantId
+      )
+      if (byReq) return byReq
+    }
+
+    const inStockVars = targetProd.variants.filter(
       (v: any) => (Number(v.stock) || 0) > 0
     )
-    return firstWithStock || targetProd.variants[0]
-  }, [initialProduct, defaultEtalaseItem])
+    const candidates =
+      inStockVars.length > 0 ? inStockVars : targetProd.variants
+    const sorted = [...candidates].sort(
+      (a: any, b: any) => (Number(a.price) || 0) - (Number(b.price) || 0)
+    )
+    return sorted[0] || targetProd.variants[0]
+  }, [initialProduct, defaultEtalaseItem, searchParams])
 
   const defaultImage = useMemo(() => {
     if (initialProduct?.etalaseCustomCoverImage) {
@@ -306,10 +320,20 @@ export default function GadgetDetailClient({
             : d.images?.[0] || '')
 
         if (targetProd.variants && targetProd.variants.length > 0) {
-          const firstWithStock = targetProd.variants.find(
-            (v: any) => (v.stock || 0) > 0
+          const requestedVariantId = searchParams?.get('variant')
+          const byReq = requestedVariantId
+            ? targetProd.variants.find((v: any) => v.id === requestedVariantId)
+            : null
+
+          const inStockVars = targetProd.variants.filter(
+            (v: any) => (Number(v.stock) || 0) > 0
           )
-          const chosenVariant = firstWithStock || targetProd.variants[0]
+          const candidates =
+            inStockVars.length > 0 ? inStockVars : targetProd.variants
+          const sorted = [...candidates].sort(
+            (a: any, b: any) => (Number(a.price) || 0) - (Number(b.price) || 0)
+          )
+          const chosenVariant = byReq || sorted[0] || targetProd.variants[0]
           setSelectedVariant(chosenVariant)
           if (chosenVariant.image && !d.etalaseCustomCoverImage) {
             initialImage = chosenVariant.image
@@ -563,10 +587,15 @@ export default function GadgetDetailClient({
     setSelectedEtalaseItem(item)
     const targetProd = item?.product || product
     if (targetProd?.variants && targetProd.variants.length > 0) {
-      const firstWithStock = targetProd.variants.find(
+      const inStockVars = targetProd.variants.filter(
         (v: any) => (Number(v.stock) || 0) > 0
       )
-      const chosen = firstWithStock || targetProd.variants[0]
+      const candidates =
+        inStockVars.length > 0 ? inStockVars : targetProd.variants
+      const sorted = [...candidates].sort(
+        (a: any, b: any) => (Number(a.price) || 0) - (Number(b.price) || 0)
+      )
+      const chosen = sorted[0] || targetProd.variants[0]
       setSelectedVariant(chosen)
       if (chosen?.image) {
         setSelectedImage(chosen.image)
@@ -689,8 +718,17 @@ export default function GadgetDetailClient({
     (activeDeal.productId === activeUnit?.id ||
       activeDeal.productId === product.id)
   const currentPrice = hasLiveDeal ? activeDeal.discountPrice : rawCurrentPrice
-  const activeOriginalPrice =
-    activeUnit?.originalPrice ?? product.originalPrice ?? null
+  const activeOriginalPrice = selectedVariant
+    ? selectedVariant.originalPrice !== undefined &&
+      selectedVariant.originalPrice !== null &&
+      Number(selectedVariant.originalPrice) > 0
+      ? Number(selectedVariant.originalPrice)
+      : null
+    : activeUnit?.originalPrice
+      ? Number(activeUnit.originalPrice)
+      : product.originalPrice
+        ? Number(product.originalPrice)
+        : null
   const discountAmount =
     activeOriginalPrice && activeOriginalPrice > currentPrice
       ? activeOriginalPrice - currentPrice

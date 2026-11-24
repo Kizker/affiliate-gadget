@@ -259,7 +259,7 @@ export default function StoreDetailClient({
             <div className="flex flex-wrap items-center gap-3.5 pt-2">
               {topFlagship ? (
                 <Link
-                  href={`/gadget/${topFlagship.id}`}
+                  href={`/gadget/${topFlagship.id}${content.hero.targetVariantId ? `?variant=${content.hero.targetVariantId}` : ''}`}
                   aria-label={`Beli sekarang produk unggulan ${topFlagship.name}`}
                   className="rounded-full bg-black px-8 py-3.5 text-xs font-bold text-white shadow-md transition hover:bg-neutral-800 active:scale-95 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
                 >
@@ -324,7 +324,7 @@ export default function StoreDetailClient({
             <div className="flex items-center justify-center pt-2">
               {topFlagship ? (
                 <Link
-                  href={`/gadget/${topFlagship.id}`}
+                  href={`/gadget/${topFlagship.id}${content.hero.targetVariantId ? `?variant=${content.hero.targetVariantId}` : ''}`}
                   aria-label={`Beli sekarang produk unggulan ${topFlagship.name}`}
                   className="rounded-full bg-black px-8 py-3 text-center text-xs font-bold text-white shadow-md transition-transform active:scale-95 dark:bg-white dark:text-black"
                 >
@@ -481,7 +481,7 @@ export default function StoreDetailClient({
                     <div className="flex flex-wrap items-center gap-2.5 pt-1.5 sm:gap-5 sm:pt-2">
                       {content.editorial1.campaignProduct ? (
                         <Link
-                          href={`/gadget/${content.editorial1.campaignProduct.id}`}
+                          href={`/gadget/${content.editorial1.campaignProduct.id}${content.editorial1.targetVariantId ? `?variant=${content.editorial1.targetVariantId}` : ''}`}
                           aria-label={`Beli sekarang produk ${content.editorial1.campaignProduct.name}`}
                           className="rounded-full bg-white px-5 py-2.5 text-xs font-bold text-black shadow-md transition hover:bg-neutral-200 active:scale-95 sm:px-7 sm:py-3"
                         >
@@ -541,7 +541,7 @@ export default function StoreDetailClient({
                     </Link>
                     {content.editorial1.campaignProduct ? (
                       <Link
-                        href={`/gadget/${content.editorial1.campaignProduct.id}`}
+                        href={`/gadget/${content.editorial1.campaignProduct.id}${content.editorial1.targetVariantId ? `?variant=${content.editorial1.targetVariantId}` : ''}`}
                         aria-label={`Beli produk ${content.editorial1.campaignProduct.name}`}
                         className="rounded-full border border-black bg-transparent px-8 py-2.5 text-xs font-bold text-black transition hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
                       >
