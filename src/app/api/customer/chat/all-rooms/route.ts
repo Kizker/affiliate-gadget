@@ -326,17 +326,19 @@ export async function GET() {
 
       const storeGroupAfterSales = (room.store as any)?.group?.afterSalesUser
 
-      // Room After Sales: HANYA jika toko memiliki Group After Sales
-      // Jika toko tidak memiliki Group After Sales (toko mandiri), segala urusan retur/purna jual dikelola langsung oleh Admin Toko itu sendiri
+      // Room After Sales: HANYA jika toko memiliki Group After Sales DAN pesanan SUDAH SELESAI / RETUR
+      // Sebelum status menunjukkan selesai (PAID, IN_PROGRESS, SHIPPED, PENDING_PAYMENT), chat 100% MUTLAK dengan Admin Toko!
+      const isOrderFinished =
+        resolvedOrder?.status === 'COMPLETED' ||
+        resolvedOrder?.status === 'RETURNED' ||
+        (Array.isArray((resolvedOrder as any)?.returnRequests) &&
+          (resolvedOrder as any).returnRequests.length > 0)
+
       const isAfterSalesRoom = Boolean(
         storeGroupAfterSales &&
-        (room.claimedBy?.role === 'AFTER_SALES' ||
-          (room.orderId &&
-            (resolvedOrder?.status === 'COMPLETED' ||
-              resolvedOrder?.status === 'RETURNED' ||
-              (resolvedOrder?.returnRequests &&
-                resolvedOrder.returnRequests.length > 0)) &&
-            room.claimedBy?.role !== 'STORE_ADMIN'))
+        resolvedOrder &&
+        isOrderFinished &&
+        room.claimedBy?.role !== 'STORE_ADMIN'
       )
 
       let resolvedClaimedBy = room.claimedBy
@@ -345,6 +347,12 @@ export async function GET() {
         if (targetAfterSales) {
           resolvedClaimedBy = targetAfterSales as any
         }
+      } else if (
+        !isAfterSalesRoom &&
+        resolvedClaimedBy?.role === 'AFTER_SALES'
+      ) {
+        // Jika pesanan belum selesai tapi room terlanjur ter-claim After Sales, kembalikan ke profil toko
+        resolvedClaimedBy = null
       }
 
       const isMitraChat =

@@ -284,16 +284,18 @@ export async function POST(req: NextRequest) {
     const effectiveReturnType = latestReturn?.type || returnType || 'REFUND'
     const effectiveReturnId = latestReturn?.id || returnId || null
 
-    // Pemisahan tegas alur: Hanya masuk After Sales jika memang diakses dari alur pesanan selesai / klaim retur purna jual
-    const isReturnInquiry = Boolean(
-      reqType === 'after_sales' ||
-      effectiveReturnId ||
-      effectiveReturnReason ||
-      returnReason ||
-      ((resolvedOrder?.status === 'COMPLETED' ||
-        resolvedOrder?.status === 'RETURNED') &&
-        (reqType === 'after_sales' || Boolean(latestReturn)))
+    // Pemisahan tegas alur: Hanya masuk After Sales jika dan hanya jika pesanan sudah berstatus COMPLETED, RETURNED, atau memiliki klaim retur/komplain aktif!
+    // Sebelum status menunjukkan selesai (PAID, IN_PROGRESS, SHIPPED, PENDING_PAYMENT), chat 100% MUTLAK dengan Admin Toko!
+    const isOrderCompletedOrReturned =
+      resolvedOrder?.status === 'COMPLETED' ||
+      resolvedOrder?.status === 'RETURNED'
+    const hasActiveReturnClaim = Boolean(
+      latestReturn || effectiveReturnId || effectiveReturnReason || returnReason
     )
+
+    const isReturnInquiry = resolvedOrder
+      ? Boolean(isOrderCompletedOrReturned || hasActiveReturnClaim)
+      : Boolean(reqType === 'after_sales' || effectiveReturnId)
     const isOrderInquiry = Boolean(orderId || effectiveOrderNumber)
 
     const firstItem = resolvedOrder?.items?.[0]
@@ -497,7 +499,15 @@ export async function POST(req: NextRequest) {
         updates.lastMessageAt = new Date()
       }
 
-      if (!room.claimedById && assignedAdmin) {
+      if (
+        !isReturnInquiry &&
+        storeAdmin &&
+        room.claimedById !== storeAdmin.id
+      ) {
+        updates.claimedById = storeAdmin.id
+        updates.claimedAt = new Date()
+        effectiveClaimedBy = storeAdmin
+      } else if (!room.claimedById && assignedAdmin) {
         updates.claimedById = assignedAdmin.id
         updates.claimedAt = new Date()
         effectiveClaimedBy = assignedAdmin

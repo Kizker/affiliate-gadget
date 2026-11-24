@@ -607,11 +607,21 @@ export async function POST(request: Request) {
       if (targetStoreId && !room.storeId) {
         updates.storeId = targetStoreId
       }
-      if (
-        !room.claimedById ||
-        user.role === 'AFTER_SALES' ||
-        user.role === 'STORE_ADMIN'
-      ) {
+      const isOrderFinished =
+        room.order?.status === 'COMPLETED' ||
+        room.order?.status === 'RETURNED' ||
+        (Array.isArray((room.order as any)?.returnRequests) &&
+          (room.order as any).returnRequests.length > 0)
+
+      if (user.role === 'AFTER_SALES') {
+        if (isOrderFinished) {
+          updates.claimedById = session.user.id
+          updates.claimedAt = new Date()
+        }
+      } else if (user.role === 'STORE_ADMIN') {
+        updates.claimedById = session.user.id
+        updates.claimedAt = new Date()
+      } else if (!room.claimedById) {
         updates.claimedById = session.user.id
         updates.claimedAt = new Date()
       }

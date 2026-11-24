@@ -73,11 +73,28 @@ export async function POST(req: NextRequest) {
       const afterSalesUser = targetOrder?.store?.group?.afterSalesUser
       const storeAdmin = targetStoreId
         ? await prisma.user.findFirst({
-            where: { storeId: targetStoreId, role: 'STORE_ADMIN' },
+            where: {
+              storeId: targetStoreId,
+              role: 'STORE_ADMIN',
+              isActive: true,
+            },
           })
         : null
 
-      let assignedAdmin = afterSalesUser || storeAdmin
+      // Sebelum status menunjukkan selesai (COMPLETED / RETURNED), chat 100% MUTLAK dengan Admin Toko!
+      const isOrderFinished =
+        targetOrder?.status === 'COMPLETED' ||
+        targetOrder?.status === 'RETURNED'
+
+      let assignedAdmin: any = null
+      if (isOrderFinished && afterSalesUser) {
+        assignedAdmin = afterSalesUser
+      } else if (storeAdmin) {
+        assignedAdmin = storeAdmin
+      } else if (afterSalesUser) {
+        assignedAdmin = afterSalesUser
+      }
+
       if (!assignedAdmin) {
         const superAdmin = await prisma.user.findFirst({
           where: { role: 'SUPER_ADMIN', isActive: true },
