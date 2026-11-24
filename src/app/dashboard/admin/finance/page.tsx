@@ -651,9 +651,14 @@ export default function UnifiedFinanceAndReportsPage() {
     )
   }
 
+  const isPlatformCommissionOnly =
+    session?.user?.role === 'SUPER_ADMIN' &&
+    selectedStoreId === 'PLATFORM_COMMISSION'
+
   const isConsolidated =
     session?.user?.role === 'SUPER_ADMIN' &&
-    (!selectedStoreId || selectedStoreId === 'ALL')
+    (!selectedStoreId || selectedStoreId === 'ALL') &&
+    !isPlatformCommissionOnly
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 pb-16">
@@ -703,6 +708,7 @@ export default function UnifiedFinanceAndReportsPage() {
           stats={stats}
           reportData={reportData}
           isConsolidated={isConsolidated}
+          isPlatformCommissionOnly={isPlatformCommissionOnly}
           onOpenWithdrawModal={() => {
             setWithdrawStep('STEP_1_INPUT')
             setIsWithdrawModalOpen(true)

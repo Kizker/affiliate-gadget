@@ -58,17 +58,52 @@ export async function GET(request: NextRequest) {
       targetStoreId = userStoreId
     } else if (session.user.role === 'SUPER_ADMIN') {
       const qStoreId = searchParams.get('storeId')
-      targetStoreId = qStoreId === 'ALL' || !qStoreId ? undefined : qStoreId
+      if (
+        qStoreId === 'PLATFORM_COMMISSION' ||
+        qStoreId === 'ALL' ||
+        !qStoreId
+      ) {
+        targetStoreId = undefined
+      } else {
+        targetStoreId = qStoreId
+      }
     } else {
       // Other roles cannot access finance
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Jika Superadmin tanpa query param storeId atau storeId === 'ALL', tampilkan konsolidasi seluruh cabang
-    let targetStore: any = null
-    const isConsolidated = !targetStoreId && session.user.role === 'SUPER_ADMIN'
+    const rawStoreParam = searchParams.get('storeId')
+    const isPlatformCommissionOnly =
+      session.user.role === 'SUPER_ADMIN' &&
+      rawStoreParam === 'PLATFORM_COMMISSION'
+    const isConsolidated =
+      !targetStoreId &&
+      session.user.role === 'SUPER_ADMIN' &&
+      !isPlatformCommissionOnly
 
-    if (targetStoreId) {
+    let targetStore: any = null
+
+    if (isPlatformCommissionOnly) {
+      targetStore = {
+        id: 'PLATFORM_COMMISSION',
+        name: 'Pendapatan Platform Saja (Kas Komisi)',
+        companyName: 'PT Affiliate Gadget Nusantara (Kas Komisi Platform)',
+        taxId: '01.000.890.1-011.000',
+        city: 'Holding Platform',
+        bankAccounts: [
+          {
+            id: 'bank-holding-01',
+            storeId: 'PLATFORM_COMMISSION',
+            bankName: 'Bank Mandiri (Pusat)',
+            accountNumber: '1180099887766',
+            accountName: 'PT Affiliate Gadget Nusantara',
+            isPrimary: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      }
+    } else if (targetStoreId) {
       targetStore = await prisma.store.findUnique({
         where: { id: targetStoreId },
         include: {
@@ -148,6 +183,7 @@ export async function GET(request: NextRequest) {
             select: {
               name: true,
               email: true,
+              phone: true,
             },
           },
           store: {
@@ -168,9 +204,14 @@ export async function GET(request: NextRequest) {
             select: {
               quantity: true,
               price: true,
+              costPrice: true,
+              subtotal: true,
+              variantName: true,
               product: {
                 select: {
                   name: true,
+                  images: true,
+                  brand: true,
                 },
               },
             },
@@ -271,6 +312,8 @@ export async function GET(request: NextRequest) {
       orderStatus?: string
       courierInfo?: string
       trackingNumber?: string | null
+      items?: any[]
+      breakdown?: any
     }
 
     const mutations: MutationItem[] = []
@@ -296,6 +339,56 @@ export async function GET(request: NextRequest) {
       const additionalItems =
         order.items.length > 1 ? ` (+${order.items.length - 1} item)` : ''
       const productTitle = `Penjualan ${firstProductName}${additionalItems}`
+
+      const orderSubtotalCalc =
+        order.subtotal ||
+        order.items.reduce(
+          (acc, i) => acc + Number(i.price || 0) * (i.quantity || 1),
+          0
+        )
+      const totalCostPrice = order.items.reduce(
+        (acc, i) => acc + Number((i as any).costPrice || 0) * (i.quantity || 1),
+        0
+      )
+      const grossProfit = Math.max(0, orderSubtotalCalc - totalCostPrice)
+      const gatewayFee =
+        (order.payment?.method as any) === 'QRIS'
+          ? Math.round((order.total || orderSubtotalCalc) * 0.007)
+          : GATEWAY_FEE_PER_TRANSACTION
+
+      const itemsDetail = order.items.map((i) => ({
+        productName: i.product?.name || 'Produk Gadget',
+        variantName: (i as any).variantName || null,
+        quantity: i.quantity || 1,
+        price: i.price,
+        costPrice: (i as any).costPrice || 0,
+        subtotal: (i as any).subtotal || i.price * (i.quantity || 1),
+        image:
+          (Array.isArray(i.product?.images) && i.product.images[0]) || null,
+      }))
+
+      const financialBreakdown = {
+        subtotal: orderSubtotalCalc,
+        costPrice: totalCostPrice,
+        grossProfit,
+        discountAmount: discount,
+        voucherCode: (order as any).voucherCode || null,
+        commissionAmount: commission,
+        commissionRate: order.commissionRate || 1.5,
+        gatewayFee,
+        shippingCost: order.shippingCost || 0,
+        insuranceFee: order.insuranceFee || 0,
+        totalCustomerPaid: orderTotal,
+        netStoreAmount,
+        paymentMethod: order.payment?.method || 'Transfer Bank / Midtrans',
+        paymentNotes: order.payment?.notes || null,
+        customerName,
+        customerPhone: order.user?.phone || null,
+        courierCode: order.courierCode || null,
+        courierService: order.courierService || null,
+        trackingNumber: order.trackingNumber || null,
+        notes: order.notes || null,
+      }
 
       const courierDesc = [
         order.courierCode || 'Kurir',
@@ -359,6 +452,8 @@ export async function GET(request: NextRequest) {
           orderStatus: order.status,
           courierInfo: courierDesc,
           trackingNumber: order.trackingNumber,
+          items: itemsDetail,
+          breakdown: financialBreakdown,
         })
       } else if (order.status === 'COMPLETED' && !isUnderReturnDispute) {
         if (!isCompletedInPeriod) return
@@ -379,8 +474,30 @@ export async function GET(request: NextRequest) {
           minute: '2-digit',
         }).format(new Date(effectiveDate))
 
-        if (isConsolidated) {
-          // Bagi Superadmin (Holding Platform):
+        if (isPlatformCommissionOnly) {
+          // Bagi Superadmin opsi "Pendapatan Platform Saja (Kas Komisi)":
+          // HANYA menampilkan komisi platform
+          if (commission > 0) {
+            mutations.push({
+              id: `fee-${order.id}`,
+              refNumber: `FEE-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+              title: `Bagi Hasil Platform (${order.commissionRate || 1.5}% Komisi)`,
+              subtitle: `Diterima dari ${order.store?.companyName || order.store?.name || 'Toko Cabang'} (#${order.orderNumber})`,
+              type: 'INCOME',
+              category: 'COMMISSION',
+              categoryLabel: 'Komisi Platform',
+              amount: commission,
+              date: formattedDate,
+              rawDate: effectiveDate,
+              status: 'SETTLED',
+              statusLabel: 'Masuk Kas Platform',
+              orderStatus: order.status,
+              items: itemsDetail,
+              breakdown: financialBreakdown,
+            })
+          }
+        } else if (isConsolidated) {
+          // Bagi Superadmin (Holding Platform Konsolidasi GMV):
           // 1. Komisi Platform adalah PEMASUKAN kas holding (INCOME)
           if (commission > 0) {
             mutations.push({
@@ -397,10 +514,12 @@ export async function GET(request: NextRequest) {
               status: 'SETTLED',
               statusLabel: 'Masuk Kas Platform',
               orderStatus: order.status,
+              items: itemsDetail,
+              breakdown: financialBreakdown,
             })
           }
 
-          // 2. Penjualan Gadget adalah transaksi milik mitra toko cabang (bukan pendapatan superadmin)
+          // 2. Penjualan Gadget adalah transaksi milik mitra toko cabang
           mutations.push({
             id: `sale-${order.id}`,
             refNumber: order.orderNumber,
@@ -417,6 +536,8 @@ export async function GET(request: NextRequest) {
             orderStatus: order.status,
             courierInfo: courierDesc,
             trackingNumber: order.trackingNumber,
+            items: itemsDetail,
+            breakdown: financialBreakdown,
           })
 
           // 3. Biaya Payment Gateway Transaksi Toko (Flat Rp 4.000 per transaksi)
@@ -436,6 +557,8 @@ export async function GET(request: NextRequest) {
             status: 'SETTLED',
             statusLabel: 'Dipotong dari Toko',
             orderStatus: order.status,
+            items: itemsDetail,
+            breakdown: financialBreakdown,
           })
         } else {
           // Bagi Toko Cabang (Store Admin):
@@ -456,6 +579,8 @@ export async function GET(request: NextRequest) {
             orderStatus: order.status,
             courierInfo: courierDesc,
             trackingNumber: order.trackingNumber,
+            items: itemsDetail,
+            breakdown: financialBreakdown,
           })
 
           // 2. Mutasi Bagi Hasil Platform Dipotong (EXPENSE)
@@ -474,6 +599,8 @@ export async function GET(request: NextRequest) {
               status: 'SETTLED',
               statusLabel: 'Terpotong',
               orderStatus: order.status,
+              items: itemsDetail,
+              breakdown: financialBreakdown,
             })
           }
 
@@ -494,6 +621,8 @@ export async function GET(request: NextRequest) {
             status: 'SETTLED',
             statusLabel: 'Terpotong',
             orderStatus: order.status,
+            items: itemsDetail,
+            breakdown: financialBreakdown,
           })
         }
       } else if (
@@ -502,7 +631,10 @@ export async function GET(request: NextRequest) {
       ) {
         if (!isCreatedInPeriod) return
 
-        escrowBalance += netStoreAmount
+        const escrowAmount = isPlatformCommissionOnly
+          ? commission
+          : netStoreAmount
+        escrowBalance += escrowAmount
         courierBreakdown.totalEscrowOrders += 1
 
         let statusLabel = 'Dana Tertahan'
@@ -540,20 +672,32 @@ export async function GET(request: NextRequest) {
         // Mutasi Escrow Tertahan
         mutations.push({
           id: `escrow-${order.id}`,
-          refNumber: order.orderNumber,
-          title: productTitle,
-          subtitle: `Customer: ${customerName} · ${courierDesc} · ${subtitleStatus}`,
+          refNumber: isPlatformCommissionOnly
+            ? `FEE-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`
+            : order.orderNumber,
+          title: isPlatformCommissionOnly
+            ? `Bagi Hasil Platform (${order.commissionRate || 1.5}% Komisi Tertahan)`
+            : productTitle,
+          subtitle: isPlatformCommissionOnly
+            ? `Toko: ${order.store?.companyName || order.store?.name || 'Cabang'} · Customer: ${customerName} · ${subtitleStatus}`
+            : `Customer: ${customerName} · ${courierDesc} · ${subtitleStatus}`,
           type: 'ESCROW',
-          category: 'ESCROW',
-          categoryLabel: 'Dana Tertahan (Escrow)',
-          amount: netStoreAmount,
+          category: isPlatformCommissionOnly ? 'COMMISSION' : 'ESCROW',
+          categoryLabel: isPlatformCommissionOnly
+            ? 'Komisi Tertahan (Escrow)'
+            : 'Dana Tertahan (Escrow)',
+          amount: escrowAmount,
           date: formattedDate,
           rawDate: order.createdAt,
           status: 'PENDING',
-          statusLabel: statusLabel,
+          statusLabel: isPlatformCommissionOnly
+            ? 'Menunggu Pesanan Selesai'
+            : statusLabel,
           orderStatus: order.status,
           courierInfo: courierDesc,
           trackingNumber: order.trackingNumber,
+          items: itemsDetail,
+          breakdown: financialBreakdown,
         })
       }
     })
@@ -572,13 +716,14 @@ export async function GET(request: NextRequest) {
     let allTimeWithdrawn = 0
     let availableBalance = 0
 
-    if (isConsolidated) {
+    if (isConsolidated || isPlatformCommissionOnly) {
       // Untuk Superadmin (Holding Platform):
       // Saldo siap cair adalah seluruh komisi platform dari pesanan selesai dikurangi pencairan holding
       const holdingWithdrawals = (await getStoreWithdrawals()).filter(
         (w) =>
-          ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId) &&
-          w.status === 'SUCCESS'
+          ['ALL', 'holding-01', 'HOLDING', 'PLATFORM_COMMISSION'].includes(
+            w.storeId
+          ) && w.status === 'SUCCESS'
       )
       allTimeWithdrawn = holdingWithdrawals.reduce(
         (sum, w) => sum + w.amount,
@@ -613,8 +758,10 @@ export async function GET(request: NextRequest) {
     }
 
     let withdrawals = (await getStoreWithdrawals(targetStoreId)).filter((w) =>
-      isConsolidated
-        ? ['ALL', 'holding-01', 'HOLDING'].includes(w.storeId)
+      isConsolidated || isPlatformCommissionOnly
+        ? ['ALL', 'holding-01', 'HOLDING', 'PLATFORM_COMMISSION'].includes(
+            w.storeId
+          )
         : w.storeId === targetStoreId && allRealStoreIds.has(w.storeId)
     )
     if (s && e) {
@@ -652,6 +799,25 @@ export async function GET(request: NextRequest) {
         status: wd.status === 'SUCCESS' ? 'SUCCESS' : 'PENDING',
         statusLabel:
           wd.status === 'SUCCESS' ? 'Berhasil Ditransfer' : 'Sedang Diproses',
+        breakdown: {
+          subtotal: wd.amount,
+          costPrice: 0,
+          grossProfit: 0,
+          discountAmount: 0,
+          commissionAmount: 0,
+          commissionRate: 0,
+          gatewayFee: 0,
+          shippingCost: 0,
+          insuranceFee: 0,
+          totalCustomerPaid: wd.amount,
+          netStoreAmount: wd.amount,
+          paymentMethod: 'Transfer Antar Bank (BI-Fast / Real-time)',
+          bankDetails: {
+            bankName: wd.bankName || 'Bank Mandiri',
+            accountNumber: wd.accountNumber || '',
+            accountName: wd.accountName || '',
+          },
+        },
       })
     })
 

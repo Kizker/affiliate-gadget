@@ -1,3 +1,42 @@
+export interface TransactionItemDetail {
+  productName: string
+  variantName?: string | null
+  quantity: number
+  price: number
+  costPrice: number
+  subtotal: number
+  image?: string | null
+}
+
+export interface TransactionFinancialBreakdown {
+  subtotal: number
+  costPrice: number
+  grossProfit: number
+  discountAmount: number
+  voucherCode?: string | null
+  commissionAmount: number
+  commissionRate: number
+  gatewayFee: number
+  shippingCost: number
+  insuranceFee: number
+  totalCustomerPaid: number
+  netStoreAmount: number
+  paymentMethod?: string | null
+  paymentNotes?: string | null
+  customerName?: string | null
+  customerPhone?: string | null
+  courierCode?: string | null
+  courierService?: string | null
+  trackingNumber?: string | null
+  notes?: string | null
+  recipientAddress?: string | null
+  bankDetails?: {
+    bankName: string
+    accountNumber: string
+    accountName: string
+  } | null
+}
+
 export interface TransactionMutation {
   id: string
   refNumber: string
@@ -13,6 +52,8 @@ export interface TransactionMutation {
   orderStatus?: string
   courierInfo?: string
   trackingNumber?: string | null
+  items?: TransactionItemDetail[]
+  breakdown?: TransactionFinancialBreakdown
 }
 
 export interface CourierBreakdown {

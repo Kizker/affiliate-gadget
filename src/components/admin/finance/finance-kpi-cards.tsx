@@ -7,6 +7,7 @@ interface FinanceKpiCardsProps {
   stats: FinanceStats
   reportData: ReportData
   isConsolidated: boolean
+  isPlatformCommissionOnly?: boolean
   onOpenWithdrawModal: () => void
 }
 
@@ -14,6 +15,7 @@ export function FinanceKpiCards({
   stats,
   reportData,
   isConsolidated,
+  isPlatformCommissionOnly = false,
   onOpenWithdrawModal,
 }: FinanceKpiCardsProps) {
   const courierBreakdown = stats?.courierBreakdown ?? {
@@ -61,22 +63,27 @@ export function FinanceKpiCards({
       <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            {isConsolidated ? 'TOTAL OMZET (GMV)' : 'PENDAPATAN KOTOR'}
+            {isPlatformCommissionOnly
+              ? 'KOMISI PLATFORM'
+              : isConsolidated
+                ? 'TOTAL OMZET (GMV)'
+                : 'PENDAPATAN KOTOR'}
           </span>
         </div>
         <div className="mt-2.5">
           <div className="flex items-baseline gap-1">
             <span className="text-sm font-semibold text-slate-400">Rp</span>
             <p className="truncate text-xl font-black tabular-nums tracking-tight text-slate-950 dark:text-white">
-              {(
-                reportData.financials?.grossRevenue ?? stats.grossRevenue
+              {(isPlatformCommissionOnly
+                ? stats.platformCommission
+                : (reportData.financials?.grossRevenue ?? stats.grossRevenue)
               ).toLocaleString('id-ID')}
             </p>
           </div>
           <div className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] text-slate-400 dark:border-slate-800">
-            {stats.totalUnitsSold ||
-              (reportData.financials?.totalCompletedUnits ?? 0)}{' '}
-            unit terjual
+            {isPlatformCommissionOnly
+              ? 'Bagi Hasil Platform'
+              : `${stats.totalUnitsSold || (reportData.financials?.totalCompletedUnits ?? 0)} unit terjual`}
           </div>
         </div>
       </div>
@@ -105,14 +112,18 @@ export function FinanceKpiCards({
       <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            {isConsolidated ? 'LABA KOMISI PLATFORM' : 'LABA BERSIH TOKO'}
+            {isPlatformCommissionOnly
+              ? 'LABA BERSIH PLATFORM'
+              : isConsolidated
+                ? 'LABA KOMISI PLATFORM'
+                : 'LABA BERSIH TOKO'}
           </span>
         </div>
         <div className="mt-2.5">
           <div className="flex items-baseline gap-1">
             <span className="text-sm font-semibold text-slate-400">Rp</span>
             <p className="truncate text-xl font-black tabular-nums tracking-tight text-slate-950 dark:text-white">
-              {(isConsolidated
+              {(isPlatformCommissionOnly || isConsolidated
                 ? stats.platformCommission
                 : (reportData.financials?.storeNetProfit ??
                   reportData.financials?.netProfit ??
@@ -121,7 +132,9 @@ export function FinanceKpiCards({
             </p>
           </div>
           <div className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] font-semibold text-emerald-600 dark:border-slate-800">
-            Margin {reportData.financials?.netMarginPct ?? 0}%
+            {isPlatformCommissionOnly
+              ? '100% Laba Jasa'
+              : `Margin ${reportData.financials?.netMarginPct ?? 0}%`}
           </div>
         </div>
       </div>
@@ -130,7 +143,9 @@ export function FinanceKpiCards({
       <div className="shadow-xs min-w-[200px] flex-1 rounded-2xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0 sm:p-4">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            DANA ESCROW (TERT...
+            {isPlatformCommissionOnly
+              ? 'KOMISI ESCROW (TERTAHAN)'
+              : 'DANA ESCROW (TERT...'}
           </span>
         </div>
         <div className="mt-2.5">
