@@ -5,6 +5,7 @@ import {
   calculatePaymentGatewayFee,
   calculateMaintenanceFee,
 } from '@/lib/tax/tax-engine'
+import { resolveOrderItemCostPrice } from '@/lib/order-return-utils'
 
 // Canonical revenue statuses — excludes CANCELLED, RETURNED, PENDING_PAYMENT
 const REVENUE_STATUSES = [
@@ -120,7 +121,17 @@ export async function GET(request: NextRequest) {
           items: {
             include: {
               service: true,
-              product: true,
+              product: {
+                include: {
+                  variants: {
+                    select: {
+                      id: true,
+                      name: true,
+                      costPrice: true,
+                    },
+                  },
+                },
+              },
               rentalItem: true,
             },
           },
@@ -192,7 +203,7 @@ export async function GET(request: NextRequest) {
       order.items.forEach((item) => {
         const itemQuantity = item.quantity || 1
         const itemGross = item.price * itemQuantity
-        const itemCost = (item.costPrice ?? 0) * itemQuantity
+        const itemCost = resolveOrderItemCostPrice(item as any) * itemQuantity
 
         orderItemGross += itemGross
         orderItemCost += itemCost
@@ -409,7 +420,19 @@ export async function GET(request: NextRequest) {
           user: { select: { name: true, email: true } },
           items: {
             include: {
-              product: { select: { name: true, costPrice: true } },
+              product: {
+                select: {
+                  name: true,
+                  costPrice: true,
+                  variants: {
+                    select: {
+                      id: true,
+                      name: true,
+                      costPrice: true,
+                    },
+                  },
+                },
+              },
               service: { select: { name: true } },
               rentalItem: { select: { name: true } },
             },
@@ -506,7 +529,9 @@ export async function GET(request: NextRequest) {
       const orderCOGS = isCancelled
         ? 0
         : order.items.reduce(
-            (sum, item) => sum + (item.costPrice ?? 0) * (item.quantity || 1),
+            (sum, item) =>
+              sum +
+              resolveOrderItemCostPrice(item as any) * (item.quantity || 1),
             0
           )
       const orderGrossProfit = isCancelled ? 0 : orderGrossRevenue - orderCOGS

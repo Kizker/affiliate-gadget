@@ -32,6 +32,7 @@ import {
   statusConfig,
   OrderCancelModal,
   OrderConfirmReceivedModal,
+  OrderCompleteModal,
   OrderDesktopHeroHeader,
   OrderDesktopReturnCard,
   OrderDesktopWarrantyCard,
@@ -66,6 +67,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [confirmReceivedModalOpen, setConfirmReceivedModalOpen] =
     useState(false)
+  const [completeModalOpen, setCompleteModalOpen] = useState(false)
   const [activeThermalLabel, setActiveThermalLabel] = useState<any | null>(null)
   const [viewingLabel, setViewingLabel] = useState(false)
 
@@ -314,6 +316,22 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     if (order.status === 'RETURNED') {
       return statusConfig.RETURNED
     }
+    const nowMs = Date.now()
+    const isWOver = isWarrantyExpired(order)
+    const isUnder30Days =
+      order.warrantyExpiryDate &&
+      nowMs < new Date(order.warrantyExpiryDate).getTime()
+    if (order.customerConfirmedAt && !order.completedAt && isUnder30Days) {
+      return (
+        statusConfig.RECEIVED_WARRANTY_ACTIVE || {
+          label: 'Diterima (Garansi 30 Hari Aktif)',
+          badgeBg:
+            'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+          dotColor: 'bg-emerald-500',
+          icon: Building2,
+        }
+      )
+    }
     return statusConfig[order.status] || statusConfig.PROCESSING
   }
 
@@ -324,19 +342,27 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   const canConfirmReceived =
     (order.status === 'IN_PROGRESS' || order.status === 'SHIPPED') &&
     !order.customerConfirmedAt
-  const isCompleted =
-    order.status === 'COMPLETED' ||
-    (!!order.customerConfirmedAt &&
-      order.status !== 'RETURNED' &&
-      order.status !== 'CANCELLED')
+  const isWarrantyOver = isWarrantyExpired(order)
+  const isCompleted = Boolean(
+    (order.status === 'COMPLETED' && (order.completedAt || isWarrantyOver)) ||
+    (order.customerConfirmedAt && isWarrantyOver)
+  )
+  const canManuallyComplete = Boolean(
+    order.customerConfirmedAt &&
+    !order.completedAt &&
+    !isWarrantyOver &&
+    order.status !== 'CANCELLED' &&
+    order.status !== 'RETURNED'
+  )
   const hasActiveClaim =
     latestReturnRequest &&
     (latestReturnRequest.status === 'PENDING' ||
       latestReturnRequest.status === 'IN_REVIEW' ||
       latestReturnRequest.status === 'APPROVED')
-  const isWarrantyOver = isWarrantyExpired(order)
   const canRequestReturnOrComplaint =
-    (order.status === 'SHIPPED' || order.status === 'COMPLETED') &&
+    (Boolean(order.customerConfirmedAt) ||
+      order.status === 'SHIPPED' ||
+      order.status === 'COMPLETED') &&
     !hasActiveClaim &&
     !isWarrantyOver
 
@@ -493,6 +519,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             chatParams={chatParams}
             canCancel={canCancel}
             canConfirmReceived={canConfirmReceived}
+            canManuallyComplete={canManuallyComplete}
             isCompleted={isCompleted}
             hasActiveClaim={Boolean(hasActiveClaim)}
             canRequestReturnOrComplaint={canRequestReturnOrComplaint}
@@ -501,6 +528,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             onOpenMedia={handleOpenMedia}
             onPayNow={() => setPaymentModalOpen(true)}
             onConfirmReceived={handleConfirmReceived}
+            onOpenCompleteModal={() => setCompleteModalOpen(true)}
             onOpenReturn={() => {
               setSelectedReturnItem(order.items[0] || null)
               setReturnModalOpen(true)
@@ -581,6 +609,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   chatParams={chatParams}
                   canCancel={canCancel}
                   canConfirmReceived={canConfirmReceived}
+                  canManuallyComplete={canManuallyComplete}
                   isCompleted={isCompleted}
                   hasActiveClaim={Boolean(hasActiveClaim)}
                   canRequestReturnOrComplaint={canRequestReturnOrComplaint}
@@ -590,6 +619,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                   onOpenMedia={handleOpenMedia}
                   onPayNow={() => setPaymentModalOpen(true)}
                   onConfirmReceived={handleConfirmReceived}
+                  onOpenCompleteModal={() => setCompleteModalOpen(true)}
                   onOpenReturn={() => {
                     setSelectedReturnItem(order.items[0] || null)
                     setReturnModalOpen(true)
@@ -608,6 +638,15 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           </div>
         </div>
       </main>
+
+      {/* Manual Complete Order Modal */}
+      <OrderCompleteModal
+        isOpen={completeModalOpen}
+        onClose={() => setCompleteModalOpen(false)}
+        orderId={order.id}
+        orderNumber={order.orderNumber}
+        onSuccess={() => router.refresh()}
+      />
 
       {/* Cancel Order Modal */}
       <OrderCancelModal

@@ -166,17 +166,24 @@ export function normalizePhoneForWhatsApp(rawPhone: string): string {
 }
 
 function getOtpMessage(code: string, purpose: OtpPurpose): string {
-  switch (purpose) {
-    case 'CHANGE_PASSWORD':
-      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Kata Sandi* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
-    case 'CHANGE_EMAIL':
-      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Alamat Email* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
-    case 'CHANGE_PHONE':
-      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi WhatsApp untuk *Ganti Nomor Telepon* Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
-    case 'LOGIN':
-    default:
-      return `*AFFILIATE GADGET MARKETPLACE*\n\nKode Verifikasi Login (OTP WhatsApp) Anda adalah: *${code}*\n\nKode ini bersifat rahasia dan berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.`
-  }
+  let label = 'Login'
+  if (purpose === 'CHANGE_PASSWORD') label = 'Ganti Kata Sandi'
+  if (purpose === 'CHANGE_EMAIL') label = 'Ganti Alamat Email'
+  if (purpose === 'CHANGE_PHONE') label = 'Ganti Nomor Telepon'
+
+  return `*AFFILIATE GADGET*
+_Verifikasi Keamanan Akun_
+━━━━━━━━━━━━━━━━━━━━
+
+Halo Kak,
+Berikut adalah kode verifikasi WhatsApp untuk *${label}*:
+
+🔐 *Kode OTP:* *${code}*
+
+⏱️ Berlaku selama *5 menit*.
+Demi keamanan akun Anda, *JANGAN* bagikan kode ini kepada siapa pun, termasuk pihak Affiliate Gadget.
+
+Terima kasih.`
 }
 
 /**

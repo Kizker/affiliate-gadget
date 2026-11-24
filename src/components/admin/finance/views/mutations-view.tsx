@@ -210,19 +210,19 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                           )}
                           <span>•</span>
                           <span>
-                            {item.quantity} unit @ Rp {formatRupiah(item.price)}
+                            {item.quantity} unit @ {formatRupiah(item.price)}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                        Rp {formatRupiah(item.subtotal)}
+                        {formatRupiah(item.subtotal)}
                       </p>
                       <p className="text-[10px] text-slate-400">
                         HPP:{' '}
                         {item.costPrice > 0
-                          ? `Rp ${formatRupiah(item.costPrice * item.quantity)}`
+                          ? formatRupiah(item.costPrice * item.quantity)
                           : 'Rp 0'}
                       </p>
                     </div>
@@ -246,7 +246,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                       Subtotal Produk
                     </span>
                     <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                      Rp {formatRupiah(b.subtotal)}
+                      {formatRupiah(b.subtotal)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -255,7 +255,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                     </span>
                     <span className="font-mono font-semibold text-slate-900 dark:text-white">
                       {b.costPrice > 0
-                        ? `Rp ${formatRupiah(b.costPrice)}`
+                        ? formatRupiah(b.costPrice)
                         : 'Rp 0 (Bebas Modal)'}
                     </span>
                   </div>
@@ -264,7 +264,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                       Estimasi Laba Kotor Toko
                     </span>
                     <span className="font-mono text-emerald-700 dark:text-emerald-400">
-                      + Rp {formatRupiah(b.grossProfit)}
+                      + {formatRupiah(b.grossProfit)}
                     </span>
                   </div>
                 </div>
@@ -282,7 +282,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                     </span>
                     <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
                       {b.discountAmount > 0
-                        ? `- Rp ${formatRupiah(b.discountAmount)}`
+                        ? `- ${formatRupiah(b.discountAmount)}`
                         : 'Rp 0'}
                     </span>
                   </div>
@@ -291,7 +291,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                       Biaya Admin Platform ({b.commissionRate || 1.5}%)
                     </span>
                     <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
-                      - Rp {formatRupiah(b.commissionAmount)}
+                      - {formatRupiah(b.commissionAmount)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -299,19 +299,19 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                       Biaya Payment Gateway
                     </span>
                     <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
-                      - Rp {formatRupiah(b.gatewayFee || 4000)}
+                      - {formatRupiah(b.gatewayFee || 4000)}
                     </span>
                   </div>
                   <div className="flex justify-between border-t border-slate-100 pt-1.5 text-[11px] text-slate-500 dark:border-slate-800">
                     <span>Ongkos Kirim ({b.courierCode || 'Kurir'})</span>
                     <span className="font-mono">
-                      Rp {formatRupiah(b.shippingCost)}
+                      {formatRupiah(b.shippingCost)}
                     </span>
                   </div>
                   <div className="flex justify-between text-[11px] text-slate-500">
                     <span>Asuransi Pengiriman Wajib</span>
                     <span className="font-mono">
-                      Rp {formatRupiah(b.insuranceFee)}
+                      {formatRupiah(b.insuranceFee)}
                     </span>
                   </div>
                 </div>
@@ -324,7 +324,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
             <div className="flex flex-col gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3.5 dark:border-emerald-900/50 dark:bg-emerald-950/30 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-0.5">
                 <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                  Hak Bersih Toko: + Rp {formatRupiah(b.netStoreAmount)}
+                  Hak Bersih Toko: + {formatRupiah(b.netStoreAmount)}
                 </p>
                 <p className="text-[11px] text-emerald-700/90 dark:text-emerald-400">
                   {tx.type === 'ESCROW'
@@ -337,7 +337,7 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
                   Total Dibayar Pembeli
                 </span>
                 <p className="font-mono text-xs font-black text-slate-900 dark:text-white">
-                  Rp {formatRupiah(b.totalCustomerPaid)}
+                  {formatRupiah(b.totalCustomerPaid)}
                 </p>
               </div>
             </div>

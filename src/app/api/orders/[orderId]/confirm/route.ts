@@ -81,12 +81,12 @@ export async function POST(
     const now = new Date()
     const warrantyExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 
-    // Confirm the order & activate 30-day warranty
+    // Konfirmasi pesanan diterima & aktifkan garansi 30 hari
+    // Pesanan yang baru diterima BELUM berstatus COMPLETED, karena masih dalam masa garansi 30 hari dan masih bisa komplain/retur!
+    // Dana masih aman di dalam Escrow. Pesanan selesai otomatis 30 hari setelah diterima, atau jika customer menyelesaikannya secara manual.
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: 'COMPLETED',
-        completedAt: now,
         customerConfirmedAt: now,
         warrantyExpiryDate: warrantyExpiry,
       },

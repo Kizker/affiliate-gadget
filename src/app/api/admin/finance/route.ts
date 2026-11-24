@@ -21,6 +21,7 @@ import {
   ACTIVE_ORDER_STATUSES,
   ESCROW_STATUSES,
 } from '@/lib/finance-constants'
+import { resolveOrderItemCostPrice } from '@/lib/order-return-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -206,12 +207,21 @@ export async function GET(request: NextRequest) {
               price: true,
               costPrice: true,
               subtotal: true,
+              variantId: true,
               variantName: true,
               product: {
                 select: {
                   name: true,
+                  costPrice: true,
                   images: true,
                   brand: true,
+                  variants: {
+                    select: {
+                      id: true,
+                      name: true,
+                      costPrice: true,
+                    },
+                  },
                 },
               },
             },
@@ -246,9 +256,11 @@ export async function GET(request: NextRequest) {
           })
         : Promise.resolve([]),
       // All-time completed orders for calculating true live withdrawable balance
+      // HANYA pesanan yang masa garansi 30 harinya sudah lewat ATAU diselesaikan manual (warrantyExpiryDate <= now) yang dananya cair!
       prisma.order.aggregate({
         where: {
           status: 'COMPLETED',
+          warrantyExpiryDate: { lte: new Date() },
           returnRequests: {
             none: {
               status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] },
@@ -347,7 +359,8 @@ export async function GET(request: NextRequest) {
           0
         )
       const totalCostPrice = order.items.reduce(
-        (acc, i) => acc + Number((i as any).costPrice || 0) * (i.quantity || 1),
+        (acc, i) =>
+          acc + resolveOrderItemCostPrice(i as any) * (i.quantity || 1),
         0
       )
       const grossProfit = Math.max(0, orderSubtotalCalc - totalCostPrice)
@@ -356,16 +369,19 @@ export async function GET(request: NextRequest) {
           ? Math.round((order.total || orderSubtotalCalc) * 0.007)
           : GATEWAY_FEE_PER_TRANSACTION
 
-      const itemsDetail = order.items.map((i) => ({
-        productName: i.product?.name || 'Produk Gadget',
-        variantName: (i as any).variantName || null,
-        quantity: i.quantity || 1,
-        price: i.price,
-        costPrice: (i as any).costPrice || 0,
-        subtotal: (i as any).subtotal || i.price * (i.quantity || 1),
-        image:
-          (Array.isArray(i.product?.images) && i.product.images[0]) || null,
-      }))
+      const itemsDetail = order.items.map((i) => {
+        const resolvedCost = resolveOrderItemCostPrice(i as any)
+        return {
+          productName: i.product?.name || 'Produk Gadget',
+          variantName: (i as any).variantName || null,
+          quantity: i.quantity || 1,
+          price: i.price,
+          costPrice: resolvedCost,
+          subtotal: (i as any).subtotal || i.price * (i.quantity || 1),
+          image:
+            (Array.isArray(i.product?.images) && i.product.images[0]) || null,
+        }
+      })
 
       const financialBreakdown = {
         subtotal: orderSubtotalCalc,
@@ -420,6 +436,29 @@ export async function GET(request: NextRequest) {
         order.status !== 'RETURNED'
       )
 
+      const nowMs = Date.now()
+      // Pesanan benar-benar selesai (dananya cair ke Saldo Siap Cair):
+      // HANYA JIKA pesanan COMPLETED dan masa garansi 30 hari sudah berakhir (lte now) ATAU diselesaikan manual oleh customer!
+      const isWarrantyExpiredOrManual = Boolean(
+        order.warrantyExpiryDate &&
+        nowMs >= new Date(order.warrantyExpiryDate).getTime()
+      )
+      const isOrderFullySettled = Boolean(
+        order.status === 'COMPLETED' &&
+        isWarrantyExpiredOrManual &&
+        !isUnderReturnDispute
+      )
+
+      // Pesanan yang sudah diterima customerConfirmedAt tapi masih dalam masa garansi 30 hari (warrantyExpiryDate > now):
+      // DANA MASIH TERTAHAN DI DALAM ESCROW!
+      const isHoldingInWarrantyEscrow = Boolean(
+        order.customerConfirmedAt &&
+        order.warrantyExpiryDate &&
+        nowMs < new Date(order.warrantyExpiryDate).getTime() &&
+        order.status !== 'CANCELLED' &&
+        order.status !== 'RETURNED'
+      )
+
       if (order.status === 'RETURNED') {
         // Transaksi Retur Selesai (Refund Dana Berhasil Dikembalikan ke Customer via Escrow Midtrans)
         if (!isCreatedInPeriod) return
@@ -455,7 +494,7 @@ export async function GET(request: NextRequest) {
           items: itemsDetail,
           breakdown: financialBreakdown,
         })
-      } else if (order.status === 'COMPLETED' && !isUnderReturnDispute) {
+      } else if (isOrderFullySettled) {
         if (!isCompletedInPeriod) return
 
         grossRevenue += orderTotal
@@ -627,7 +666,8 @@ export async function GET(request: NextRequest) {
         }
       } else if (
         ESCROW_STATUSES.includes(order.status as any) ||
-        isUnderReturnDispute
+        isUnderReturnDispute ||
+        isHoldingInWarrantyEscrow
       ) {
         if (!isCreatedInPeriod) return
 
@@ -647,6 +687,11 @@ export async function GET(request: NextRequest) {
             activeReturn?.type === 'REFUND'
               ? 'Klaim Retur & Refund'
               : 'Klaim Tukar Unit Baru'
+        } else if (isHoldingInWarrantyEscrow) {
+          courierBreakdown.inProgressCount += 1
+          statusLabel = 'Garansi 30H Aktif (Escrow)'
+          subtitleStatus =
+            'Diterima · Masa Garansi 30 Hari Aktif (Dana Tertahan di Escrow)'
         } else if (order.status === 'SHIPPED') {
           courierBreakdown.shippedCount += 1
           statusLabel = 'Kurir Perjalanan'

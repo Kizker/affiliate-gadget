@@ -10,6 +10,9 @@ export interface ReturnRequestSummary {
 export interface BaseOrderForReturn {
   status: string
   returnRequests?: ReturnRequestSummary[] | null
+  customerConfirmedAt?: string | Date | null
+  completedAt?: string | Date | null
+  warrantyExpiryDate?: string | Date | null
 }
 
 export const ORDER_STATUS_MAP: Record<
@@ -104,6 +107,17 @@ export function getOrderStatusMeta(order: BaseOrderForReturn): {
     return {
       label: isRefund ? 'Pengembalian Dana (Refund)' : 'Dikembalikan (Retur)',
       textClass: 'text-purple-600 dark:text-purple-400 font-bold',
+    }
+  }
+  const nowMs = Date.now()
+  const isWOver = isWarrantyExpired(order)
+  const isUnder30Days =
+    order.warrantyExpiryDate &&
+    nowMs < new Date(order.warrantyExpiryDate).getTime()
+  if (order.customerConfirmedAt && !order.completedAt && isUnder30Days) {
+    return {
+      label: 'Diterima (Garansi 30H Aktif)',
+      textClass: 'text-emerald-700 dark:text-emerald-400 font-bold',
     }
   }
   return (
@@ -253,6 +267,63 @@ export function isOrderItemReturnEligible(
   }
 
   return true
+}
+
+/**
+ * Menyelesaikan HPP / modal suatu OrderItem secara adaptif dan dinamis:
+ * 1. Prioritaskan HPP dari varian produk terkini jika ada (walaupun baru diubah di katalog)
+ * 2. Cek HPP dari master produk induk terkini
+ * 3. Fallback ke snapshot costPrice pada orderItem saat transaksi dibuat
+ */
+export function resolveOrderItemCostPrice(item: {
+  costPrice?: number | null
+  variantId?: string | null
+  variantName?: string | null
+  product?: {
+    costPrice?: number | null
+    variants?: Array<{
+      id?: string
+      name?: string | null
+      costPrice?: number | null
+    }> | null
+  } | null
+}): number {
+  if (!item) return 0
+
+  // 1. Cek HPP dari varian produk terkini
+  if (item.product?.variants && Array.isArray(item.product.variants)) {
+    let matchedVariant: any = null
+    if (item.variantId) {
+      matchedVariant = item.product.variants.find(
+        (v) => v.id === item.variantId
+      )
+    }
+    if (!matchedVariant && item.variantName) {
+      const cleanTargetName = item.variantName.trim().toLowerCase()
+      matchedVariant = item.product.variants.find(
+        (v) =>
+          v.name &&
+          (v.name.trim().toLowerCase() === cleanTargetName ||
+            cleanTargetName.includes(v.name.trim().toLowerCase()) ||
+            v.name.trim().toLowerCase().includes(cleanTargetName))
+      )
+    }
+    if (matchedVariant && Number(matchedVariant.costPrice) > 0) {
+      return Number(matchedVariant.costPrice)
+    }
+  }
+
+  // 2. Cek HPP dari master produk induk terkini
+  if (item.product && Number(item.product.costPrice) > 0) {
+    return Number(item.product.costPrice)
+  }
+
+  // 3. Fallback ke snapshot costPrice pada orderItem saat transaksi dibuat
+  if (item.costPrice && Number(item.costPrice) > 0) {
+    return Number(item.costPrice)
+  }
+
+  return 0
 }
 
 /**

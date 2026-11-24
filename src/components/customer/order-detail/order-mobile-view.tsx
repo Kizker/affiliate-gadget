@@ -60,6 +60,7 @@ interface OrderMobileViewProps {
   chatParams: URLSearchParams
   canCancel: boolean
   canConfirmReceived: boolean
+  canManuallyComplete?: boolean
   isCompleted: boolean
   hasActiveClaim: boolean
   canRequestReturnOrComplaint: boolean
@@ -68,6 +69,7 @@ interface OrderMobileViewProps {
   onOpenMedia?: (index: number) => void
   onPayNow: () => void
   onConfirmReceived: () => void
+  onOpenCompleteModal?: () => void
   onOpenReturn: () => void
   onOpenReturnForItem?: (item: OrderDetailItem) => void
   onOpenComplaint: () => void
@@ -98,6 +100,7 @@ export function OrderMobileView({
   chatParams,
   canCancel,
   canConfirmReceived,
+  canManuallyComplete = false,
   isCompleted,
   hasActiveClaim,
   canRequestReturnOrComplaint,
@@ -106,6 +109,7 @@ export function OrderMobileView({
   onOpenMedia,
   onPayNow,
   onConfirmReceived,
+  onOpenCompleteModal,
   onOpenReturn,
   onOpenReturnForItem,
   onOpenComplaint,
@@ -836,8 +840,20 @@ export function OrderMobileView({
               </button>
             )}
 
+            {/* Tombol Selesaikan Pesanan Manual (jika sudah diterima tapi belum diselesaikan manual) */}
+            {canManuallyComplete && onOpenCompleteModal && (
+              <button
+                type="button"
+                onClick={onOpenCompleteModal}
+                className="shadow-2xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50/90 px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.99] dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+              >
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Selesaikan Pesanan Manual</span>
+              </button>
+            )}
+
             {/* Primary Action: Ajukan Komplain / Klaim Garansi */}
-            {isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
+            {canRequestReturnOrComplaint && !hasActiveClaim && (
               <button
                 type="button"
                 onClick={onOpenReturn}
@@ -845,16 +861,6 @@ export function OrderMobileView({
               >
                 <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
                 <span>Ajukan Komplain / Klaim Garansi</span>
-              </button>
-            )}
-
-            {!isCompleted && canRequestReturnOrComplaint && !hasActiveClaim && (
-              <button
-                type="button"
-                onClick={onOpenComplaint}
-                className="shadow-2xs flex w-full cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                Laporkan Kendala Pesanan
               </button>
             )}
 

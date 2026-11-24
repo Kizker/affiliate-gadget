@@ -7,6 +7,7 @@ import {
   CURRENCY_FORMAT,
 } from '@/lib/reports-export-format'
 import { getStoreWithdrawals } from '@/lib/store-withdrawal-store'
+import { resolveOrderItemCostPrice } from '@/lib/order-return-utils'
 
 interface FinancialOrderRecord {
   id: string
@@ -234,7 +235,17 @@ export async function GET(request: NextRequest) {
             },
             items: {
               include: {
-                product: true,
+                product: {
+                  include: {
+                    variants: {
+                      select: {
+                        id: true,
+                        name: true,
+                        costPrice: true,
+                      },
+                    },
+                  },
+                },
                 service: true,
                 rentalItem: true,
               },
@@ -293,8 +304,7 @@ export async function GET(request: NextRequest) {
             const cogs = order.items.reduce(
               (sum: number, item: any) =>
                 sum +
-                (item.costPrice || item.product?.costPrice || 0) *
-                  (item.quantity || 1),
+                resolveOrderItemCostPrice(item as any) * (item.quantity || 1),
               0
             )
             const grossProfit = grossRevenue - cogs

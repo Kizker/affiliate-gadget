@@ -1,6 +1,7 @@
 export * from './order-detail-types'
 export * from './order-cancel-modal'
 export * from './order-confirm-received-modal'
+export * from './order-complete-modal'
 export * from './order-desktop-hero-header'
 export * from './order-desktop-return-card'
 export * from './order-desktop-warranty-card'

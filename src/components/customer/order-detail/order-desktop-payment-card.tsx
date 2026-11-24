@@ -26,6 +26,7 @@ interface OrderDesktopPaymentCardProps {
   chatParams: URLSearchParams
   canCancel: boolean
   canConfirmReceived: boolean
+  canManuallyComplete?: boolean
   isCompleted: boolean
   hasActiveClaim: boolean
   canRequestReturnOrComplaint: boolean
@@ -35,6 +36,7 @@ interface OrderDesktopPaymentCardProps {
   onOpenMedia?: (index: number) => void
   onPayNow: () => void
   onConfirmReceived: () => void
+  onOpenCompleteModal?: () => void
   onOpenReturn: () => void
   onOpenComplaint: () => void
   onOpenRating: () => void
@@ -46,6 +48,7 @@ export function OrderDesktopPaymentCard({
   chatParams,
   canCancel,
   canConfirmReceived,
+  canManuallyComplete = false,
   isCompleted,
   hasActiveClaim,
   canRequestReturnOrComplaint,
@@ -55,6 +58,7 @@ export function OrderDesktopPaymentCard({
   onOpenMedia,
   onPayNow,
   onConfirmReceived,
+  onOpenCompleteModal,
   onOpenReturn,
   onOpenComplaint,
   onOpenRating,
@@ -130,23 +134,24 @@ export function OrderDesktopPaymentCard({
         {/* Tombol aksi per-produk di bawah HANYA tampil jika pesanan satu produk (order.items.length <= 1). Jika multi-produk (keranjang), aksi berada di masing-masing produk */}
         {order.items.length <= 1 && (
           <>
-            {canRequestReturnOrComplaint && !hasActiveClaim && isCompleted && (
+            {canManuallyComplete && onOpenCompleteModal && (
+              <button
+                type="button"
+                onClick={onOpenCompleteModal}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50/90 py-3 text-xs font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100 active:scale-95 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+              >
+                <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Selesaikan Pesanan Manual</span>
+              </button>
+            )}
+
+            {canRequestReturnOrComplaint && !hasActiveClaim && (
               <button
                 onClick={onOpenReturn}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-orange-500/30 bg-orange-50/70 py-3 text-xs font-bold text-orange-600 transition hover:bg-orange-100 active:scale-95 dark:border-orange-500/40 dark:bg-orange-950/30 dark:text-orange-400"
               >
                 <ShieldCheck className="h-4 w-4 text-orange-600 dark:text-orange-500" />
                 <span>Ajukan Komplain / Klaim Garansi</span>
-              </button>
-            )}
-
-            {canRequestReturnOrComplaint && !hasActiveClaim && !isCompleted && (
-              <button
-                onClick={onOpenComplaint}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <ShieldCheck className="h-4 w-4 text-slate-500" />
-                <span>Laporkan Kendala Pesanan</span>
               </button>
             )}
           </>

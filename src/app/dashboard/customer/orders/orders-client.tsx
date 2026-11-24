@@ -33,6 +33,7 @@ import { ReturnModal } from '@/components/customer/return-modal'
 import { MobileOrdersView } from '@/components/customer/mobile-orders-view'
 import {
   isReturnEligible,
+  isWarrantyExpired,
   findReturnForOrderItem,
   isOrderItemReturnEligible,
 } from '@/lib/order-return-utils'
@@ -222,10 +223,10 @@ const statusConfig: Record<
     icon: Truck,
   },
   COMPLETED: {
-    label: 'Selesai & Diterima',
+    label: 'Selesai',
     badgeBg:
-      'bg-emerald-50/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300',
-    dotColor: 'bg-emerald-500',
+      'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
+    dotColor: 'bg-slate-600 dark:bg-slate-300',
     icon: CheckCircle,
   },
   CANCELLED: {
@@ -310,6 +311,20 @@ function getStatusMeta(order: Order) {
         'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:border-purple-900/60 dark:text-purple-300',
       dotColor: 'bg-purple-500',
       icon: RotateCcw,
+    }
+  }
+  const nowMs = Date.now()
+  const isWOver = isWarrantyExpired(order)
+  const isUnder30Days =
+    order.warrantyExpiryDate &&
+    nowMs < new Date(order.warrantyExpiryDate).getTime()
+  if (order.customerConfirmedAt && !order.completedAt && isUnder30Days) {
+    return {
+      label: 'Diterima (Garansi 30 Hari Aktif)',
+      badgeBg:
+        'bg-emerald-50/90 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300',
+      dotColor: 'bg-emerald-500',
+      icon: ShieldCheck,
     }
   }
   return statusConfig[order.status] || statusConfig.PROCESSING
