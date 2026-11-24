@@ -137,7 +137,7 @@ export async function getStoreDetailData(
     if (store && typeof (prisma as any).$queryRawUnsafe === 'function') {
       try {
         const rawStoreCols: any[] = await prisma.$queryRawUnsafe(
-          `SELECT "heroImage", "heroMobileImage", "heroTitle", "heroSubtitle", "heroDescription", "campaignKicker", "campaignTitle", "campaignSubtitle", "campaignDescription", "secondaryBanner", "secondaryBannerTitle", "secondaryBannerDesc" FROM stores WHERE id = $1`,
+          `SELECT "heroImage", "heroMobileImage", "heroTitle", "heroSubtitle", "heroDescription", "campaignKicker", "campaignTitle", "campaignSubtitle", "campaignDescription", "secondaryBanner", "secondaryBannerTitle", "secondaryBannerDesc", "heroProductId", "campaignProductId" FROM stores WHERE id = $1`,
           store.id
         )
         if (rawStoreCols?.[0]) {
@@ -150,6 +150,34 @@ export async function getStoreDetailData(
         )
       }
     }
+
+    if (Array.isArray(store.products) && store.products.length > 0) {
+      try {
+        const productIds = store.products.map((p: any) => p.id)
+        const salesGroup = await prisma.orderItem.groupBy({
+          by: ['productId'],
+          where: {
+            productId: { in: productIds },
+            order: { status: { not: 'CANCELLED' } },
+          },
+          _sum: { quantity: true },
+        })
+        const salesMap = new Map<string, number>()
+        salesGroup.forEach((s) => {
+          if (s.productId) salesMap.set(s.productId, s._sum.quantity || 0)
+        })
+        store.products.forEach((p: any) => {
+          p.soldCount = salesMap.get(p.id) || p.totalSales || 0
+        })
+      } catch (salesErr) {
+        console.warn('Store products sales grouping warning:', salesErr)
+      }
+    }
+
+    // Simpan salinan produk asli toko sebelum kemungkinan ditimpa etalase
+    ;(store as any).rawProducts = Array.isArray(store.products)
+      ? [...store.products]
+      : []
 
     // Tampilkan Etalase Aktif toko di halaman publik /toko/[slug]
     try {

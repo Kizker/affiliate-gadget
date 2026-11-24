@@ -422,6 +422,16 @@ export async function POST(request: NextRequest) {
                 : costPrice !== undefined && costPrice !== null
                   ? parseFloat(String(costPrice).replace(/\./g, '')) || 0
                   : 0,
+            originalPrice:
+              v.originalPrice !== undefined &&
+              v.originalPrice !== null &&
+              String(v.originalPrice).trim() !== ''
+                ? parseFloat(String(v.originalPrice).replace(/\./g, '')) || null
+                : originalPrice !== undefined &&
+                    originalPrice !== null &&
+                    String(originalPrice).trim() !== ''
+                  ? parseFloat(String(originalPrice).replace(/\./g, '')) || null
+                  : null,
             stock: parseInt(String(v.stock || stock)) || 0,
             sku: v.sku
               ? String(v.sku).trim()

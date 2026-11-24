@@ -206,6 +206,18 @@ export async function PATCH(
                   : costPrice !== undefined && costPrice !== null
                     ? parseFloat(String(costPrice).replace(/\./g, '')) || 0
                     : (existing as any).costPrice || 0,
+              originalPrice:
+                v.originalPrice !== undefined &&
+                v.originalPrice !== null &&
+                String(v.originalPrice).trim() !== ''
+                  ? parseFloat(String(v.originalPrice).replace(/\./g, '')) ||
+                    null
+                  : originalPrice !== undefined &&
+                      originalPrice !== null &&
+                      String(originalPrice).trim() !== ''
+                    ? parseFloat(String(originalPrice).replace(/\./g, '')) ||
+                      null
+                    : (existing as any).originalPrice || null,
               stock: parseInt(String(v.stock || stock || existing.stock)) || 0,
               sku: v.sku
                 ? String(v.sku).trim()

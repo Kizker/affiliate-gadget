@@ -145,12 +145,12 @@ export default function StoreDetailClient({
   const content = useMemo(() => resolveStorePageContent(store), [store])
   const topFlagship = content.topFlagship
 
-  // Filter products cleanly by category
+  // Filter products cleanly by category & sort by most purchased (soldCount descending)
   const filteredProducts = useMemo(() => {
     if (!store?.products) return []
-    if (activeCategory === 'ALL') return store.products
+    let list = store.products
     if (activeCategory === 'PHONE') {
-      return store.products.filter(
+      list = store.products.filter(
         (p: any) =>
           p.category?.toUpperCase() === 'SMARTPHONE' ||
           p.category?.toUpperCase() === 'HP' ||
@@ -159,18 +159,16 @@ export default function StoreDetailClient({
           p.name?.toLowerCase().includes('pro max') ||
           p.name?.toLowerCase().includes('pixel')
       )
-    }
-    if (activeCategory === 'WEARABLE') {
-      return store.products.filter(
+    } else if (activeCategory === 'WEARABLE') {
+      list = store.products.filter(
         (p: any) =>
           p.name?.toLowerCase().includes('watch') ||
           p.name?.toLowerCase().includes('airpods') ||
           p.name?.toLowerCase().includes('headphone') ||
           p.name?.toLowerCase().includes('earphone')
       )
-    }
-    if (activeCategory === 'ACCESSORY') {
-      return store.products.filter(
+    } else if (activeCategory === 'ACCESSORY') {
+      list = store.products.filter(
         (p: any) =>
           p.name?.toLowerCase().includes('powerbank') ||
           p.name?.toLowerCase().includes('case') ||
@@ -178,7 +176,21 @@ export default function StoreDetailClient({
           p.brand?.toLowerCase() === 'anker'
       )
     }
-    return store.products
+
+    return [...list].sort((a: any, b: any) => {
+      const aSold = Number(a.soldCount) || 0
+      const bSold = Number(b.soldCount) || 0
+      if (bSold !== aSold) return bSold - aSold
+
+      const aScore = (Number(a.rating) || 0) * (Number(a.totalReview) || 0)
+      const bScore = (Number(b.rating) || 0) * (Number(b.totalReview) || 0)
+      if (bScore !== aScore) return bScore - aScore
+
+      return (
+        new Date(b.createdAt || 0).getTime() -
+        new Date(a.createdAt || 0).getTime()
+      )
+    })
   }, [store, activeCategory])
 
   const showMobile = !mounted ? initialIsMobile : isMobile
@@ -203,15 +215,15 @@ export default function StoreDetailClient({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          1A. DESKTOP HERO VIEWPORT: FLUID MIN-HEIGHT (SAFE ON ALL VIEWPORTS)
+          1A. DESKTOP HERO VIEWPORT: PAS 1 LAYAR PENUH (100vh)
       ───────────────────────────────────────────────────────────── */}
       {showDesktop && (
         <section
           id="hero"
-          className="relative hidden min-h-[calc(100vh-4rem)] w-full items-center justify-between overflow-hidden bg-[#FBFBFD] pb-12 pt-20 dark:bg-neutral-950 md:flex"
+          className="relative hidden h-screen max-h-screen w-full items-center justify-between overflow-hidden bg-[#FBFBFD] pb-4 pt-16 dark:bg-neutral-950 md:flex"
         >
-          {/* Left Column (52%): Flagship Cutout Phones Artwork */}
-          <div className="relative flex min-h-[460px] w-[52%] items-center justify-start overflow-hidden pl-4 lg:min-h-[520px] lg:pl-8">
+          {/* Left Column (50%): Flagship Cutout Phones Artwork */}
+          <div className="relative flex h-full max-h-[calc(100vh-5rem)] w-1/2 items-center justify-start overflow-hidden pl-4 lg:pl-8">
             <Image
               src={content.hero.desktopImage}
               alt={content.hero.title}
@@ -219,22 +231,22 @@ export default function StoreDetailClient({
               priority
               fetchPriority="high"
               loading="eager"
-              sizes="55vw"
+              sizes="50vw"
               className="origin-left object-contain object-left transition-transform duration-700"
             />
           </div>
 
-          {/* Right Column (48%): Sleek Typography & Actions */}
-          <div className="z-10 flex w-[48%] flex-col items-start justify-center space-y-4 py-8 pl-4 pr-8 lg:pl-8 lg:pr-16">
+          {/* Right Column (50%): Sleek Typography & Actions */}
+          <div className="z-10 flex w-1/2 flex-col items-start justify-center space-y-3.5 py-4 pl-4 pr-8 lg:pl-8 lg:pr-16">
             <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#0070F3] dark:text-sky-400 sm:text-sm">
               {content.hero.kicker}
             </span>
 
-            <h1 className="line-clamp-3 text-2xl font-black leading-tight tracking-tight text-neutral-950 dark:text-white sm:text-3xl lg:text-4xl xl:text-5xl">
+            <h1 className="line-clamp-2 text-2xl font-black leading-tight tracking-tight text-neutral-950 dark:text-white sm:text-3xl lg:text-4xl xl:text-5xl">
               {content.hero.title}
             </h1>
 
-            <p className="line-clamp-3 max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
+            <p className="line-clamp-2 max-w-lg text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 lg:text-base">
               {content.hero.desktopDesc}
             </p>
 
@@ -467,13 +479,23 @@ export default function StoreDetailClient({
                       {content.editorial1.description}
                     </p>
                     <div className="flex flex-wrap items-center gap-2.5 pt-1.5 sm:gap-5 sm:pt-2">
-                      <a
-                        href="#katalog-produk"
-                        aria-label="Beli produk penawaran khusus toko"
-                        className="rounded-full bg-white px-5 py-2.5 text-xs font-bold text-black shadow-md transition hover:bg-neutral-200 active:scale-95 sm:px-7 sm:py-3"
-                      >
-                        Beli Sekarang
-                      </a>
+                      {content.editorial1.campaignProduct ? (
+                        <Link
+                          href={`/gadget/${content.editorial1.campaignProduct.id}`}
+                          aria-label={`Beli sekarang produk ${content.editorial1.campaignProduct.name}`}
+                          className="rounded-full bg-white px-5 py-2.5 text-xs font-bold text-black shadow-md transition hover:bg-neutral-200 active:scale-95 sm:px-7 sm:py-3"
+                        >
+                          Beli Sekarang
+                        </Link>
+                      ) : (
+                        <a
+                          href="#katalog-produk"
+                          aria-label="Beli produk penawaran khusus toko"
+                          className="rounded-full bg-white px-5 py-2.5 text-xs font-bold text-black shadow-md transition hover:bg-neutral-200 active:scale-95 sm:px-7 sm:py-3"
+                        >
+                          Beli Sekarang
+                        </a>
+                      )}
                       <Link
                         href="/garansi"
                         aria-label="Pelajari garansi 30 hari ganti baru"
@@ -517,13 +539,23 @@ export default function StoreDetailClient({
                     >
                       Lebih detail
                     </Link>
-                    <a
-                      href="#katalog-produk"
-                      aria-label="Beli perangkat pilihan"
-                      className="rounded-full border border-black bg-transparent px-8 py-2.5 text-xs font-bold text-black transition hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
-                    >
-                      Beli
-                    </a>
+                    {content.editorial1.campaignProduct ? (
+                      <Link
+                        href={`/gadget/${content.editorial1.campaignProduct.id}`}
+                        aria-label={`Beli produk ${content.editorial1.campaignProduct.name}`}
+                        className="rounded-full border border-black bg-transparent px-8 py-2.5 text-xs font-bold text-black transition hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
+                      >
+                        Beli
+                      </Link>
+                    ) : (
+                      <a
+                        href="#katalog-produk"
+                        aria-label="Beli perangkat pilihan"
+                        className="rounded-full border border-black bg-transparent px-8 py-2.5 text-xs font-bold text-black transition hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
+                      >
+                        Beli
+                      </a>
+                    )}
                   </div>
                 </div>
 

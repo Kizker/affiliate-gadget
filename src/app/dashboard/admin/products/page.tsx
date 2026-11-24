@@ -685,6 +685,12 @@ export default function ProductsPage() {
     return Array.from(productIds)
   }, [filteredProducts, selectedVariantIds])
 
+  const isAllSelectedProductsInactive = useMemo(() => {
+    const selProdIds = new Set(getSelectedProductIds())
+    const selProds = filteredProducts.filter((p) => selProdIds.has(p.id))
+    return selProds.length > 0 && selProds.every((p) => !p.isActive)
+  }, [filteredProducts, getSelectedProductIds])
+
   const handleBatchSetActive = async (setActive: boolean) => {
     const productIds = getSelectedProductIds()
     if (productIds.length === 0) return
@@ -1857,33 +1863,35 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleBatchSetActive(true)}
-                disabled={bulkUpdating}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 disabled:opacity-50 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
-              >
-                {bulkUpdating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
-                <span>Aktifkan</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleBatchSetActive(false)}
-                disabled={bulkUpdating}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95 disabled:opacity-50 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
-              >
-                {bulkUpdating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <EyeOff className="h-3.5 w-3.5" />
-                )}
-                <span>Nonaktifkan</span>
-              </button>
+              {isAllSelectedProductsInactive ? (
+                <button
+                  type="button"
+                  onClick={() => handleBatchSetActive(true)}
+                  disabled={bulkUpdating}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 disabled:opacity-50 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
+                >
+                  {bulkUpdating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5" />
+                  )}
+                  <span>Aktifkan</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleBatchSetActive(false)}
+                  disabled={bulkUpdating}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95 disabled:opacity-50 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
+                >
+                  {bulkUpdating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  )}
+                  <span>Nonaktifkan</span>
+                </button>
+              )}
 
               <button
                 type="button"

@@ -51,10 +51,12 @@ export interface StorePublicProfile {
   heroTitle?: string | null
   heroSubtitle?: string | null
   heroDescription?: string | null
+  heroProductId?: string | null
   campaignKicker?: string | null
   campaignTitle?: string | null
   campaignSubtitle?: string | null
   campaignDescription?: string | null
+  campaignProductId?: string | null
   secondaryBanner?: string | null
   secondaryBannerTitle?: string | null
   secondaryBannerDesc?: string | null

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, BarChart3 } from 'lucide-react'
 import { FinanceStats, ReportData, formatRupiah } from '../types'
 
 interface OrderActivityItem {
@@ -236,47 +236,27 @@ export function ReportsView({
 
         {/* Visual Chart Bars */}
         {(() => {
-          const rawTrends =
-            (reportData?.salesTrend?.length ?? 0) > 0
-              ? (reportData?.salesTrend ?? [])
-              : [
-                  {
-                    date: '1',
-                    label: 'Minggu 1',
-                    grossRevenue:
-                      (reportData.financials?.grossRevenue || 1000000) * 0.2,
-                    netProfit:
-                      (reportData.financials?.netProfit || 200000) * 0.2,
-                    ordersCount: 1,
-                  },
-                  {
-                    date: '2',
-                    label: 'Minggu 2',
-                    grossRevenue:
-                      (reportData.financials?.grossRevenue || 1000000) * 0.35,
-                    netProfit:
-                      (reportData.financials?.netProfit || 200000) * 0.35,
-                    ordersCount: 2,
-                  },
-                  {
-                    date: '3',
-                    label: 'Minggu 3',
-                    grossRevenue:
-                      (reportData.financials?.grossRevenue || 1000000) * 0.25,
-                    netProfit:
-                      (reportData.financials?.netProfit || 200000) * 0.25,
-                    ordersCount: 1,
-                  },
-                  {
-                    date: '4',
-                    label: 'Minggu 4',
-                    grossRevenue:
-                      (reportData.financials?.grossRevenue || 1000000) * 0.2,
-                    netProfit:
-                      (reportData.financials?.netProfit || 200000) * 0.2,
-                    ordersCount: 1,
-                  },
-                ]
+          const rawTrends = (reportData?.salesTrend ?? []).filter(
+            (t) =>
+              (t.grossRevenue || 0) > 0 ||
+              (t.netProfit || 0) > 0 ||
+              (t.ordersCount || 0) > 0
+          )
+
+          if (rawTrends.length === 0) {
+            return (
+              <div className="flex h-52 flex-col items-center justify-center py-10 text-center">
+                <BarChart3 className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Belum Ada Aktivitas Transaksi
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Grafik tren penjualan dan laba akan muncul setelah ada pesanan
+                  masuk.
+                </p>
+              </div>
+            )
+          }
 
           const maxVal = Math.max(
             ...rawTrends.map((t) => Math.max(t.grossRevenue, t.netProfit, 1))

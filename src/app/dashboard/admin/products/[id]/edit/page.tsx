@@ -515,6 +515,7 @@ export default function EditProductPage() {
         pricePerKg: 20000,
         warrantyDays: parseInt(String(form.warrantyDays), 10) || 30,
         variants: variants.map((v) => ({
+          ...(v.id ? { id: v.id } : {}),
           name:
             v.name ||
             `${v.storage || ''} ${v.color ? `- ${v.color}` : ''}`.trim() ||
@@ -527,10 +528,9 @@ export default function EditProductPage() {
           costPrice: v.costPrice
             ? parseRupiahInput(v.costPrice)
             : effectiveCostPrice,
-          originalPrice: v.originalPrice
-            ? parseRupiahInput(v.originalPrice)
-            : form.originalPrice
-              ? parseRupiahInput(form.originalPrice)
+          originalPrice:
+            v.originalPrice && String(v.originalPrice).trim() !== ''
+              ? parseRupiahInput(v.originalPrice)
               : undefined,
           stock: parseInt(String(v.stock), 10) || 0,
           sku: v.sku?.trim() || form.sku?.trim() || undefined,
@@ -1105,8 +1105,8 @@ export default function EditProductPage() {
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                        Harga Jual (Rp) <span className="text-rose-500">*</span>
+                      <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Harga Jual <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -1122,8 +1122,8 @@ export default function EditProductPage() {
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                        Harga Coret (Rp)
+                      <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Harga Coret
                       </label>
                       <input
                         type="text"
@@ -1140,8 +1140,8 @@ export default function EditProductPage() {
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                        HPP Modal (Rp)
+                      <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        HPP Modal
                       </label>
                       <input
                         type="text"
@@ -1158,8 +1158,8 @@ export default function EditProductPage() {
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                        Stok Unit <span className="text-rose-500">*</span>
+                      <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Stok <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -1173,14 +1173,9 @@ export default function EditProductPage() {
                     </div>
 
                     <div>
-                      <div className="mb-1 flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          Berat (gram)
-                        </label>
-                        <span className="text-[9px] text-slate-400">
-                          Bisa 0
-                        </span>
-                      </div>
+                      <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Berat (gram)
+                      </label>
                       <input
                         type="number"
                         min={0}

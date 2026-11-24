@@ -918,8 +918,8 @@ export default function NewGadgetProductPage() {
                         />
                       </div>
                       <div className="col-span-2 space-y-1">
-                        <label className="font-semibold text-slate-500">
-                          Harga Jual (Rp)
+                        <label className="block truncate whitespace-nowrap font-semibold text-slate-500">
+                          Harga Jual <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -934,8 +934,8 @@ export default function NewGadgetProductPage() {
                         />
                       </div>
                       <div className="col-span-2 space-y-1">
-                        <label className="font-semibold text-slate-500">
-                          Harga Coret (Rp)
+                        <label className="block truncate whitespace-nowrap font-semibold text-slate-500">
+                          Harga Coret
                         </label>
                         <input
                           type="text"
@@ -955,8 +955,8 @@ export default function NewGadgetProductPage() {
                     {/* Varian Row 2: Stok Unit, HPP Modal & Berat */}
                     <div className="grid grid-cols-12 gap-3 pt-1 text-xs">
                       <div className="col-span-4 space-y-1 sm:col-span-2">
-                        <label className="font-semibold text-slate-500">
-                          Stok Unit <span className="text-rose-500">*</span>
+                        <label className="block truncate whitespace-nowrap font-semibold text-slate-500">
+                          Stok <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="number"
@@ -969,8 +969,8 @@ export default function NewGadgetProductPage() {
                         />
                       </div>
                       <div className="col-span-4 space-y-1 sm:col-span-3">
-                        <label className="font-semibold text-slate-500">
-                          HPP Modal (Rp)
+                        <label className="block truncate whitespace-nowrap font-semibold text-slate-500">
+                          HPP Modal
                         </label>
                         <input
                           type="text"

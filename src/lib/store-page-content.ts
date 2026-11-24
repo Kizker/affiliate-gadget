@@ -221,6 +221,7 @@ export interface ResolvedStorePageContent {
     title: string
     subtitle?: string
     description: string
+    campaignProduct: StoreProductPublic | null
   }
   editorial2: {
     imageUrl: string
@@ -243,24 +244,68 @@ export function resolveStorePageContent(
 ): ResolvedStorePageContent {
   const storeName = store?.name || 'Toko Resmi'
   const cityName = store?.city || 'Pusat'
-  const topFlagship = selectTopFlagshipProduct(store?.products)
+
+  // 1. Resolve Top Flagship / Selected Hero Product
+  const allAvailableProducts: any[] = [
+    ...(Array.isArray(store?.products) ? store.products : []),
+    ...(Array.isArray((store as any)?.rawProducts)
+      ? (store as any).rawProducts
+      : []),
+  ]
+
+  let topFlagship = selectTopFlagshipProduct(store?.products)
+  if (store?.heroProductId && allAvailableProducts.length > 0) {
+    const selectedHero = allAvailableProducts.find(
+      (p: any) =>
+        p.id === store.heroProductId ||
+        p.etalaseId === store.heroProductId ||
+        p.coverProductId === store.heroProductId ||
+        (Array.isArray(p.etalaseItems) &&
+          p.etalaseItems.some(
+            (item: any) => item.productId === store.heroProductId
+          ))
+    )
+    if (selectedHero) {
+      topFlagship = selectedHero
+    }
+  }
+
+  // 1B. Resolve Campaign Target Product
+  let campaignProduct: StoreProductPublic | null = null
+  if (store?.campaignProductId && allAvailableProducts.length > 0) {
+    campaignProduct =
+      allAvailableProducts.find(
+        (p: any) =>
+          p.id === store.campaignProductId ||
+          p.etalaseId === store.campaignProductId ||
+          p.coverProductId === store.campaignProductId ||
+          (Array.isArray(p.etalaseItems) &&
+            p.etalaseItems.some(
+              (item: any) => item.productId === store.campaignProductId
+            ))
+      ) || null
+  }
 
   // 1. Hero Content
+  const heroProductImage =
+    (topFlagship?.images && topFlagship.images[0]) ||
+    topFlagship?.variants?.find((v: any) => v.image)?.image ||
+    null
+
+  const defaultDesktopImg =
+    heroProductImage || STORE_PAGE_DEFAULTS.hero.desktopImage
+  const defaultMobileImg =
+    heroProductImage || STORE_PAGE_DEFAULTS.hero.mobileImage
+
   const heroDesktopImage = store?.heroImage
-    ? sanitizeStoreImageUrl(
-        store.heroImage,
-        STORE_PAGE_DEFAULTS.hero.desktopImage
-      )
-    : STORE_PAGE_DEFAULTS.hero.desktopImage
+    ? sanitizeStoreImageUrl(store.heroImage, defaultDesktopImg)
+    : defaultDesktopImg
 
   const heroMobileImage = store?.heroMobileImage
     ? sanitizeStoreImageUrl(store.heroMobileImage, heroDesktopImage)
     : store?.heroImage
-      ? sanitizeStoreImageUrl(
-          store.heroImage,
-          STORE_PAGE_DEFAULTS.hero.mobileImage
-        )
-      : STORE_PAGE_DEFAULTS.hero.mobileImage
+      ? sanitizeStoreImageUrl(store.heroImage, defaultMobileImg)
+      : defaultMobileImg
 
   const heroTitle =
     store?.heroTitle?.trim() ||
@@ -291,7 +336,8 @@ export function resolveStorePageContent(
       ? `Unit unggulan ${topFlagship.name} di gerai ${storeName}. Garansi 30 hari tukar unit baru.`
       : STORE_PAGE_DEFAULTS.hero.mobileDesc(storeName))
 
-  const priceNumber = topFlagship?.price || null
+  const priceNumber =
+    topFlagship?.price || (topFlagship as any)?.minPrice || null
   const priceText = priceNumber
     ? `Mulai Rp ${Number(priceNumber).toLocaleString('id-ID')}`
     : null
@@ -375,6 +421,7 @@ export function resolveStorePageContent(
       title: ed1Title,
       subtitle: ed1Subtitle,
       description: ed1Desc,
+      campaignProduct,
     },
     editorial2: {
       imageUrl: ed2ImageUrl,

@@ -37,6 +37,8 @@ import {
   AlertCircle,
   Monitor,
   LayoutTemplate,
+  Package,
+  ShoppingBag,
 } from 'lucide-react'
 
 export default function AdminSettingsPage() {
@@ -125,6 +127,7 @@ export default function AdminSettingsPage() {
   }
 
   // Store Profile Form State (hanya untuk role STORE_ADMIN)
+  const [storeProducts, setStoreProducts] = useState<any[]>([])
   const [storeForm, setStoreForm] = useState({
     storeName: '',
     companyName: '',
@@ -135,10 +138,12 @@ export default function AdminSettingsPage() {
     heroTitle: '',
     heroSubtitle: '',
     heroDescription: '',
+    heroProductId: '',
     campaignKicker: '',
     campaignTitle: '',
     campaignSubtitle: '',
     campaignDescription: '',
+    campaignProductId: '',
     secondaryBanner: '',
     secondaryBannerTitle: '',
     secondaryBannerDesc: '',
@@ -179,6 +184,10 @@ export default function AdminSettingsPage() {
 
         const role = user.role || 'ADMIN'
         setUserRole(role)
+
+        if (data.products && Array.isArray(data.products)) {
+          setStoreProducts(data.products)
+        }
 
         // Set default tab based on role
         if (role === 'STORE_ADMIN') {
@@ -224,10 +233,12 @@ export default function AdminSettingsPage() {
             heroTitle: store.heroTitle || '',
             heroSubtitle: store.heroSubtitle || '',
             heroDescription: store.heroDescription || '',
+            heroProductId: store.heroProductId || '',
             campaignKicker: store.campaignKicker || '',
             campaignTitle: store.campaignTitle || '',
             campaignSubtitle: store.campaignSubtitle || '',
             campaignDescription: store.campaignDescription || '',
+            campaignProductId: store.campaignProductId || '',
             secondaryBanner: store.secondaryBanner || '',
             secondaryBannerTitle: store.secondaryBannerTitle || '',
             secondaryBannerDesc: store.secondaryBannerDesc || '',
@@ -1847,6 +1858,42 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
+              {/* Pilihan Produk Unggulan Hero */}
+              <div className="space-y-2 rounded-2xl border border-orange-200/80 bg-orange-50/40 p-4 dark:border-orange-900/40 dark:bg-orange-950/20">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                  <label className="text-xs font-bold text-slate-900 dark:text-white">
+                    Pilih Produk Unggulan yang Tampil di Hero
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Pilih produk dari katalog tokomu. Harga hero (&quot;Mulai Rp
+                  ...&quot;), link tombol &quot;Beli Sekarang&quot;, dan foto
+                  produk otomatis menyesuaikan dengan produk yang dipilih.
+                </p>
+                <select
+                  value={storeForm.heroProductId}
+                  onChange={(e) =>
+                    setStoreForm({
+                      ...storeForm,
+                      heroProductId: e.target.value,
+                    })
+                  }
+                  className="shadow-2xs w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">
+                    -- Otomatis (Produk Terlaris / Unggulan Toko) --
+                  </option>
+                  {storeProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — Rp{' '}
+                      {Number(p.price || 0).toLocaleString('id-ID')}{' '}
+                      {p.brand ? `(${p.brand})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Grid 2 Slot: Desktop Hero & Mobile Hero */}
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 {/* Desktop Hero Image */}
@@ -2121,6 +2168,43 @@ export default function AdminSettingsPage() {
                     }
                   />
                 </label>
+              </div>
+
+              {/* Pilihan Produk Target Beli Kampanye */}
+              <div className="space-y-2 rounded-2xl border border-sky-200/80 bg-sky-50/40 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                  <label className="text-xs font-bold text-slate-900 dark:text-white">
+                    Pilih Produk yang Dibeli pada Tombol &quot;Beli
+                    Sekarang&quot;
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Pilih produk target yang akan langsung dibuka pembeli saat
+                  menekan tombol &quot;Beli Sekarang&quot; pada banner kampanye
+                  promosi ini.
+                </p>
+                <select
+                  value={storeForm.campaignProductId}
+                  onChange={(e) =>
+                    setStoreForm({
+                      ...storeForm,
+                      campaignProductId: e.target.value,
+                    })
+                  }
+                  className="shadow-2xs w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">
+                    -- Arahkan ke Koleksi Produk Toko (#katalog-produk) --
+                  </option>
+                  {storeProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — Rp{' '}
+                      {Number(p.price || 0).toLocaleString('id-ID')}{' '}
+                      {p.brand ? `(${p.brand})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Banner Preview or Empty State */}

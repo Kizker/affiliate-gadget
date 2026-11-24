@@ -137,7 +137,7 @@ export async function GET() {
     ) {
       try {
         const rawStoreCols: any[] = await prisma.$queryRawUnsafe(
-          `SELECT "heroImage", "heroMobileImage", "heroTitle", "heroSubtitle", "heroDescription", "campaignKicker", "campaignTitle", "campaignSubtitle", "campaignDescription", "secondaryBanner", "secondaryBannerTitle", "secondaryBannerDesc" FROM stores WHERE id = $1`,
+          `SELECT "heroImage", "heroMobileImage", "heroTitle", "heroSubtitle", "heroDescription", "heroProductId", "campaignKicker", "campaignTitle", "campaignSubtitle", "campaignDescription", "campaignProductId", "secondaryBanner", "secondaryBannerTitle", "secondaryBannerDesc" FROM stores WHERE id = $1`,
           user.storeId
         )
         if (rawStoreCols?.[0]) {
@@ -148,7 +148,31 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ user, store: enrichedStore })
+    let storeProducts: any[] = []
+    if (user.storeId) {
+      try {
+        storeProducts = await prisma.product.findMany({
+          where: { storeId: user.storeId, isActive: true },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            brand: true,
+            images: true,
+            stock: true,
+          },
+          orderBy: { name: 'asc' },
+        })
+      } catch (prodErr) {
+        console.warn('Store products fetch warning:', prodErr)
+      }
+    }
+
+    return NextResponse.json({
+      user,
+      store: enrichedStore,
+      products: storeProducts,
+    })
   } catch (error) {
     console.error('Error fetching admin profile:', error)
     return NextResponse.json(
@@ -388,10 +412,12 @@ export async function PATCH(request: NextRequest) {
           heroTitle,
           heroSubtitle,
           heroDescription,
+          heroProductId,
           campaignKicker,
           campaignTitle,
           campaignSubtitle,
           campaignDescription,
+          campaignProductId,
           secondaryBanner,
           secondaryBannerTitle,
           secondaryBannerDesc,
@@ -503,10 +529,12 @@ export async function PATCH(request: NextRequest) {
         addVisualField('heroTitle', heroTitle, 100)
         addVisualField('heroSubtitle', heroSubtitle, 100)
         addVisualField('heroDescription', heroDescription, 500)
+        addVisualField('heroProductId', heroProductId, 100)
         addVisualField('campaignKicker', campaignKicker, 100)
         addVisualField('campaignTitle', campaignTitle, 100)
         addVisualField('campaignSubtitle', campaignSubtitle, 100)
         addVisualField('campaignDescription', campaignDescription, 500)
+        addVisualField('campaignProductId', campaignProductId, 100)
         addVisualField('secondaryBanner', secondaryBanner)
         addVisualField('secondaryBannerTitle', secondaryBannerTitle, 100)
         addVisualField('secondaryBannerDesc', secondaryBannerDesc, 500)

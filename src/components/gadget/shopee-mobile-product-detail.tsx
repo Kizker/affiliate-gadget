@@ -784,20 +784,30 @@ export function ShopeeMobileProductDetail({
             Rp {currentPrice.toLocaleString('id-ID')}
           </span>
 
-          {product.originalPrice && product.originalPrice > currentPrice && (
-            <span className="text-xs font-normal tabular-nums text-slate-400 line-through">
-              Rp {product.originalPrice.toLocaleString('id-ID')}
-            </span>
-          )}
-
-          {discountAmount > 0 && (
-            <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
-              Hemat{' '}
-              {discountAmount >= 1000000
-                ? `Rp ${(discountAmount / 1000000).toFixed(1).replace('.0', '')} jt`
-                : `Rp ${discountAmount.toLocaleString('id-ID')}`}
-            </span>
-          )}
+          {(() => {
+            const effectiveOriginalPrice =
+              selectedVariant?.originalPrice || product.originalPrice
+            if (
+              effectiveOriginalPrice &&
+              effectiveOriginalPrice > currentPrice
+            ) {
+              const diff = effectiveOriginalPrice - currentPrice
+              return (
+                <>
+                  <span className="text-xs font-normal tabular-nums text-slate-400 line-through">
+                    Rp {effectiveOriginalPrice.toLocaleString('id-ID')}
+                  </span>
+                  <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
+                    Hemat{' '}
+                    {diff >= 1000000
+                      ? `Rp ${(diff / 1000000).toFixed(1).replace('.0', '')} jt`
+                      : `Rp ${diff.toLocaleString('id-ID')}`}
+                  </span>
+                </>
+              )
+            }
+            return null
+          })()}
         </div>
       </div>
 
