@@ -58,13 +58,13 @@ server.on('upgrade', (request, socket, head) => {
     const normOrigin = origin.replace(/\/+$/, '')
     const normAllowed = ALLOWED_ORIGIN.replace(/\/+$/, '')
     const isAllowed =
+      !origin ||
       normOrigin === normAllowed ||
       normOrigin === normAllowed.replace('://', '://www.') ||
       normOrigin.replace('://www.', '://') === normAllowed ||
-      normOrigin.includes('affiliategadget.id') ||
-      normOrigin.includes('affiliategadget.tech') ||
-      normOrigin.includes('localhost:') ||
-      normOrigin.includes('127.0.0.1:')
+      normOrigin.includes('affiliategadget') ||
+      normOrigin.includes('localhost') ||
+      normOrigin.includes('127.0.0.1')
 
     if (!isAllowed) {
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
@@ -109,13 +109,16 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
   const authSession = await parseAuthSession(req.headers.cookie, tokenParam)
 
   const isBroadcaster = queryBroadcaster
+  const resolvedUserName =
+    authSession?.name ||
+    (queryName && queryName !== 'Penonton' ? queryName : 'Anonymous')
 
   const session: WsClientSession = {
     ws,
     streamId: initialStreamId,
     userId: authSession?.id,
     viewerId: queryViewerId,
-    userName: authSession?.name || queryName || 'Penonton',
+    userName: resolvedUserName,
     userAvatar: authSession?.image || queryAvatar || undefined,
     isBroadcaster,
     isAlive: true,
@@ -151,7 +154,10 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
             session.viewerId = msg.payload.viewerId
           }
           if (msg.payload?.userName) {
-            session.userName = msg.payload.userName
+            session.userName =
+              msg.payload.userName !== 'Penonton'
+                ? msg.payload.userName
+                : 'Anonymous'
           }
           if (msg.payload?.userAvatar) {
             session.userAvatar = msg.payload.userAvatar
@@ -162,7 +168,54 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
           if (typeof msg.payload?.isBroadcaster === 'boolean') {
             session.isBroadcaster = msg.payload.isBroadcaster
           }
+
+          if (!session.userName || session.userName === 'Penonton') {
+            session.userName = 'Anonymous'
+          }
+
           roomManager.joinRoom(targetStreamId, session)
+
+          // Catat history penonton bergabung & broadcast ke room (khusus penonton)
+          if (!session.isBroadcaster) {
+            const joinName = session.userName || 'Anonymous'
+            try {
+              prisma.liveStreamComment
+                .create({
+                  data: {
+                    streamId: targetStreamId,
+                    userName: joinName,
+                    userAvatar: session.userAvatar || null,
+                    message: 'bergabung ke siaran',
+                    type: 'JOIN',
+                    ...(session.userId ? { userId: session.userId } : {}),
+                  },
+                })
+                .catch(() => {})
+            } catch {}
+
+            roomManager.broadcastToRoom(targetStreamId, {
+              type: 'chat',
+              streamId: targetStreamId,
+              payload: {
+                id: `join-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                userId: session.userId,
+                userName: joinName,
+                userAvatar: session.userAvatar,
+                message: 'bergabung ke siaran',
+                type: 'JOIN',
+                createdAt: new Date().toISOString(),
+              },
+            })
+
+            // Segera sinkronkan viewerCount ke PostgreSQL
+            const liveViewerCount = roomManager.getViewerCount(targetStreamId)
+            prisma.liveStream
+              .update({
+                where: { id: targetStreamId },
+                data: { viewerCount: liveViewerCount },
+              })
+              .catch(() => {})
+          }
           break
         }
 
@@ -175,6 +228,12 @@ wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
           const rawMessage = msg.payload?.message || ''
           const sanitized = sanitizeText(rawMessage)
           if (!sanitized) return
+
+          const chatSenderName =
+            session.userName && session.userName !== 'Penonton'
+              ? session.userName
+              : 'Anonymous'
+          session.userName = chatSenderName
 
           // Rate Limiter: Max 5 messages per 2 seconds
           const now = Date.now()

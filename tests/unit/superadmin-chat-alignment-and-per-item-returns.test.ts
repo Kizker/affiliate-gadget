@@ -32,8 +32,9 @@ describe('Superadmin Chat Alignment & Per-Item Returns in Order Details', () => 
   it('2. Chat Superadmin mode pantau membedakan perataan bubble chat: Customer di KIRI dan Toko/Staf di KANAN', () => {
     const content = fs.readFileSync(adminChatPagePath, 'utf-8')
     expect(content).toContain('isCustomerSender =')
-    expect(content).toContain('isSuperAdmin && !isSentByMe')
-    expect(content).toContain('isRightAligned = !isCustomerSender')
+    expect(content).toContain(
+      'const isRightAligned = isSentByMe || !isCustomerSender'
+    )
     expect(content).toContain('const isAdmin = isRightAligned')
   })
 

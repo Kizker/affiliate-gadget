@@ -125,9 +125,13 @@ export function FinanceKpiCards({
             <p className="truncate text-xl font-black tabular-nums tracking-tight text-slate-950 dark:text-white">
               {(isPlatformCommissionOnly || isConsolidated
                 ? stats.platformCommission
-                : (reportData.financials?.storeNetProfit ??
-                  reportData.financials?.netProfit ??
-                  stats.completedNetRevenue)
+                : Math.max(
+                    0,
+                    (stats as any).storeNetProfit ??
+                      reportData.financials?.storeNetProfit ??
+                      reportData.financials?.netProfit ??
+                      stats.completedNetRevenue
+                  )
               ).toLocaleString('id-ID')}
             </p>
           </div>

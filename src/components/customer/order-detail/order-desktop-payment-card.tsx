@@ -33,6 +33,12 @@ interface OrderDesktopPaymentCardProps {
   isConfirming: boolean
   latestReturnRequest: OrderReturnRequest | null
   currentReview: OrderReview | null
+  customTotal?: number
+  customSubtotal?: number
+  customItems?: any[]
+  customNote?: string
+  hideShippingAndInsurance?: boolean
+  paymentTitle?: string
   onOpenMedia?: (index: number) => void
   onPayNow: () => void
   onConfirmReceived: () => void
@@ -55,6 +61,12 @@ export function OrderDesktopPaymentCard({
   isConfirming,
   latestReturnRequest,
   currentReview,
+  customTotal,
+  customSubtotal,
+  customItems,
+  customNote,
+  hideShippingAndInsurance,
+  paymentTitle,
   onOpenMedia,
   onPayNow,
   onConfirmReceived,
@@ -67,7 +79,16 @@ export function OrderDesktopPaymentCard({
   return (
     <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
       {/* Informasi Pembayaran Transparan */}
-      <CustomerPaymentBreakdown order={order} showStatusBadge={true} />
+      <CustomerPaymentBreakdown
+        order={order}
+        showStatusBadge={true}
+        title={paymentTitle || 'Informasi Pembayaran'}
+        customTotal={customTotal}
+        customSubtotal={customSubtotal}
+        customItems={customItems}
+        customNote={customNote}
+        hideShippingAndInsurance={hideShippingAndInsurance}
+      />
 
       {/* Official Store Guarantee Strip */}
       {order.status !== 'CANCELLED' && (

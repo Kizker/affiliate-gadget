@@ -19,7 +19,10 @@ import {
   DEFAULT_GADGET_IMAGE,
   formatPrice,
 } from './order-detail-types'
-import { findReturnForOrderItem } from '@/lib/order-return-utils'
+import {
+  findReturnForOrderItem,
+  splitOrderItemsForDisplay,
+} from '@/lib/order-return-utils'
 
 interface OrderDesktopItemsCardProps {
   order: OrderData
@@ -40,7 +43,11 @@ export function OrderDesktopItemsCard({
   onOpenReturnForItem,
   onOpenRatingForItem,
 }: OrderDesktopItemsCardProps) {
-  const isMultiItem = order.items.length > 1
+  const displayItems = splitOrderItemsForDisplay(
+    order.items,
+    order.returnRequests
+  )
+  const isMultiItem = displayItems.length > 1 || order.items.length > 1
   return (
     <div className="shadow-2xs rounded-3xl border border-slate-200/80 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-7">
       <div className="mb-5 flex items-center justify-between">
@@ -55,7 +62,8 @@ export function OrderDesktopItemsCard({
 
       {/* Items List */}
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        {order.items.map((item) => {
+        {displayItems.map((displayItem) => {
+          const item = displayItem.item
           const itemImage =
             item.product?.images?.[0] ||
             item.rentalItem?.images?.[0] ||
@@ -64,7 +72,7 @@ export function OrderDesktopItemsCard({
 
           return (
             <div
-              key={item.id}
+              key={displayItem.id}
               className="flex items-start gap-4 py-4 first:pt-0 last:pb-0 sm:py-5"
             >
               <div className="sm:h-22 sm:w-22 relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/60">
@@ -106,16 +114,13 @@ export function OrderDesktopItemsCard({
                       </p>
                     )}
                     <p className="mt-1 text-xs text-slate-500">
-                      {item.quantity} unit × {formatPrice(item.price)}
+                      {displayItem.displayQuantity} unit ×{' '}
+                      {formatPrice(item.price)}
                     </p>
                     {/* Aksi Khusus per Produk untuk Pembelian Keranjang / Multi-Item */}
                     {isMultiItem &&
                       (() => {
-                        const itemSpecificReturn = findReturnForOrderItem(
-                          order.returnRequests,
-                          item,
-                          order.items.length
-                        )
+                        const itemSpecificReturn = displayItem.matchedReturn
                         const isItemClaimActive = Boolean(
                           itemSpecificReturn &&
                           [
@@ -129,22 +134,37 @@ export function OrderDesktopItemsCard({
                         return (
                           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100/80 pt-2.5 dark:border-slate-800/80">
                             {itemSpecificReturn && (
-                              <span className="inline-flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-[11px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
-                                <RotateCcw className="h-3.5 w-3.5 text-purple-600" />
-                                <span>
-                                  {itemSpecificReturn.status === 'PENDING'
-                                    ? 'Menunggu Verifikasi Retur'
-                                    : itemSpecificReturn.status === 'IN_REVIEW'
-                                      ? 'Retur Sedang Ditinjau'
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-[11px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+                                  <RotateCcw className="h-3.5 w-3.5 text-purple-600" />
+                                  <span>
+                                    {itemSpecificReturn.status === 'PENDING'
+                                      ? 'Menunggu Verifikasi Retur'
                                       : itemSpecificReturn.status ===
-                                          'COMPLETED'
-                                        ? 'Retur Selesai'
+                                          'IN_REVIEW'
+                                        ? 'Retur Sedang Ditinjau'
                                         : itemSpecificReturn.status ===
-                                            'REJECTED'
-                                          ? 'Retur Ditolak'
-                                          : 'Retur Disetujui'}
+                                            'COMPLETED'
+                                          ? 'Retur Selesai'
+                                          : itemSpecificReturn.status ===
+                                              'REJECTED'
+                                            ? 'Retur Ditolak'
+                                            : 'Retur Disetujui'}
+                                  </span>
                                 </span>
-                              </span>
+                                {(itemSpecificReturn.reasonLabel ||
+                                  itemSpecificReturn.reason) && (
+                                  <span className="text-[11px] font-medium text-purple-600 dark:text-purple-400">
+                                    (
+                                    {itemSpecificReturn.type === 'REPLACEMENT'
+                                      ? 'Tukar Unit: '
+                                      : 'Refund: '}
+                                    {itemSpecificReturn.reasonLabel ||
+                                      itemSpecificReturn.reason}
+                                    )
+                                  </span>
+                                )}
+                              </div>
                             )}
 
                             {/* 1. Ajukan Komplain / Retur per Item */}
@@ -222,7 +242,7 @@ export function OrderDesktopItemsCard({
                       })()}
                   </div>
                   <span className="shrink-0 whitespace-nowrap font-mono text-base font-black text-slate-950 dark:text-white sm:text-lg">
-                    {formatPrice(item.subtotal)}
+                    {formatPrice(displayItem.displaySubtotal)}
                   </span>
                 </div>
               </div>

@@ -240,6 +240,95 @@ export function findReturnForOrderItem<
   )
 }
 
+export interface DisplayOrderItem<T = any> {
+  id: string
+  item: T
+  displayQuantity: number
+  displaySubtotal: number
+  matchedReturn?: ReturnRequestSummary | null
+  isReturnedUnit: boolean
+}
+
+/**
+ * Splits an OrderItem into separate display cards when only a partial quantity of that item
+ * has been requested for return/complaint.
+ * For example:
+ * - Product A (quantity 2) with 1 unit returned -> Split into 2 cards:
+ *   1. Product A (1 unit) with return information & badge
+ *   2. Product A (1 unit) without return information
+ * - Items with 0 returns or 100% returns remain a single grouped card.
+ */
+export function splitOrderItemsForDisplay<T extends MatchableOrderItem>(
+  items: T[],
+  returnRequests?: ReturnRequestSummary[] | null
+): DisplayOrderItem<T>[] {
+  const result: DisplayOrderItem<T>[] = []
+
+  for (const item of items) {
+    const qty = item.quantity || 1
+    const price = item.price || 0
+    const matchingReturn = findReturnForOrderItem(
+      returnRequests,
+      item,
+      items.length
+    )
+
+    if (matchingReturn) {
+      const returnedQty = extractReturnedQuantityFromDescription(
+        matchingReturn.description,
+        1
+      )
+      const validReturnedQty = Math.min(qty, Math.max(1, returnedQty))
+
+      if (validReturnedQty < qty) {
+        // Partial return: 1 card for returned unit(s), 1 card for remaining unreturned unit(s)
+        result.push({
+          id: `${item.id || 'item'}-returned`,
+          item,
+          displayQuantity: validReturnedQty,
+          displaySubtotal: price * validReturnedQty,
+          matchedReturn: matchingReturn,
+          isReturnedUnit: true,
+        })
+
+        const remainingQty = qty - validReturnedQty
+        result.push({
+          id: `${item.id || 'item'}-remaining`,
+          item,
+          displayQuantity: remainingQty,
+          displaySubtotal: price * remainingQty,
+          matchedReturn: undefined,
+          isReturnedUnit: false,
+        })
+        continue
+      }
+
+      // All units of this item were returned
+      result.push({
+        id: `${item.id || 'item'}-all-returned`,
+        item,
+        displayQuantity: qty,
+        displaySubtotal: (item as any).subtotal || price * qty,
+        matchedReturn: matchingReturn,
+        isReturnedUnit: true,
+      })
+      continue
+    }
+
+    // No return request on this item -> keep as single grouped card
+    result.push({
+      id: `${item.id || 'item'}-normal`,
+      item,
+      displayQuantity: qty,
+      displaySubtotal: (item as any).subtotal || price * qty,
+      matchedReturn: undefined,
+      isReturnedUnit: false,
+    })
+  }
+
+  return result
+}
+
 /**
  * Checks if a specific OrderItem is eligible for a new return request.
  * Even if another item in the same order has an active return, this item remains eligible!
@@ -347,6 +436,60 @@ export function isWarrantyExpired(order: OrderWarrantyInfo): boolean {
 
   const elapsedMs = Date.now() - new Date(referenceDate).getTime()
   return elapsedMs > 30 * 24 * 60 * 60 * 1000
+}
+
+/**
+ * Menghitung sisa hari garansi toko untuk pesanan.
+ * Mengembalikan integer >= 1 jika aktif, 0 jika habis, atau null jika tidak dapat ditentukan.
+ */
+export function getWarrantyRemainingDays(
+  order: OrderWarrantyInfo
+): number | null {
+  if (order.status === 'CANCELLED') return null
+
+  let expiryMs: number | null = null
+
+  if (order.warrantyExpiryDate) {
+    expiryMs = new Date(order.warrantyExpiryDate).getTime()
+  } else {
+    const referenceDate =
+      order.completedAt ||
+      order.customerConfirmedAt ||
+      order.updatedAt ||
+      order.createdAt
+
+    if (referenceDate) {
+      const startMs = new Date(referenceDate).getTime()
+      expiryMs = startMs + 30 * 24 * 60 * 60 * 1000
+    }
+  }
+
+  if (!expiryMs) return null
+
+  const diffMs = expiryMs - Date.now()
+  if (diffMs <= 0) return 0
+
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
+
+/**
+ * Menghasilkan teks label sisa garansi toko untuk badge pesanan.
+ * Contoh: "Garansi Tersisa 2 Hari", "Garansi Tersisa 30 Hari", "Garansi Habis"
+ */
+export function getWarrantyRemainingBadgeText(
+  order: OrderWarrantyInfo
+): string {
+  const days = getWarrantyRemainingDays(order)
+
+  if (days === null) {
+    return 'Garansi 30 Hari'
+  }
+
+  if (days <= 0) {
+    return 'Garansi Habis'
+  }
+
+  return `Garansi Tersisa ${days} Hari`
 }
 
 /**

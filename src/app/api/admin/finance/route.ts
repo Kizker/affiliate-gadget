@@ -256,11 +256,10 @@ export async function GET(request: NextRequest) {
           })
         : Promise.resolve([]),
       // All-time completed orders for calculating true live withdrawable balance
-      // HANYA pesanan yang masa garansi 30 harinya sudah lewat ATAU diselesaikan manual (warrantyExpiryDate <= now) yang dananya cair!
+      // Pesanan berstatus COMPLETED dan tidak ada klaim retur aktif dananya langsung cair ke saldo toko!
       prisma.order.aggregate({
         where: {
           status: 'COMPLETED',
-          warrantyExpiryDate: { lte: new Date() },
           returnRequests: {
             none: {
               status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] },
@@ -436,27 +435,10 @@ export async function GET(request: NextRequest) {
         order.status !== 'RETURNED'
       )
 
-      const nowMs = Date.now()
-      // Pesanan benar-benar selesai (dananya cair ke Saldo Siap Cair):
-      // HANYA JIKA pesanan COMPLETED dan masa garansi 30 hari sudah berakhir (lte now) ATAU diselesaikan manual oleh customer!
-      const isWarrantyExpiredOrManual = Boolean(
-        order.warrantyExpiryDate &&
-        nowMs >= new Date(order.warrantyExpiryDate).getTime()
-      )
+      // Pesanan yang benar-benar selesai (dananya cair ke Saldo Siap Cair):
+      // Pesanan berstatus COMPLETED dan TIDAK sedang dalam sengketa retur aktif!
       const isOrderFullySettled = Boolean(
-        order.status === 'COMPLETED' &&
-        isWarrantyExpiredOrManual &&
-        !isUnderReturnDispute
-      )
-
-      // Pesanan yang sudah diterima customerConfirmedAt tapi masih dalam masa garansi 30 hari (warrantyExpiryDate > now):
-      // DANA MASIH TERTAHAN DI DALAM ESCROW!
-      const isHoldingInWarrantyEscrow = Boolean(
-        order.customerConfirmedAt &&
-        order.warrantyExpiryDate &&
-        nowMs < new Date(order.warrantyExpiryDate).getTime() &&
-        order.status !== 'CANCELLED' &&
-        order.status !== 'RETURNED'
+        order.status === 'COMPLETED' && !isUnderReturnDispute
       )
 
       if (order.status === 'RETURNED') {
@@ -666,8 +648,7 @@ export async function GET(request: NextRequest) {
         }
       } else if (
         ESCROW_STATUSES.includes(order.status as any) ||
-        isUnderReturnDispute ||
-        isHoldingInWarrantyEscrow
+        isUnderReturnDispute
       ) {
         if (!isCreatedInPeriod) return
 
@@ -687,11 +668,6 @@ export async function GET(request: NextRequest) {
             activeReturn?.type === 'REFUND'
               ? 'Klaim Retur & Refund'
               : 'Klaim Tukar Unit Baru'
-        } else if (isHoldingInWarrantyEscrow) {
-          courierBreakdown.inProgressCount += 1
-          statusLabel = 'Garansi 30H Aktif (Escrow)'
-          subtitleStatus =
-            'Diterima · Masa Garansi 30 Hari Aktif (Dana Tertahan di Escrow)'
         } else if (order.status === 'SHIPPED') {
           courierBreakdown.shippedCount += 1
           statusLabel = 'Kurir Perjalanan'

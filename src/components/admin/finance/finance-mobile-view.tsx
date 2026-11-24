@@ -153,10 +153,12 @@ export function FinanceMobileView({
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-xs font-semibold text-slate-400">Rp</span>
             <p className="truncate font-mono text-base font-bold text-slate-950 dark:text-white">
-              {(
-                reportData.financials?.storeNetProfit ??
-                reportData.financials?.netProfit ??
-                stats.completedNetRevenue
+              {Math.max(
+                0,
+                (stats as any).storeNetProfit ??
+                  reportData.financials?.storeNetProfit ??
+                  reportData.financials?.netProfit ??
+                  stats.completedNetRevenue
               ).toLocaleString('id-ID')}
             </p>
           </div>

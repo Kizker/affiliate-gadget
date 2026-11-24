@@ -202,6 +202,23 @@ export function LiveChatPanel({
               msg.userName?.toLowerCase().includes('toko') ||
               msg.userName?.toLowerCase().includes('host')
 
+            if (
+              msg.message === 'bergabung ke siaran' ||
+              (msg as any).type === 'JOIN'
+            ) {
+              return (
+                <div
+                  key={msg.id || index}
+                  className="flex items-center gap-1.5 rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] text-slate-500 dark:bg-white/5 dark:text-slate-400"
+                >
+                  <span className="font-semibold text-orange-600 dark:text-orange-400">
+                    {msg.userName}
+                  </span>
+                  <span>bergabung ke siaran</span>
+                </div>
+              )
+            }
+
             return (
               <div
                 key={msg.id || index}

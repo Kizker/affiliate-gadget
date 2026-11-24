@@ -9,7 +9,7 @@ import {
   MobileBottomNav,
 } from '@/components/layouts'
 import Link from 'next/link'
-import { ArrowLeft, Building2 } from 'lucide-react'
+import { ArrowLeft, Building2, Check, RotateCcw } from 'lucide-react'
 import { RatingModal } from '@/components/modals/rating-modal'
 import { CustomPaymentModal } from '@/components/payment/custom-payment-modal'
 import { ComplaintModal } from '@/components/customer/complaint-modal'
@@ -25,7 +25,12 @@ import {
   getOrderContextualTimestamp,
   buildOrderAuditTimeline,
 } from '@/lib/order-date-utils'
-import { isWarrantyExpired } from '@/lib/order-return-utils'
+import {
+  isWarrantyExpired,
+  splitOrderItemsForDisplay,
+  getWarrantyRemainingDays,
+  getWarrantyRemainingBadgeText,
+} from '@/lib/order-return-utils'
 import {
   OrderDetailProps,
   OrderDetailItem,
@@ -245,6 +250,69 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
       ? order.returnRequests[0]
       : null
 
+  // Evaluasi pembagian unit retur vs tidak diretur
+  const displayItems = useMemo(
+    () => splitOrderItemsForDisplay(order.items, order.returnRequests),
+    [order.items, order.returnRequests]
+  )
+
+  const returnedDisplayItems = useMemo(
+    () => displayItems.filter((d) => d.isReturnedUnit),
+    [displayItems]
+  )
+  const unreturnedDisplayItems = useMemo(
+    () => displayItems.filter((d) => !d.isReturnedUnit),
+    [displayItems]
+  )
+  const isPartialReturnOrder =
+    returnedDisplayItems.length > 0 && unreturnedDisplayItems.length > 0
+
+  const viewParam = searchParams?.get('view')
+  const itemIdParam = searchParams?.get('itemId')
+
+  const initialUnitTab = useMemo<'all' | 'unreturned' | 'returned'>(() => {
+    if (!isPartialReturnOrder) return 'all'
+    if (viewParam === 'unreturned') return 'unreturned'
+    if (viewParam === 'returned') return 'returned'
+    if (itemIdParam) {
+      const matchUnreturned = unreturnedDisplayItems.some(
+        (it) => it.item.id === itemIdParam || it.id.includes(itemIdParam)
+      )
+      if (matchUnreturned) return 'unreturned'
+      const matchReturned = returnedDisplayItems.some(
+        (it) => it.item.id === itemIdParam || it.id.includes(itemIdParam)
+      )
+      if (matchReturned) return 'returned'
+    }
+    if (fromStatus === 'RETURNED') return 'returned'
+    if (fromStatus === 'COMPLETED') return 'unreturned'
+    return 'all'
+  }, [
+    isPartialReturnOrder,
+    viewParam,
+    itemIdParam,
+    unreturnedDisplayItems,
+    returnedDisplayItems,
+    fromStatus,
+  ])
+
+  const [selectedUnitTab, setSelectedUnitTab] = useState<
+    'all' | 'unreturned' | 'returned'
+  >(initialUnitTab)
+
+  useEffect(() => {
+    setSelectedUnitTab(initialUnitTab)
+  }, [initialUnitTab])
+
+  const isViewingUnreturned =
+    isPartialReturnOrder && selectedUnitTab === 'unreturned'
+
+  const effectiveLatestReturnRequest = isViewingUnreturned
+    ? null
+    : latestReturnRequest
+
+  const remainingDays = getWarrantyRemainingDays(order)
+
   const [returnCourier, setReturnCourier] = useState(
     latestReturnRequest?.returnCourier || 'JNE'
   )
@@ -287,6 +355,41 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     }
   }
 
+  const getNormalStatus = () => {
+    if (order.status === 'RETURNED') {
+      return statusConfig.RETURNED
+    }
+    const isWOver = isWarrantyExpired(order)
+    const isUnder30Days =
+      order.warrantyExpiryDate &&
+      Date.now() < new Date(order.warrantyExpiryDate).getTime()
+    if (order.customerConfirmedAt && !order.completedAt && isUnder30Days) {
+      const label =
+        remainingDays !== null && remainingDays > 0
+          ? `Diterima (Garansi Tersisa ${remainingDays} Hari)`
+          : 'Diterima (Garansi 30 Hari Aktif)'
+      return {
+        label,
+        badgeBg:
+          'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+        dotColor: 'bg-emerald-500',
+        icon: Building2,
+      }
+    }
+    if (order.status === 'COMPLETED' || order.customerConfirmedAt) {
+      return (
+        statusConfig.COMPLETED || {
+          label: 'Selesai',
+          badgeBg:
+            'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+          dotColor: 'bg-emerald-500',
+          icon: Building2,
+        }
+      )
+    }
+    return statusConfig[order.status] || statusConfig.PROCESSING
+  }
+
   const getDetailStatus = () => {
     if (latestReturnRequest) {
       if (latestReturnRequest.status === 'PENDING') {
@@ -313,29 +416,59 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         return statusConfig.RETURN_COMPLETED
       }
     }
-    if (order.status === 'RETURNED') {
-      return statusConfig.RETURNED
-    }
-    const nowMs = Date.now()
-    const isWOver = isWarrantyExpired(order)
-    const isUnder30Days =
-      order.warrantyExpiryDate &&
-      nowMs < new Date(order.warrantyExpiryDate).getTime()
-    if (order.customerConfirmedAt && !order.completedAt && isUnder30Days) {
-      return (
-        statusConfig.RECEIVED_WARRANTY_ACTIVE || {
-          label: 'Diterima (Garansi 30 Hari Aktif)',
-          badgeBg:
-            'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
-          dotColor: 'bg-emerald-500',
-          icon: Building2,
-        }
-      )
-    }
-    return statusConfig[order.status] || statusConfig.PROCESSING
+    return getNormalStatus()
   }
 
-  const currentStatus = getDetailStatus()
+  const currentStatus = isViewingUnreturned
+    ? getNormalStatus()
+    : getDetailStatus()
+
+  const unreturnedSubtotal = useMemo(
+    () =>
+      unreturnedDisplayItems.reduce((acc, it) => acc + it.displaySubtotal, 0),
+    [unreturnedDisplayItems]
+  )
+  const returnedSubtotal = useMemo(
+    () => returnedDisplayItems.reduce((acc, it) => acc + it.displaySubtotal, 0),
+    [returnedDisplayItems]
+  )
+
+  const effectiveOrderForDisplay = useMemo(() => {
+    if (isViewingUnreturned) {
+      return {
+        ...order,
+        items: unreturnedDisplayItems.map((d) => ({
+          ...d.item,
+          quantity: d.displayQuantity,
+          subtotal: d.displaySubtotal,
+        })),
+        total: unreturnedSubtotal,
+        subtotal: unreturnedSubtotal,
+      }
+    }
+    if (isPartialReturnOrder && selectedUnitTab === 'returned') {
+      return {
+        ...order,
+        items: returnedDisplayItems.map((d) => ({
+          ...d.item,
+          quantity: d.displayQuantity,
+          subtotal: d.displaySubtotal,
+        })),
+        total: returnedSubtotal,
+        subtotal: returnedSubtotal,
+      }
+    }
+    return order
+  }, [
+    isViewingUnreturned,
+    isPartialReturnOrder,
+    selectedUnitTab,
+    order,
+    unreturnedDisplayItems,
+    returnedDisplayItems,
+    unreturnedSubtotal,
+    returnedSubtotal,
+  ])
 
   const canCancel =
     order.status === 'PENDING_PAYMENT' || order.status === 'PAID'
@@ -499,14 +632,83 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             </div>
           </div>
 
+          {/* Unit Switcher Tabs jika pesanan memiliki Retur Parsial (ada unit retur dan unit normal) */}
+          {isPartialReturnOrder && (
+            <div className="shadow-2xs mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="px-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+                  Lihat Unit:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedUnitTab('unreturned')}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all sm:px-3.5 ${
+                    selectedUnitTab === 'unreturned'
+                      ? 'shadow-xs bg-emerald-600 text-white'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  <span>
+                    Unit Tidak Diretur (
+                    {unreturnedDisplayItems.reduce(
+                      (a, b) => a + b.displayQuantity,
+                      0
+                    )}{' '}
+                    Unit)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedUnitTab('returned')}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all sm:px-3.5 ${
+                    selectedUnitTab === 'returned'
+                      ? 'shadow-xs bg-purple-600 text-white'
+                      : 'text-purple-700 hover:bg-purple-50 dark:text-purple-300 dark:hover:bg-purple-950/40'
+                  }`}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>
+                    Unit Diretur (
+                    {returnedDisplayItems.reduce(
+                      (a, b) => a + b.displayQuantity,
+                      0
+                    )}{' '}
+                    Unit)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedUnitTab('all')}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all sm:px-3.5 ${
+                    selectedUnitTab === 'all'
+                      ? 'shadow-xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span>Semua Unit</span>
+                </button>
+              </div>
+
+              {selectedUnitTab === 'unreturned' && (
+                <span className="px-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Menampilkan rincian pembayaran pada unit ini saja karena tidak
+                  di-retur
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Mobile Unified Layout: 1 Bagian Saja */}
           <OrderMobileView
-            order={order}
+            order={effectiveOrderForDisplay}
             copied={copied}
             copyOrderNumber={copyOrderNumber}
             currentStatus={currentStatus}
             contextualTime={contextualTime}
-            latestReturnRequest={latestReturnRequest}
+            latestReturnRequest={effectiveLatestReturnRequest}
             latestComplaint={latestComplaint}
             returnTrackingNumber={returnTrackingNumber}
             setReturnTrackingNumber={setReturnTrackingNumber}
@@ -520,20 +722,56 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             viewingLabel={viewingLabel}
             auditTimeline={auditTimeline}
             chatParams={chatParams}
-            canCancel={canCancel}
+            canCancel={isViewingUnreturned ? false : canCancel}
             canConfirmReceived={canConfirmReceived}
             canManuallyComplete={canManuallyComplete}
             isCompleted={isCompleted}
-            hasActiveClaim={Boolean(hasActiveClaim)}
-            canRequestReturnOrComplaint={canRequestReturnOrComplaint}
+            hasActiveClaim={
+              isViewingUnreturned ? false : Boolean(hasActiveClaim)
+            }
+            canRequestReturnOrComplaint={
+              isViewingUnreturned ? true : canRequestReturnOrComplaint
+            }
             isConfirming={isConfirming}
             currentReview={currentReview}
+            customTotal={
+              isViewingUnreturned
+                ? unreturnedSubtotal
+                : selectedUnitTab === 'returned'
+                  ? returnedSubtotal
+                  : undefined
+            }
+            customSubtotal={
+              isViewingUnreturned
+                ? unreturnedSubtotal
+                : selectedUnitTab === 'returned'
+                  ? returnedSubtotal
+                  : undefined
+            }
+            customItems={effectiveOrderForDisplay.items}
+            customNote={
+              isViewingUnreturned
+                ? 'Rincian pembayaran khusus pada unit ini saja karena unit ini tidak di-retur.'
+                : selectedUnitTab === 'returned'
+                  ? 'Rincian pembayaran khusus pada unit yang diajukan retur / refund.'
+                  : undefined
+            }
+            hideShippingAndInsurance={
+              isViewingUnreturned || selectedUnitTab === 'returned'
+            }
+            paymentTitle={
+              isViewingUnreturned
+                ? 'Rincian Pembayaran Unit (Tidak Diretur)'
+                : selectedUnitTab === 'returned'
+                  ? 'Rincian Pembayaran Unit (Diretur)'
+                  : undefined
+            }
             onOpenMedia={handleOpenMedia}
             onPayNow={() => setPaymentModalOpen(true)}
             onConfirmReceived={handleConfirmReceived}
             onOpenCompleteModal={() => setCompleteModalOpen(true)}
             onOpenReturn={() => {
-              setSelectedReturnItem(order.items[0] || null)
+              setSelectedReturnItem(effectiveOrderForDisplay.items[0] || null)
               setReturnModalOpen(true)
             }}
             onOpenReturnForItem={(item) => {
@@ -550,7 +788,7 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
           <div className="hidden md:block">
             {/* Hero Order Header Bento Card */}
             <OrderDesktopHeroHeader
-              order={order}
+              order={effectiveOrderForDisplay}
               copied={copied}
               copyOrderNumber={copyOrderNumber}
               contextualTime={contextualTime}
@@ -558,10 +796,10 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
             />
 
             {/* Return & Refund Live Card */}
-            {latestReturnRequest && (
+            {effectiveLatestReturnRequest && (
               <OrderDesktopReturnCard
                 order={order}
-                latestReturnRequest={latestReturnRequest}
+                latestReturnRequest={effectiveLatestReturnRequest}
                 returnTrackingNumber={returnTrackingNumber}
                 setReturnTrackingNumber={setReturnTrackingNumber}
                 returnCourier={returnCourier}
@@ -584,11 +822,13 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
               {/* Left Col (2 Cols): Products, Bonus Package & Logistics */}
               <div className="space-y-6 lg:col-span-2">
                 <OrderDesktopItemsCard
-                  order={order}
+                  order={effectiveOrderForDisplay}
                   canRequestReturnOrComplaint={canRequestReturnOrComplaint}
-                  hasActiveClaim={Boolean(hasActiveClaim)}
+                  hasActiveClaim={
+                    isViewingUnreturned ? false : Boolean(hasActiveClaim)
+                  }
                   isCompleted={isCompleted}
-                  latestReturnRequest={latestReturnRequest}
+                  latestReturnRequest={effectiveLatestReturnRequest}
                   onOpenReturnForItem={(item) => {
                     setSelectedReturnItem(item)
                     setReturnModalOpen(true)
@@ -608,23 +848,61 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
               {/* Right Col (1 Col): Payment & Totals Bento */}
               <div className="space-y-6">
                 <OrderDesktopPaymentCard
-                  order={order}
+                  order={effectiveOrderForDisplay}
                   chatParams={chatParams}
-                  canCancel={canCancel}
+                  canCancel={isViewingUnreturned ? false : canCancel}
                   canConfirmReceived={canConfirmReceived}
                   canManuallyComplete={canManuallyComplete}
                   isCompleted={isCompleted}
-                  hasActiveClaim={Boolean(hasActiveClaim)}
-                  canRequestReturnOrComplaint={canRequestReturnOrComplaint}
+                  hasActiveClaim={
+                    isViewingUnreturned ? false : Boolean(hasActiveClaim)
+                  }
+                  canRequestReturnOrComplaint={
+                    isViewingUnreturned ? true : canRequestReturnOrComplaint
+                  }
                   isConfirming={isConfirming}
-                  latestReturnRequest={latestReturnRequest}
+                  latestReturnRequest={effectiveLatestReturnRequest}
                   currentReview={currentReview}
+                  customTotal={
+                    isViewingUnreturned
+                      ? unreturnedSubtotal
+                      : selectedUnitTab === 'returned'
+                        ? returnedSubtotal
+                        : undefined
+                  }
+                  customSubtotal={
+                    isViewingUnreturned
+                      ? unreturnedSubtotal
+                      : selectedUnitTab === 'returned'
+                        ? returnedSubtotal
+                        : undefined
+                  }
+                  customItems={effectiveOrderForDisplay.items}
+                  customNote={
+                    isViewingUnreturned
+                      ? 'Rincian pembayaran khusus pada unit ini saja karena unit ini tidak di-retur.'
+                      : selectedUnitTab === 'returned'
+                        ? 'Rincian pembayaran khusus pada unit yang diajukan retur / refund.'
+                        : undefined
+                  }
+                  hideShippingAndInsurance={
+                    isViewingUnreturned || selectedUnitTab === 'returned'
+                  }
+                  paymentTitle={
+                    isViewingUnreturned
+                      ? 'Rincian Pembayaran Unit (Tidak Diretur)'
+                      : selectedUnitTab === 'returned'
+                        ? 'Rincian Pembayaran Unit (Diretur)'
+                        : undefined
+                  }
                   onOpenMedia={handleOpenMedia}
                   onPayNow={() => setPaymentModalOpen(true)}
                   onConfirmReceived={handleConfirmReceived}
                   onOpenCompleteModal={() => setCompleteModalOpen(true)}
                   onOpenReturn={() => {
-                    setSelectedReturnItem(order.items[0] || null)
+                    setSelectedReturnItem(
+                      effectiveOrderForDisplay.items[0] || null
+                    )
                     setReturnModalOpen(true)
                   }}
                   onOpenComplaint={() => setComplaintModalOpen(true)}

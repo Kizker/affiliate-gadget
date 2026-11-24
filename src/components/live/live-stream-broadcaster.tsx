@@ -850,24 +850,43 @@ function LiveKitStudioControls({
                   : undefined,
             }}
           >
-            {messages.slice(-30).map((msg) => (
-              <div
-                key={msg.id}
-                className="flex max-w-[90%] items-start gap-1.5 self-start rounded-2xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white shadow-sm backdrop-blur-md"
-              >
-                <span className="shrink-0 font-bold text-orange-500">
-                  {msg.userName === 'Host Toko' ? (
-                    <span className="mr-1 rounded bg-orange-500 px-1 py-0.5 text-[9px] font-black text-white">
-                      HOST
+            {messages.slice(-30).map((msg) => {
+              if (
+                msg.message === 'bergabung ke siaran' ||
+                (msg as any).type === 'JOIN'
+              ) {
+                return (
+                  <div
+                    key={msg.id}
+                    className="shadow-xs flex items-center gap-1.5 self-start rounded-full border border-white/10 bg-black/40 px-2.5 py-0.5 text-[11px] text-white/80 backdrop-blur-sm"
+                  >
+                    <span className="font-semibold text-amber-300">
+                      {msg.userName}
                     </span>
-                  ) : null}
-                  {msg.userName}:
-                </span>
-                <span className="break-words leading-snug text-white/95">
-                  {msg.message}
-                </span>
-              </div>
-            ))}
+                    <span className="text-white/70">bergabung</span>
+                  </div>
+                )
+              }
+
+              return (
+                <div
+                  key={msg.id}
+                  className="flex max-w-[90%] items-start gap-1.5 self-start rounded-2xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white shadow-sm backdrop-blur-md"
+                >
+                  <span className="shrink-0 font-bold text-orange-500">
+                    {msg.userName === 'Host Toko' ? (
+                      <span className="mr-1 rounded bg-orange-500 px-1 py-0.5 text-[9px] font-black text-white">
+                        HOST
+                      </span>
+                    ) : null}
+                    {msg.userName}:
+                  </span>
+                  <span className="break-words leading-snug text-white/95">
+                    {msg.message}
+                  </span>
+                </div>
+              )
+            })}
             {messages.length === 0 && (
               <div className="self-start rounded-full bg-black/40 px-3 py-1 text-[11px] italic text-white/70 backdrop-blur-sm">
                 Belum ada komentar dari penonton...

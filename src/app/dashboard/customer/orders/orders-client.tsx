@@ -36,6 +36,8 @@ import {
   isWarrantyExpired,
   findReturnForOrderItem,
   isOrderItemReturnEligible,
+  getWarrantyRemainingBadgeText,
+  getWarrantyRemainingDays,
 } from '@/lib/order-return-utils'
 import { toast } from 'sonner'
 import {
@@ -709,209 +711,246 @@ export default function OrdersClient({
                       {/* 2. Main Body: Product Items List */}
                       <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {/* Primary Item */}
-                        <div className="py-4">
-                          <Link
-                            href={`/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}`}
-                            className="group flex items-start justify-between gap-4 transition-opacity active:opacity-75"
-                          >
-                            <div className="flex min-w-0 flex-1 items-start gap-4">
-                              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white transition group-hover:border-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
-                                <img
-                                  src={itemImage}
-                                  alt={firstItem?.product?.name || 'Gadget'}
-                                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                  onError={(e) => {
-                                    e.currentTarget.src = DEFAULT_GADGET_IMAGE
-                                  }}
-                                />
-                              </div>
+                        {(() => {
+                          const firstItemReturn = findReturnForOrderItem(
+                            order.returnRequests,
+                            firstItem,
+                            order.items.length
+                          )
+                          const firstItemView = firstItemReturn
+                            ? 'returned'
+                            : 'unreturned'
+                          const firstItemHref = `/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}&view=${firstItemView}&itemId=${firstItem?.id || ''}`
 
-                              <div className="min-w-0 flex-1">
-                                {firstItem?.product?.brand && (
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
-                                    {firstItem.product.brand}
-                                  </span>
-                                )}
-                                <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 transition group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-lg">
-                                  {firstItem?.product?.name ||
-                                    firstItem?.service?.name ||
-                                    firstItem?.notes ||
-                                    'Unit Smartphone Original'}
-                                </h3>
-
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                  {firstItem?.variantName && (
-                                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                      Varian: {firstItem.variantName}
-                                    </span>
-                                  )}
-                                  <span className="font-medium text-slate-700 dark:text-slate-300">
-                                    {firstItem?.quantity || 1} Unit
-                                  </span>
-                                  <span className="text-slate-300 dark:text-slate-700">
-                                    •
-                                  </span>
-                                  <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
-                                    <Sparkles className="h-3 w-3" /> Paket Bonus
-                                    3-in-1
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {firstItem?.price ? (
-                              <div className="shrink-0 text-right">
-                                <span className="font-mono text-sm font-bold text-slate-900 dark:text-white sm:text-base">
-                                  {formatPrice(
-                                    firstItem.price * (firstItem.quantity || 1)
-                                  )}
-                                </span>
-                              </div>
-                            ) : null}
-                          </Link>
-
-                          {/* Action Buttons for firstItem when order has multiple items and is expanded */}
-                          {order.items.length > 1 &&
-                            expandedOrders[order.id] &&
-                            (() => {
-                              const firstItemReturn = findReturnForOrderItem(
-                                order.returnRequests,
-                                firstItem,
-                                order.items.length
-                              )
-                              const prod =
-                                firstItem?.product ||
-                                firstItem?.rentalItem ||
-                                firstItem?.service
-                              const chatParams = new URLSearchParams()
-                              chatParams.set('orderId', order.id)
-                              if (order.store?.id)
-                                chatParams.set('storeId', order.store.id)
-                              if (order.orderNumber)
-                                chatParams.set('orderNumber', order.orderNumber)
-                              if (firstItemReturn) {
-                                chatParams.set('returnId', firstItemReturn.id)
-                                chatParams.set(
-                                  'returnReason',
-                                  firstItemReturn.reasonLabel ||
-                                    firstItemReturn.reason ||
-                                    ''
-                                )
-                                chatParams.set(
-                                  'returnStatus',
-                                  firstItemReturn.status
-                                )
-                                if (firstItemReturn.type)
-                                  chatParams.set(
-                                    'returnType',
-                                    firstItemReturn.type
-                                  )
-                              }
-                              if (prod?.name)
-                                chatParams.set('productName', prod.name)
-                              const prodImg = (prod as any)?.images?.[0]
-                              if (prodImg)
-                                chatParams.set('productImage', prodImg)
-                              if (firstItem?.price)
-                                chatParams.set(
-                                  'productPrice',
-                                  String(firstItem.price)
-                                )
-                              if (firstItem?.variantName)
-                                chatParams.set(
-                                  'variantName',
-                                  firstItem.variantName
-                                )
-
-                              const isAfterSales =
-                                Boolean(firstItemReturn) ||
-                                order.status === 'COMPLETED' ||
-                                order.status === 'RETURNED'
-                              if (isAfterSales) {
-                                chatParams.set('type', 'after_sales')
-                              }
-
-                              return (
-                                <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/70 pt-2 dark:border-slate-800/70">
-                                  {firstItemReturn && (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-[10.5px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
-                                      <RotateCcw className="h-3 w-3 text-purple-600" />
-                                      <span>
-                                        {firstItemReturn.status === 'PENDING'
-                                          ? 'Menunggu Verifikasi Retur'
-                                          : firstItemReturn.status ===
-                                              'IN_REVIEW'
-                                            ? 'Retur Sedang Ditinjau'
-                                            : firstItemReturn.status ===
-                                                'COMPLETED'
-                                              ? 'Retur Selesai'
-                                              : firstItemReturn.status ===
-                                                  'REJECTED'
-                                                ? 'Retur Ditolak'
-                                                : 'Retur Disetujui'}
-                                      </span>
-                                    </span>
-                                  )}
-
-                                  <Link
-                                    href={`/dashboard/customer/chat?${chatParams.toString()}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition active:scale-95 ${
-                                      isAfterSales
-                                        ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
-                                        : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
-                                    }`}
-                                  >
-                                    <MessageSquare
-                                      className={`h-3 w-3 ${
-                                        isAfterSales
-                                          ? 'text-orange-600 dark:text-orange-400'
-                                          : 'text-blue-600 dark:text-blue-400'
-                                      }`}
-                                    />
-                                    <span>
-                                      {isAfterSales
-                                        ? 'Chat Admin After Sales'
-                                        : 'Chat Toko'}
-                                    </span>
-                                  </Link>
-
-                                  {isOrderItemReturnEligible(
-                                    order,
-                                    firstItem,
-                                    order.items.length
-                                  ) && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        setReturnModal({
-                                          isOpen: true,
-                                          orderId: order.id,
-                                          orderNumber: order.orderNumber,
-                                          totalAmount:
-                                            (firstItem.price || 0) *
-                                            (firstItem.quantity || 1),
-                                          items: order.items as any,
-                                          initialSelectedItemId: firstItem.id,
-                                        })
+                          return (
+                            <div className="py-4">
+                              <Link
+                                href={firstItemHref}
+                                className="group flex items-start justify-between gap-4 transition-opacity active:opacity-75"
+                              >
+                                <div className="flex min-w-0 flex-1 items-start gap-4">
+                                  <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white transition group-hover:border-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:h-24 sm:w-24">
+                                    <img
+                                      src={itemImage}
+                                      alt={firstItem?.product?.name || 'Gadget'}
+                                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                      onError={(e) => {
+                                        e.currentTarget.src =
+                                          DEFAULT_GADGET_IMAGE
                                       }}
-                                      className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
-                                    >
-                                      <RotateCcw className="h-3 w-3 text-orange-600" />
-                                      <span>Ajukan Pengembalian</span>
-                                    </button>
-                                  )}
+                                    />
+                                  </div>
+
+                                  <div className="min-w-0 flex-1">
+                                    {firstItem?.product?.brand && (
+                                      <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                        {firstItem.product.brand}
+                                      </span>
+                                    )}
+                                    <h3 className="line-clamp-1 text-base font-bold leading-snug text-slate-900 transition group-hover:text-orange-600 dark:text-white dark:group-hover:text-orange-400 sm:text-lg">
+                                      {firstItem?.product?.name ||
+                                        firstItem?.service?.name ||
+                                        firstItem?.notes ||
+                                        'Unit Smartphone Original'}
+                                    </h3>
+
+                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                      {firstItem?.variantName && (
+                                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                          Varian: {firstItem.variantName}
+                                        </span>
+                                      )}
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                                        {firstItem?.quantity || 1} Unit
+                                      </span>
+                                      <span className="text-slate-300 dark:text-slate-700">
+                                        •
+                                      </span>
+                                      <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                        <Sparkles className="h-3 w-3" /> Paket
+                                        Bonus 3-in-1
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
-                              )
-                            })()}
-                        </div>
+
+                                {firstItem?.price ? (
+                                  <div className="shrink-0 text-right">
+                                    <span className="font-mono text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                                      {formatPrice(
+                                        firstItem.price *
+                                          (firstItem.quantity || 1)
+                                      )}
+                                    </span>
+                                  </div>
+                                ) : null}
+                              </Link>
+
+                              {/* Action Buttons for firstItem when order has multiple items and is expanded */}
+                              {order.items.length > 1 &&
+                                expandedOrders[order.id] &&
+                                (() => {
+                                  const prod =
+                                    firstItem?.product ||
+                                    firstItem?.rentalItem ||
+                                    firstItem?.service
+                                  const chatParams = new URLSearchParams()
+                                  chatParams.set('orderId', order.id)
+                                  if (order.store?.id)
+                                    chatParams.set('storeId', order.store.id)
+                                  if (order.orderNumber)
+                                    chatParams.set(
+                                      'orderNumber',
+                                      order.orderNumber
+                                    )
+                                  if (firstItemReturn) {
+                                    chatParams.set(
+                                      'returnId',
+                                      firstItemReturn.id
+                                    )
+                                    chatParams.set(
+                                      'returnReason',
+                                      firstItemReturn.reasonLabel ||
+                                        firstItemReturn.reason ||
+                                        ''
+                                    )
+                                    chatParams.set(
+                                      'returnStatus',
+                                      firstItemReturn.status
+                                    )
+                                    if (firstItemReturn.type)
+                                      chatParams.set(
+                                        'returnType',
+                                        firstItemReturn.type
+                                      )
+                                  }
+                                  if (prod?.name)
+                                    chatParams.set('productName', prod.name)
+                                  const prodImg = (prod as any)?.images?.[0]
+                                  if (prodImg)
+                                    chatParams.set('productImage', prodImg)
+                                  if (firstItem?.price)
+                                    chatParams.set(
+                                      'productPrice',
+                                      String(firstItem.price)
+                                    )
+                                  if (firstItem?.variantName)
+                                    chatParams.set(
+                                      'variantName',
+                                      firstItem.variantName
+                                    )
+
+                                  const isAfterSales =
+                                    Boolean(firstItemReturn) ||
+                                    order.status === 'COMPLETED' ||
+                                    order.status === 'RETURNED'
+                                  if (isAfterSales) {
+                                    chatParams.set('type', 'after_sales')
+                                  }
+
+                                  return (
+                                    <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100/70 pt-2 dark:border-slate-800/70">
+                                      {firstItemReturn && (
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-[10.5px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+                                          <RotateCcw className="h-3 w-3 text-purple-600" />
+                                          <span>
+                                            {firstItemReturn.status ===
+                                            'PENDING'
+                                              ? 'Menunggu Verifikasi Retur'
+                                              : firstItemReturn.status ===
+                                                  'IN_REVIEW'
+                                                ? 'Retur Sedang Ditinjau'
+                                                : firstItemReturn.status ===
+                                                    'COMPLETED'
+                                                  ? 'Retur Selesai'
+                                                  : firstItemReturn.status ===
+                                                      'REJECTED'
+                                                    ? 'Retur Ditolak'
+                                                    : 'Retur Disetujui'}
+                                          </span>
+                                        </span>
+                                      )}
+
+                                      <Link
+                                        href={firstItemHref}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                      >
+                                        <span>Rincian Unit</span>
+                                      </Link>
+
+                                      <Link
+                                        href={`/dashboard/customer/chat?${chatParams.toString()}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition active:scale-95 ${
+                                          isAfterSales
+                                            ? 'border-orange-200 bg-orange-50/70 text-orange-600 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400'
+                                            : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                                        }`}
+                                      >
+                                        <MessageSquare
+                                          className={`h-3 w-3 ${
+                                            isAfterSales
+                                              ? 'text-orange-600 dark:text-orange-400'
+                                              : 'text-blue-600 dark:text-blue-400'
+                                          }`}
+                                        />
+                                        <span>
+                                          {isAfterSales
+                                            ? 'Chat Admin After Sales'
+                                            : 'Chat Toko'}
+                                        </span>
+                                      </Link>
+
+                                      {isOrderItemReturnEligible(
+                                        order,
+                                        firstItem,
+                                        order.items.length
+                                      ) && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            setReturnModal({
+                                              isOpen: true,
+                                              orderId: order.id,
+                                              orderNumber: order.orderNumber,
+                                              totalAmount:
+                                                (firstItem.price || 0) *
+                                                (firstItem.quantity || 1),
+                                              items: order.items as any,
+                                              initialSelectedItemId:
+                                                firstItem.id,
+                                            })
+                                          }}
+                                          className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-orange-200/90 bg-orange-50/70 px-3 py-1.5 text-[11px] font-bold text-orange-700 transition hover:bg-orange-100 active:scale-95 dark:border-orange-900/60 dark:bg-orange-950/40 dark:text-orange-300"
+                                        >
+                                          <RotateCcw className="h-3 w-3 text-orange-600" />
+                                          <span>Ajukan Pengembalian</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  )
+                                })()}
+                            </div>
+                          )
+                        })()}
 
                         {/* Additional Items when Expanded */}
                         {order.items.length > 1 && expandedOrders[order.id] && (
                           <>
                             {order.items.slice(1).map((extraItem, extraIdx) => {
+                              const extraItemReturn = findReturnForOrderItem(
+                                order.returnRequests,
+                                extraItem,
+                                order.items.length
+                              )
+                              const extraItemView = extraItemReturn
+                                ? 'returned'
+                                : 'unreturned'
+                              const extraItemDetailHref = `/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}&view=${extraItemView}&itemId=${extraItem.id || ''}`
+
                               const extraImg =
                                 extraItem.product?.images?.[0] ||
                                 extraItem.rentalItem?.images?.[0] ||
@@ -922,7 +961,7 @@ export default function OrdersClient({
                                   className="py-4"
                                 >
                                   <Link
-                                    href={`/dashboard/customer/orders/${order.id}?fromStatus=${selectedStatus}`}
+                                    href={extraItemDetailHref}
                                     className="group flex items-start justify-between gap-4 transition-opacity active:opacity-75"
                                   >
                                     <div className="flex min-w-0 flex-1 items-start gap-4">
@@ -1079,6 +1118,14 @@ export default function OrdersClient({
                                         )}
 
                                         <Link
+                                          href={extraItemDetailHref}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                        >
+                                          <span>Rincian Unit</span>
+                                        </Link>
+
+                                        <Link
                                           href={`/dashboard/customer/chat?${chatParams.toString()}`}
                                           onClick={(e) => e.stopPropagation()}
                                           className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition active:scale-95 ${
@@ -1170,10 +1217,33 @@ export default function OrdersClient({
                             {order.courierCode || 'JNE'}{' '}
                             {order.courierService || 'REG'}
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                            Garansi 30 Hari Ganti Baru
-                          </span>
+                          {(() => {
+                            const remainingDays =
+                              getWarrantyRemainingDays(order)
+                            const isExpired =
+                              remainingDays !== null && remainingDays <= 0
+                            const badgeText =
+                              getWarrantyRemainingBadgeText(order)
+
+                            return (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                                  isExpired
+                                    ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                }`}
+                              >
+                                <ShieldCheck
+                                  className={`h-3.5 w-3.5 ${
+                                    isExpired
+                                      ? 'text-slate-400'
+                                      : 'text-emerald-600'
+                                  }`}
+                                />
+                                {badgeText}
+                              </span>
+                            )
+                          })()}
 
                           {/* Return Status Chip if exists */}
                           {order.returnRequests &&

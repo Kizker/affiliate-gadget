@@ -112,6 +112,12 @@ export async function GET(request: NextRequest) {
               defaultPackingFee: true,
             },
           },
+          voucher: {
+            select: {
+              id: true,
+              storeId: true,
+            },
+          },
           payment: {
             select: {
               method: true,
@@ -177,7 +183,13 @@ export async function GET(request: NextRequest) {
     orders.forEach((order) => {
       totalRevenue += order.total
       const orderCommission = order.commissionAmount ?? 0
-      const orderDiscount = order.discountAmount ?? 0
+      // Voucher diskon hanya memotong laba toko jika diterbitkan mandiri oleh toko cabang bersangkutan.
+      // Jika voucher platform / marketplace (storeId null / berbeda), potongan harga disubsidi platform sehingga bukan beban toko.
+      const isStoreVoucher = Boolean(
+        (order as any).voucher?.storeId &&
+        (order as any).voucher?.storeId === order.storeId
+      )
+      const orderDiscount = isStoreVoucher ? (order.discountAmount ?? 0) : 0
       totalPlatformCommission += orderCommission
       totalVoucherDiscount += orderDiscount
       totalShippingCost += order.shippingCost ?? 0
@@ -269,7 +281,10 @@ export async function GET(request: NextRequest) {
     // Beban e-commerce: Komisi Platform + Packing + Diskon Voucher + Gateway + Maintenance
     const totalEcommerceExpenses =
       totalPlatformCommission + totalPackingCost + totalVoucherDiscount
-    const totalNetProfit = totalGrossProfit - totalEcommerceExpenses
+    const totalNetProfit = Math.max(
+      0,
+      totalGrossProfit - totalEcommerceExpenses
+    )
     const netMarginPct =
       totalGrossRevenue > 0
         ? Number(((totalNetProfit / totalGrossRevenue) * 100).toFixed(2))
@@ -543,10 +558,21 @@ export async function GET(request: NextRequest) {
       const orderPacking = isCancelled
         ? 0
         : (order.store?.defaultPackingFee ?? 5000)
-      const orderDiscount = isCancelled ? 0 : (order.discountAmount ?? 0)
+      const isStoreOrderVoucher = Boolean(
+        (order as any).voucher?.storeId &&
+        (order as any).voucher?.storeId === order.storeId
+      )
+      const orderDiscount = isCancelled
+        ? 0
+        : isStoreOrderVoucher
+          ? (order.discountAmount ?? 0)
+          : 0
       const orderNetProfit = isCancelled
         ? 0
-        : orderGrossProfit - (orderCommission + orderPacking + orderDiscount)
+        : Math.max(
+            0,
+            orderGrossProfit - (orderCommission + orderPacking + orderDiscount)
+          )
       const orderNetMarginPct =
         !isCancelled && orderGrossRevenue > 0
           ? Number(((orderNetProfit / orderGrossRevenue) * 100).toFixed(2))

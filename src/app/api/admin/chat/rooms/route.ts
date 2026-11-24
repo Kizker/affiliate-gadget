@@ -488,6 +488,80 @@ export async function POST(request: Request) {
     const targetStoreId = userStoreId || orderStoreId || null
 
     // 1. Unified Room: Cek apakah room sudah pernah dibuat untuk customer ini di toko terkait
+    const standardRoomInclude = {
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          phone: true,
+          role: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+            },
+          },
+        },
+      },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          companyName: true,
+          phone: true,
+          city: true,
+          logo: true,
+        },
+      },
+      order: {
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+              companyName: true,
+              city: true,
+              phone: true,
+            },
+          },
+          items: {
+            include: {
+              product: {
+                select: { name: true, images: true, brand: true },
+              },
+            },
+          },
+        },
+      },
+      messages: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          senderId: true,
+          isRead: true,
+          messageType: true,
+          mediaUrl: true,
+          mediaType: true,
+        },
+      },
+      _count: {
+        select: {
+          messages: true,
+        },
+      },
+    }
+
     let room = await prisma.adminChatRoom.findFirst({
       where: {
         customerId: effectiveCustomerId,
@@ -503,41 +577,7 @@ export async function POST(request: Request) {
             ? { orderId: orderId }
             : { storeId: null }),
       },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-        store: {
-          select: {
-            id: true,
-            name: true,
-            companyName: true,
-            phone: true,
-            city: true,
-            logo: true,
-          },
-        },
-        order: {
-          select: {
-            id: true,
-            orderNumber: true,
-            status: true,
-            total: true,
-            items: {
-              include: {
-                product: {
-                  select: { name: true, images: true, brand: true },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: standardRoomInclude,
       orderBy: { lastMessageAt: 'desc' },
     })
 
@@ -558,41 +598,7 @@ export async function POST(request: Request) {
               { claimedById: session.user.id },
             ],
           },
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              },
-            },
-            store: {
-              select: {
-                id: true,
-                name: true,
-                companyName: true,
-                phone: true,
-                city: true,
-                logo: true,
-              },
-            },
-            order: {
-              select: {
-                id: true,
-                orderNumber: true,
-                status: true,
-                total: true,
-                items: {
-                  include: {
-                    product: {
-                      select: { name: true, images: true, brand: true },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          include: standardRoomInclude,
           orderBy: { lastMessageAt: 'desc' },
         })
       }
@@ -631,41 +637,7 @@ export async function POST(request: Request) {
           room = await prisma.adminChatRoom.update({
             where: { id: room.id },
             data: updates,
-            include: {
-              customer: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                },
-              },
-              store: {
-                select: {
-                  id: true,
-                  name: true,
-                  companyName: true,
-                  phone: true,
-                  city: true,
-                  logo: true,
-                },
-              },
-              order: {
-                select: {
-                  id: true,
-                  orderNumber: true,
-                  status: true,
-                  total: true,
-                  items: {
-                    include: {
-                      product: {
-                        select: { name: true, images: true, brand: true },
-                      },
-                    },
-                  },
-                },
-              },
-            },
+            include: standardRoomInclude,
           })
         } catch (updateErr) {
           console.warn(
@@ -685,41 +657,7 @@ export async function POST(request: Request) {
           claimedAt: new Date(),
           lastMessageAt: new Date(),
         },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-          store: {
-            select: {
-              id: true,
-              name: true,
-              companyName: true,
-              phone: true,
-              city: true,
-              logo: true,
-            },
-          },
-          order: {
-            select: {
-              id: true,
-              orderNumber: true,
-              status: true,
-              total: true,
-              items: {
-                include: {
-                  product: {
-                    select: { name: true, images: true, brand: true },
-                  },
-                },
-              },
-            },
-          },
-        },
+        include: standardRoomInclude,
       })
     }
 
@@ -804,9 +742,72 @@ export async function POST(request: Request) {
           },
         })
       }
+    } else if (fullOrder && room) {
+      // Pastikan ada pesan referensi order di room jika dihubungi dari modal pesanan
+      const hasOrderMsg = await prisma.adminChatMessage.findFirst({
+        where: {
+          roomId: room.id,
+          OR: [
+            { messageType: 'order_reference' },
+            { messageType: 'order' },
+            { content: { contains: fullOrder.orderNumber } },
+          ],
+        },
+      })
+
+      if (!hasOrderMsg) {
+        const firstItem = fullOrder.items?.[0]
+        const prod = firstItem?.product
+        const refProductName = prod?.name || 'Produk Pesanan'
+        const refProductPrice = firstItem?.price || fullOrder.total
+        const refProductImage =
+          (Array.isArray(prod?.images) && prod.images[0]) || null
+        const refBrand = prod?.brand || null
+
+        const payload = {
+          type: 'order_reference',
+          orderId: fullOrder.id,
+          orderNumber: fullOrder.orderNumber,
+          productId: prod?.id || null,
+          productName: refProductName,
+          productPrice: refProductPrice,
+          productImage: refProductImage,
+          brand: refBrand,
+          orderTotal: fullOrder.total,
+          status: fullOrder.status,
+          note: `Halo kak, kami dari admin toko mengenai pesanan #${fullOrder.orderNumber}. Ada yang bisa kami bantu?`,
+        }
+
+        await prisma.adminChatMessage.create({
+          data: {
+            roomId: room.id,
+            senderId: session.user.id,
+            content: JSON.stringify(payload),
+            messageType: 'order_reference',
+            isRead: true,
+          },
+        })
+
+        await prisma.adminChatRoom.update({
+          where: { id: room.id },
+          data: {
+            lastMessageAt: new Date(),
+            claimedById: session.user.id,
+            claimedAt: new Date(),
+          },
+        })
+      }
     }
 
-    return NextResponse.json({ room, roomId: room.id }, { status: 200 })
+    const fullRoom = await prisma.adminChatRoom.findUnique({
+      where: { id: room.id },
+      include: standardRoomInclude,
+    })
+
+    return NextResponse.json(
+      { room: fullRoom || room, roomId: room.id },
+      { status: 200 }
+    )
   } catch (error) {
     console.error('Error creating admin chat room:', error)
     return NextResponse.json(

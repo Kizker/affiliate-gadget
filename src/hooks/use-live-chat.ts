@@ -35,7 +35,7 @@ export interface UseLiveChatOptions {
 
 export function useLiveChat({
   streamId,
-  userName = 'Penonton',
+  userName = 'Anonymous',
   userAvatar,
   token,
   initialViewerCount = 0,
@@ -122,30 +122,38 @@ export function useLiveChat({
     }
   }, [streamId, enabled])
 
-  // 2. Resolve WebSocket Server URL
+  // 2. Resolve WebSocket Server URL dynamically based on active browser host
   const getWsUrl = useCallback(() => {
     const configuredUrl = process.env.NEXT_PUBLIC_WS_URL
     const viewerId = getViewerId()
 
-    let base = configuredUrl
+    let base = ''
     if (typeof window !== 'undefined') {
       const isHttps = window.location.protocol === 'https:'
-      if (!base) {
-        base = isHttps
-          ? `wss://${window.location.host}/ws`
-          : `ws://${window.location.hostname}:3001`
-      } else if (configuredUrl?.includes('localhost')) {
-        base = isHttps
-          ? `wss://${window.location.host}/ws`
-          : `ws://${window.location.hostname}:3001`
+      const currentHost = window.location.host
+      const isLocalhost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1'
+
+      if (isLocalhost) {
+        base = `ws://${window.location.hostname}:3001`
+      } else {
+        // Di production browser (apapun domainnya, misal affiliategadget.id),
+        // selalu gunakan reverse proxy Nginx pada host yang sama: wss://currentHost/ws
+        base = `${isHttps ? 'wss' : 'ws'}://${currentHost}/ws`
       }
-    } else if (!base) {
-      base = 'ws://localhost:3001'
+    } else {
+      base = configuredUrl || 'ws://localhost:3001'
     }
+
+    const effectiveName =
+      userName && userName.trim() !== '' && userName !== 'Penonton'
+        ? userName.trim()
+        : 'Anonymous'
 
     const params = new URLSearchParams()
     if (streamId) params.set('streamId', streamId)
-    if (userName) params.set('name', userName)
+    params.set('name', effectiveName)
     if (userAvatar) params.set('avatar', userAvatar)
     if (token) params.set('token', token)
     if (viewerId) params.set('viewerId', viewerId)
@@ -168,12 +176,22 @@ export function useLiveChat({
         setIsConnected(true)
         reconnectAttemptsRef.current = 0
 
+        const activeJoinName =
+          userName && userName.trim() !== '' && userName !== 'Penonton'
+            ? userName.trim()
+            : 'Anonymous'
+
         // Send initial join message
         ws.send(
           JSON.stringify({
             type: 'join',
             streamId,
-            payload: { userName, userAvatar, isBroadcaster, viewerId },
+            payload: {
+              userName: activeJoinName,
+              userAvatar,
+              isBroadcaster,
+              viewerId,
+            },
           })
         )
 
@@ -196,12 +214,13 @@ export function useLiveChat({
               const newMsg: LiveChatMessage = {
                 id: data.payload?.id || `msg-${Date.now()}`,
                 userId: data.payload?.userId,
-                userName: data.payload?.userName || 'Anonim',
+                userName: data.payload?.userName || 'Anonymous',
                 userAvatar: data.payload?.userAvatar,
                 message: data.payload?.message || '',
                 createdAt: data.payload?.createdAt || new Date().toISOString(),
                 isPinned: data.payload?.isPinned,
-              }
+                type: data.payload?.type || 'CHAT',
+              } as any
               setMessages((prev) => {
                 if (prev.some((m) => m.id === newMsg.id)) return prev
                 return [...prev.slice(-100), newMsg]
@@ -319,7 +338,15 @@ export function useLiveChat({
         return false
       }
 
-      const activeSender = customUserName || userName || 'Penonton'
+      const activeSender =
+        (customUserName &&
+        customUserName.trim() !== '' &&
+        customUserName !== 'Penonton'
+          ? customUserName.trim()
+          : null) ||
+        (userName && userName.trim() !== '' && userName !== 'Penonton'
+          ? userName.trim()
+          : 'Anonymous')
 
       socketRef.current.send(
         JSON.stringify({

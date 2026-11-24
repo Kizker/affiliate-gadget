@@ -709,18 +709,34 @@ function AdminChatContent() {
       .then((res) => res.json())
       .then((data) => {
         if (data.room) {
+          const safeRoom: ChatRoom = {
+            ...data.room,
+            messages: data.room.messages || [],
+            _count: data.room._count || { messages: 0 },
+            customer: {
+              ...data.room.customer,
+              name:
+                data.room.customer?.name ||
+                data.room.customer?.email?.split('@')[0] ||
+                'Pelanggan',
+              email: data.room.customer?.email || '',
+              image: data.room.customer?.image || null,
+              phone: data.room.customer?.phone || null,
+              role: data.room.customer?.role || 'CUSTOMER',
+            },
+          }
           setRooms((prev) => {
-            const exists = prev.some((r) => r.id === data.room.id)
+            const exists = prev.some((r) => r.id === safeRoom.id)
             if (exists) {
               return prev.map((r) =>
-                r.id === data.room.id ? { ...r, ...data.room } : r
+                r.id === safeRoom.id ? { ...r, ...safeRoom } : r
               )
             }
-            return [data.room, ...prev]
+            return [safeRoom, ...prev]
           })
-          setSelectedRoom(data.room)
+          setSelectedRoom(safeRoom)
           setShowChatOnMobile(true)
-          fetchMessages(data.room.id)
+          fetchMessages(safeRoom.id)
         }
       })
       .catch((err) => {
@@ -1838,15 +1854,23 @@ function AdminChatContent() {
 
       const matchSearch =
         searchQuery === '' ||
-        (room.customer.name &&
-          room.customer.name
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())) ||
-        (room.customer.phone && room.customer.phone.includes(searchQuery)) ||
-        (room.order &&
+        Boolean(
+          room.customer?.name &&
+          room.customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
+        Boolean(
+          room.customer?.email &&
+          room.customer.email.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
+        Boolean(
+          room.customer?.phone && room.customer.phone.includes(searchQuery)
+        ) ||
+        Boolean(
+          room.order &&
           room.order.orderNumber
             .toLowerCase()
-            .includes(searchQuery.toLowerCase()))
+            .includes(searchQuery.toLowerCase())
+        )
 
       if (!matchSearch) return false
 
@@ -1863,15 +1887,15 @@ function AdminChatContent() {
       if (roomFilter === 'STORE_HELP') {
         return (
           room.isStoreAdminUser ||
-          room.customer.role === 'STORE_ADMIN' ||
-          room.customer.role === 'STORE_SALES'
+          room.customer?.role === 'STORE_ADMIN' ||
+          room.customer?.role === 'STORE_SALES'
         )
       }
       if (roomFilter === 'CUSTOMER_CS') {
         return (
           !room.storeId &&
-          room.customer.role !== 'STORE_ADMIN' &&
-          room.customer.role !== 'STORE_SALES'
+          room.customer?.role !== 'STORE_ADMIN' &&
+          room.customer?.role !== 'STORE_SALES'
         )
       }
       return true
@@ -2063,14 +2087,16 @@ function AdminChatContent() {
                   room.isStoreHelpToSuperAdmin
                 const isStoreAdminUser =
                   room.isStoreAdminUser ||
-                  room.customer.role === 'STORE_ADMIN' ||
-                  room.customer.role === 'STORE_SALES'
+                  room.customer?.role === 'STORE_ADMIN' ||
+                  room.customer?.role === 'STORE_SALES'
 
                 const displayTitle = isStoreHelpChat
                   ? 'Customer Service (Superadmin)'
                   : isStoreAdminUser
-                    ? `${room.customer.name || 'Admin Toko'} (${room.customer.store?.name || 'Toko Cabang'})`
-                    : room.customer.name || room.customer.email.split('@')[0]
+                    ? `${room.customer?.name || 'Admin Toko'} (${room.customer?.store?.name || 'Toko Cabang'})`
+                    : room.customer?.name ||
+                      room.customer?.email?.split('@')[0] ||
+                      'Pelanggan'
 
                 const status = room.order
                   ? statusConfig[room.order.status]
@@ -2098,7 +2124,7 @@ function AdminChatContent() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200/60 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
                           <Headphones className="h-5 w-5" />
                         </div>
-                      ) : room.customer.image ? (
+                      ) : room.customer?.image ? (
                         <img
                           src={room.customer.image}
                           alt={displayTitle}
@@ -2136,7 +2162,7 @@ function AdminChatContent() {
                         ) : isStoreAdminUser ? (
                           <span className="rounded bg-indigo-50 px-1 text-[9px] font-bold text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
                             🏢 Admin Toko:{' '}
-                            {room.customer.store?.name || 'Cabang'}
+                            {room.customer?.store?.name || 'Cabang'}
                           </span>
                         ) : !room.storeId ? (
                           <span className="rounded bg-sky-50 px-1 text-[9px] font-bold text-sky-600 dark:bg-sky-950/50 dark:text-sky-400">
@@ -2158,7 +2184,7 @@ function AdminChatContent() {
 
                       {/* Message Preview */}
                       <p className="mt-1 truncate text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                        {formatMessagePreview(room.messages[0])}
+                        {formatMessagePreview(room.messages?.[0])}
                       </p>
                     </div>
                   </button>
@@ -2192,7 +2218,7 @@ function AdminChatContent() {
                       <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200/60 bg-blue-50 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400">
                         <Headphones className="h-5 w-5" />
                       </div>
-                    ) : selectedRoom.customer.image ? (
+                    ) : selectedRoom.customer?.image ? (
                       <img
                         src={selectedRoom.customer.image}
                         alt=""
@@ -2201,8 +2227,9 @@ function AdminChatContent() {
                     ) : (
                       <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-100 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
                         {(
-                          selectedRoom.customer.name ||
-                          selectedRoom.customer.email
+                          selectedRoom.customer?.name ||
+                          selectedRoom.customer?.email ||
+                          'P'
                         )
                           .charAt(0)
                           .toUpperCase()}
@@ -2215,19 +2242,20 @@ function AdminChatContent() {
                       <h3 className="truncate text-xs font-bold text-slate-900 dark:text-white sm:text-sm">
                         {isSelectedStoreHelpChat
                           ? 'CS Superadmin'
-                          : selectedRoom.customer.role === 'STORE_ADMIN' ||
-                              selectedRoom.customer.role === 'STORE_SALES'
-                            ? `${selectedRoom.customer.name || 'Admin Toko'} (${selectedRoom.customer.store?.name || 'Toko Cabang'})`
-                            : selectedRoom.customer.name ||
-                              selectedRoom.customer.email}
+                          : selectedRoom.customer?.role === 'STORE_ADMIN' ||
+                              selectedRoom.customer?.role === 'STORE_SALES'
+                            ? `${selectedRoom.customer?.name || 'Admin Toko'} (${selectedRoom.customer?.store?.name || 'Toko Cabang'})`
+                            : selectedRoom.customer?.name ||
+                              selectedRoom.customer?.email ||
+                              'Pelanggan'}
                       </h3>
                       {isSelectedStoreHelpChat ? (
                         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
                           Bantuan
                         </span>
-                      ) : selectedRoom.customer.role === 'STORE_ADMIN' ||
-                        selectedRoom.customer.role === 'STORE_SALES' ? (
+                      ) : selectedRoom.customer?.role === 'STORE_ADMIN' ||
+                        selectedRoom.customer?.role === 'STORE_SALES' ? (
                         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-0.5 text-[9.5px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
                           <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                           Admin Toko
@@ -2247,11 +2275,12 @@ function AdminChatContent() {
                     <p className="truncate text-[11px] text-slate-400">
                       {isSelectedStoreHelpChat
                         ? 'Pusat Bantuan Layanan Superadmin'
-                        : selectedRoom.customer.role === 'STORE_ADMIN' ||
-                            selectedRoom.customer.role === 'STORE_SALES'
-                          ? `Admin Toko: ${selectedRoom.customer.store?.name || 'Cabang'} • ${selectedRoom.customer.email}`
-                          : selectedRoom.customer.phone ||
-                            selectedRoom.customer.email}
+                        : selectedRoom.customer?.role === 'STORE_ADMIN' ||
+                            selectedRoom.customer?.role === 'STORE_SALES'
+                          ? `Admin Toko: ${selectedRoom.customer?.store?.name || 'Cabang'} • ${selectedRoom.customer?.email || ''}`
+                          : selectedRoom.customer?.phone ||
+                            selectedRoom.customer?.email ||
+                            ''}
                     </p>
                   </div>
                 </div>

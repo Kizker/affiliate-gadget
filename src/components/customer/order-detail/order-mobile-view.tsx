@@ -34,6 +34,7 @@ import {
 } from './order-detail-types'
 import { AuditTimelineStep } from './order-desktop-audit-timeline-card'
 import { CustomerPaymentBreakdown } from './customer-payment-breakdown'
+import { splitOrderItemsForDisplay } from '@/lib/order-return-utils'
 
 interface OrderMobileViewProps {
   order: OrderData
@@ -66,6 +67,12 @@ interface OrderMobileViewProps {
   canRequestReturnOrComplaint: boolean
   isConfirming: boolean
   currentReview: OrderReview | null
+  customTotal?: number
+  customSubtotal?: number
+  customItems?: any[]
+  customNote?: string
+  hideShippingAndInsurance?: boolean
+  paymentTitle?: string
   onOpenMedia?: (index: number) => void
   onPayNow: () => void
   onConfirmReceived: () => void
@@ -106,6 +113,12 @@ export function OrderMobileView({
   canRequestReturnOrComplaint,
   isConfirming,
   currentReview,
+  customTotal,
+  customSubtotal,
+  customItems,
+  customNote,
+  hideShippingAndInsurance,
+  paymentTitle,
   onOpenMedia,
   onPayNow,
   onConfirmReceived,
@@ -121,6 +134,11 @@ export function OrderMobileView({
     (acc, it) => acc + (it.quantity || 1),
     0
   )
+  const displayItems = splitOrderItemsForDisplay(
+    order.items,
+    order.returnRequests
+  )
+  const isMultiDisplay = displayItems.length > 1 || order.items.length > 1
   const isReturnedOrder =
     order.status === 'RETURNED' || Boolean(latestReturnRequest)
   const showCompletedBadge = isCompleted && !isReturnedOrder
@@ -187,16 +205,24 @@ export function OrderMobileView({
         </div>
 
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {order.items.map((item) => {
+          {displayItems.map((displayItem) => {
+            const item = displayItem.item
             const itemImage =
               item.product?.images?.[0] ||
               item.rentalItem?.images?.[0] ||
               DEFAULT_GADGET_IMAGE
             const itemLink = item.product ? `/gadget/${item.product.slug}` : '#'
+            const itemSpecificReturn = displayItem.matchedReturn
+            const isItemClaimActive = Boolean(
+              itemSpecificReturn &&
+              ['PENDING', 'IN_REVIEW', 'APPROVED', 'COMPLETED'].includes(
+                itemSpecificReturn.status
+              )
+            )
 
             return (
               <div
-                key={item.id}
+                key={displayItem.id}
                 className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
               >
                 <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800/80">
@@ -227,15 +253,46 @@ export function OrderMobileView({
                   )}
                   <div className="mt-2 flex items-center justify-between text-xs">
                     <span className="text-xs font-medium text-slate-400 dark:text-slate-400">
-                      {item.quantity}x
+                      {displayItem.displayQuantity}x
                     </span>
                     <span className="text-sm font-bold text-slate-900 dark:text-white">
-                      {formatPrice(item.subtotal || item.price * item.quantity)}
+                      {formatPrice(displayItem.displaySubtotal)}
                     </span>
                   </div>
-                  {order.items.length > 1 && (
+                  {isMultiDisplay && (
                     <div className="mt-2.5 flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100/80 pt-2 dark:border-slate-800/80">
-                      {canRequestReturnOrComplaint && !hasActiveClaim && (
+                      {itemSpecificReturn && (
+                        <div className="mr-auto flex flex-wrap items-center gap-1">
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+                            <RotateCcw className="h-3 w-3 text-purple-600" />
+                            <span>
+                              {itemSpecificReturn.status === 'PENDING'
+                                ? 'Menunggu Verifikasi'
+                                : itemSpecificReturn.status === 'IN_REVIEW'
+                                  ? 'Sedang Ditinjau'
+                                  : itemSpecificReturn.status === 'COMPLETED'
+                                    ? 'Retur Selesai'
+                                    : itemSpecificReturn.status === 'REJECTED'
+                                      ? 'Retur Ditolak'
+                                      : 'Retur Disetujui'}
+                            </span>
+                          </span>
+                          {(itemSpecificReturn.reasonLabel ||
+                            itemSpecificReturn.reason) && (
+                            <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400">
+                              (
+                              {itemSpecificReturn.type === 'REPLACEMENT'
+                                ? 'Tukar: '
+                                : 'Refund: '}
+                              {itemSpecificReturn.reasonLabel ||
+                                itemSpecificReturn.reason}
+                              )
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {canRequestReturnOrComplaint && !isItemClaimActive && (
                         <button
                           type="button"
                           onClick={() =>
@@ -250,7 +307,7 @@ export function OrderMobileView({
                         </button>
                       )}
 
-                      {isCompleted && !latestReturnRequest && (
+                      {isCompleted && !isItemClaimActive && (
                         <button
                           type="button"
                           onClick={() =>
@@ -380,8 +437,13 @@ export function OrderMobileView({
       <div className="shadow-xs rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <CustomerPaymentBreakdown
           order={order}
-          title="RINCIAN PEMBAYARAN"
+          title={paymentTitle || 'RINCIAN PEMBAYARAN'}
           showStatusBadge={false}
+          customTotal={customTotal}
+          customSubtotal={customSubtotal}
+          customItems={customItems}
+          customNote={customNote}
+          hideShippingAndInsurance={hideShippingAndInsurance}
         />
         {/* Pos biaya transparan: Subtotal Produk, Ongkos Kirim Kurir, Asuransi Pengiriman 100%, Total Pembayaran */}
       </div>
@@ -849,8 +911,8 @@ export function OrderMobileView({
           </button>
         )}
 
-        {/* Tombol ulasan dan chat di bawah HANYA tampil jika pembelian 1 produk (order.items.length <= 1). Jika multi-produk (> 1), aksi berada di masing-masing produk */}
-        {order.items.length <= 1 && (
+        {/* Tombol ulasan dan chat di bawah HANYA tampil jika pembelian 1 produk (order.items.length <= 1 dan displayItems.length <= 1). Jika multi-produk (> 1), aksi berada di masing-masing produk */}
+        {order.items.length <= 1 && displayItems.length <= 1 && (
           <>
             {showCompletedBadge && (
               <button
