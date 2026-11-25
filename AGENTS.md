@@ -67,6 +67,21 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-25 (Implementasi Pemilihan Varian Dropdown pada Live Streaming [Setup & Pin], Penguncian Otomatis Diskon Live ke Varian Spesifik, & Deploy VPS Hostinger):**
+  - **1. Pemilihan Varian Dropdown pada Persiapan Siaran (`step === 'setup'`):**
+    - Saat host memilih produk yang memiliki varian (seperti Note 10 Plus 512GB vs 256GB), sistem menyajikan dropdown pemilihan varian produk secara interaktif.
+    - Menampilkan informasi normal harga varian terpilih (`v.price`) dan stok ketersediaan varian (`v.stock`).
+    - Input `Diskon Live (Rp)` secara presisi menampilkan placeholder harga normal varian tersebut, dan deal promo live yang dibuat otomatis mencantumkan `variantId`, `variantName`, dan `originalPrice` varian bersangkutan.
+  - **2. Pemilihan Varian Dropdown pada Modal Sematan Produk (Pin Modal Mobile & Desktop):**
+    - Saat host menyematkan produk saat siaran on-air, modal diskon sematan menyediakan dropdown pemilihan varian produk (`Pilih Varian yang Disematkan:`).
+    - Ringkasan produk di dalam modal seketika memperbarui gambar, nama varian, stok, dan harga normal varian terpilih.
+    - Host menentukan harga diskon sematan khusus varian tersebut, dan token live deal yang diterbitkan (`PINNED_DEAL`) mengunci `variantId` dan `variantName`.
+  - **3. Penguncian Otomatis Diskon Live ke Produk & Varian pada Sisi Pembeli:**
+    - Pada kartu sematan (`LiveProductPin` & `LiveStreamViewer`): Menampilkan badge nama varian (`Varian: {variantName}`) dan tautan beli menyertakan parameter `variantId`.
+    - Pada halaman detail produk (`/gadget/[id]`): Saat pembeli mengklik deal/pin live, sistem otomatis memilih (`setSelectedVariant`) varian yang didiskon dan mengunci harga promo live murni hanya pada varian tersebut (`hasLiveDeal` mengevaluasi `activeDeal.variantId === selectedVariant?.id`).
+    - Jika pembeli beralih ke varian lain yang tidak didiskon, harga kembali normal dan antarmuka menyajikan banner informatif beserta tombol pintas `[ Pilih Varian Diskon → ]`.
+    - Pada checkout (`/checkout` & `/api/checkout`): Sistem dan backend memvalidasi secara ketat bahwa item yang di-checkout cocok dengan `deal.productId` dan `deal.variantId`, serta menolak klaim diskon live jika varian yang di-checkout tidak sesuai.
+  - **4. Health Verification & Deploy Live VPS:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/live-stream-variant-dropdown-and-locked-deal.test.ts` dan 3 suite terkait lulus 100% (19/19 tests pass), commit & push ke GitHub `origin/main` (commit `6e8bea0`), dan container `affiliate-gadget-app` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-25 (Resolusi Alur Loop Rekomendasi Penolakan Retur After Sales vs Superadmin, Eliminasi Tombol Retur pada Unit yang Ditolak, & Deploy Live VPS Hostinger):**
   - **1. Siklus Loop Penelaahan Penolakan Retur (After Sales <-> Superadmin):**
     - Memperbaiki akar masalah di `/api/returns/[id]`: Status hanya menjadi `REJECTED` (Ditolak Final) jika Superadmin secara eksplisit menyetujui (`isApprove === true`) rekomendasi penolakan After Sales.
