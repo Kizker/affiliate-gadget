@@ -57,7 +57,7 @@ describe('Admin Orders: Keterangan & Pelacakan Retur, Refund, dan Tukar Unit Bar
     expect(ordersPageContent).toContain('renderSimpleStatusBadge')
 
     // Modal drawer pelacakan resi kurir & purna jual
-    expect(ordersPageContent).toContain('Resi Unit Pengganti:')
+    expect(ordersPageContent).not.toContain('Resi Unit Pengganti:')
     expect(ordersPageContent).toContain('Pengiriman Balik dari Pembeli (Retur)')
     expect(ordersPageContent).toContain('Lacak Resi Pembeli (Biteship)')
   })
@@ -68,6 +68,7 @@ describe('Admin Orders: Keterangan & Pelacakan Retur, Refund, dan Tukar Unit Bar
     expect(ordersPageContent).toContain('Klaim Garansi: Retur & Refund Dana')
     expect(ordersPageContent).toContain('/dashboard/admin/returns?search=')
     expect(ordersPageContent).toContain('Meja Kerja Retur')
+    expect(ordersPageContent).toContain('Pantau Retur')
 
     // Kendala
     expect(ordersPageContent).toContain('Kendala Cacat Fisik:')
@@ -77,9 +78,9 @@ describe('Admin Orders: Keterangan & Pelacakan Retur, Refund, dan Tukar Unit Bar
     expect(ordersPageContent).toContain('Pengiriman Balik dari Pembeli (Retur)')
     expect(ordersPageContent).toContain('Lacak Resi Pembeli (Biteship)')
 
-    // Box 2: Resi Unit Pengganti (Tukar Unit)
-    expect(ordersPageContent).toContain('Resi Unit Pengganti:')
-    expect(ordersPageContent).toContain('Lacak Unit Pengganti (Biteship)')
+    // Box 2 (Resi Unit Pengganti) telah dihapus sesuai spesifikasi
+    expect(ordersPageContent).not.toContain('Resi Unit Pengganti:')
+    expect(ordersPageContent).not.toContain('Lacak Unit Pengganti (Biteship)')
 
     // Box 3: Rincian Pengembalian Dana (Refund Escrow)
     expect(ordersPageContent).toContain(

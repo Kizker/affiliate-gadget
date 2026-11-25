@@ -508,11 +508,10 @@ export default function AfterSalesReturnsPage() {
   const isStoreAdminRole =
     session?.user?.role === 'STORE_ADMIN' ||
     session?.user?.role === 'STORE_SALES'
-  const isStoreMonitoringMode =
-    isStoreAdminRole &&
-    returns.some((r) => r.hasAssignedAfterSales || !r.isSelfManaged)
+  const isStoreMonitoringMode = isStoreAdminRole
   const assignedGroupNameSample =
-    returns.find((r) => r.assignedGroupName)?.assignedGroupName || 'Grup'
+    returns.find((r) => r.assignedGroupName)?.assignedGroupName ||
+    'Layanan After Sales Terpusat'
   const assignedAfterSalesNameSample =
     returns.find((r) => r.assignedAfterSalesName)?.assignedAfterSalesName ||
     'Admin After Sales'
@@ -1114,20 +1113,27 @@ export default function AfterSalesReturnsPage() {
 
               {/* Action Buttons: Dual Decision (Setuju / Tolak) + Live Chat */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
-                {/* Live Chat Purna Jual Button */}
-                <button
-                  type="button"
-                  disabled={connectingChatId === item.id}
-                  onClick={() => handleOpenCustomerChat(item)}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  {connectingChatId === item.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-600" />
-                  ) : (
-                    <MessageSquare className="h-3.5 w-3.5 text-orange-600" />
-                  )}
-                  <span>Chat Pembeli (Purna Jual)</span>
-                </button>
+                {/* Live Chat Purna Jual Button (Hanya untuk After Sales / Superadmin) */}
+                {isStoreAdminRole ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200/80 bg-blue-50/70 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">
+                    <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Mode Pantau Toko (Tanggung Jawab After Sales)</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={connectingChatId === item.id}
+                    onClick={() => handleOpenCustomerChat(item)}
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    {connectingChatId === item.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-600" />
+                    ) : (
+                      <MessageSquare className="h-3.5 w-3.5 text-orange-600" />
+                    )}
+                    <span>Chat Pembeli (Purna Jual)</span>
+                  </button>
+                )}
 
                 {/* Tombol Keputusan After Sales */}
                 {item.status === 'COMPLETED' ? (
@@ -1204,9 +1210,7 @@ export default function AfterSalesReturnsPage() {
                       )
                     }
 
-                    const isMonitoringItem =
-                      isStoreAdminRole &&
-                      (item.hasAssignedAfterSales || !item.isSelfManaged)
+                    const isMonitoringItem = isStoreAdminRole
 
                     if (isMonitoringItem) {
                       if (!isArrived) {

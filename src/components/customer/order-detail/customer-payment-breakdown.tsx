@@ -57,6 +57,47 @@ export function CustomerPaymentBreakdown({
   }
 
   const effectiveItems = customItems || order.items
+  const groupedItems = React.useMemo(() => {
+    if (!effectiveItems || effectiveItems.length === 0) return []
+    const map = new Map<
+      string,
+      {
+        key: string
+        name: string
+        variantName?: string | null
+        price: number
+        quantity: number
+        subtotal: number
+      }
+    >()
+
+    for (const item of effectiveItems) {
+      const prodName = item.product?.name || item.service?.name || 'Unit Gadget'
+      const varName = item.variantName || null
+      const qty = item.displayQuantity || item.quantity || 1
+      const price = item.price || 0
+      const sub = item.displaySubtotal || item.subtotal || price * qty
+      const key = `${item.product?.id || prodName}__${varName || ''}__${price}`
+
+      const existing = map.get(key)
+      if (existing) {
+        existing.quantity += qty
+        existing.subtotal += sub
+      } else {
+        map.set(key, {
+          key,
+          name: prodName,
+          variantName: varName,
+          price,
+          quantity: qty,
+          subtotal: sub,
+        })
+      }
+    }
+
+    return Array.from(map.values())
+  }, [effectiveItems])
+
   const subtotalAmount =
     customSubtotal !== undefined
       ? customSubtotal
@@ -138,22 +179,22 @@ export function CustomerPaymentBreakdown({
           </div>
           {openSections.subtotal && (
             <div className="ml-2 mt-1 space-y-1.5 rounded-lg border-l-2 border-slate-300 bg-slate-50/70 p-2.5 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
-              {effectiveItems?.map((item, idx) => (
+              {groupedItems.map((gItem, idx) => (
                 <div
-                  key={item.id || idx}
-                  className="flex items-center justify-between text-[11px]"
+                  key={gItem.key || idx}
+                  className="flex items-center justify-between gap-2 text-[11px]"
                 >
-                  <span className="truncate pr-2">
-                    {item.product?.name || item.service?.name || 'Unit Gadget'}
-                    {item.variantName ? ` (${item.variantName})` : ''} ×{' '}
-                    {item.displayQuantity || item.quantity}
-                  </span>
-                  <span className="shrink-0 font-mono font-semibold">
-                    {formatPrice(
-                      item.displaySubtotal ||
-                        item.subtotal ||
-                        item.price * (item.displayQuantity || item.quantity)
-                    )}
+                  <div className="flex min-w-0 flex-1 items-center gap-1 pr-1">
+                    <span className="truncate font-medium text-slate-700 dark:text-slate-200">
+                      {gItem.name}
+                      {gItem.variantName ? ` (${gItem.variantName})` : ''}
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap font-bold text-slate-900 dark:text-white">
+                      x {gItem.quantity}
+                    </span>
+                  </div>
+                  <span className="shrink-0 whitespace-nowrap font-mono font-semibold text-slate-900 dark:text-white">
+                    {formatPrice(gItem.subtotal)}
                   </span>
                 </div>
               ))}

@@ -61,6 +61,8 @@ describe('Mobile Order Detail & Return Modal Simplified Layout Suite', () => {
     expect(content).toContain('Diterima')
 
     // Tombol Aksi Utama
+    expect(content).toContain('Konfirmasi Pesanan Diterima')
+    expect(content).toContain('canConfirmReceived && (')
     expect(content).toContain('Beri Ulasan Produk')
     expect(content).toContain('Ajukan Komplain / Klaim Garansi')
 

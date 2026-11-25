@@ -1433,62 +1433,66 @@ export default function AdminOrdersPage() {
           {selectedOrder && (
             <div className="flex max-h-[90vh] flex-1 flex-col overflow-hidden">
               {/* 1. Header Dialog: Pinned / Sticky Top Bar */}
-              <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-4 py-4 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-5">
-                <DialogHeader className="space-y-0 text-left">
-                  <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                        <span className="break-words text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          {selectedOrder.store?.name || 'Pesanan Toko Cabang'}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <DialogTitle className="break-all font-mono text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
-                          #{selectedOrder.orderNumber}
-                        </DialogTitle>
-                        <button
-                          onClick={() =>
-                            handleCopyOrderNumber(selectedOrder.orderNumber)
-                          }
-                          title="Salin Nomor Order"
-                          className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                        >
-                          {copiedId ? (
-                            <>
-                              <Check className="h-3 w-3 text-emerald-600" />
-                              <span className="text-emerald-600">Tersalin</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3 w-3" />
-                              <span>Salin</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      <DialogDescription
-                        suppressHydrationWarning
-                        className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400"
-                      >
-                        <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                        <span className="break-words">
-                          Waktu Transaksi:{' '}
-                          {formatDate(selectedOrder.createdAt, true)} WIB
-                        </span>
-                      </DialogDescription>
+              <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-4">
+                <DialogHeader className="space-y-2 text-left">
+                  {/* Top Row: Store Name & Status Pill */}
+                  <div className="flex items-center justify-between gap-2 pr-7">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <span className="truncate text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        {selectedOrder.store?.name || 'Pesanan Toko Cabang'}
+                      </span>
                     </div>
 
                     {/* Status Pill in Header */}
-                    <div className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-3 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                      <span className="h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-400" />
+                    <div className="shadow-2xs inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200/90 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:px-3 sm:py-1 sm:text-xs">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500 dark:bg-slate-400" />
                       <span>
                         {statusConfig[selectedOrder.status]?.label ||
                           selectedOrder.status}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Order Number + Copy & Timestamp (Strict Max 2 Rows) */}
+                  <div className="space-y-1">
+                    {/* Baris 1: Nomor Pesanan & Tombol Salin */}
+                    <div className="flex items-center gap-2">
+                      <DialogTitle className="truncate font-mono text-sm font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
+                        #{selectedOrder.orderNumber}
+                      </DialogTitle>
+                      <button
+                        onClick={() =>
+                          handleCopyOrderNumber(selectedOrder.orderNumber)
+                        }
+                        title="Salin Nomor Order"
+                        className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        {copiedId ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-600" />
+                            <span className="text-emerald-600">Tersalin</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            <span>Salin</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Baris 2: Waktu Transaksi */}
+                    <DialogDescription
+                      suppressHydrationWarning
+                      className="flex items-center gap-1.5 truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 sm:text-xs"
+                    >
+                      <Clock className="h-3 w-3 shrink-0 text-slate-400 sm:h-3.5 sm:w-3.5" />
+                      <span className="truncate">
+                        Waktu Transaksi:{' '}
+                        {formatDate(selectedOrder.createdAt, true)} WIB
+                      </span>
+                    </DialogDescription>
                   </div>
                 </DialogHeader>
               </div>
@@ -1530,7 +1534,12 @@ export default function AdminOrdersPage() {
                                 href={`/dashboard/admin/returns?search=${selectedOrder.orderNumber}`}
                                 className="shadow-2xs inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white px-2 py-1 text-[10.5px] font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
                               >
-                                <span>Meja Kerja Retur</span>
+                                <span>
+                                  {session?.user?.role === 'STORE_ADMIN' ||
+                                  session?.user?.role === 'STORE_SALES'
+                                    ? 'Pantau Retur'
+                                    : 'Meja Kerja Retur'}
+                                </span>
                                 <ExternalLink className="h-3 w-3" />
                               </Link>
                             </div>
@@ -1646,15 +1655,14 @@ export default function AdminOrdersPage() {
                                 ) : (
                                   ret.status !== 'COMPLETED' &&
                                   ret.status !== 'REJECTED' &&
-                                  (session?.user?.role === 'STORE_ADMIN' &&
-                                  (ret.hasAssignedAfterSales ||
-                                    selectedOrder.store?.groupId) ? (
+                                  (session?.user?.role === 'STORE_ADMIN' ||
+                                  session?.user?.role === 'STORE_SALES' ? (
                                     <div className="flex items-center gap-2 rounded-lg bg-blue-50/70 p-2 text-[10.5px] text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
                                       <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                                       <span>
-                                        Paket retur ditangani secara terpusat
-                                        oleh Admin After Sales (Mode Monitoring
-                                        Toko).
+                                        Mode Pantau Toko: Paket retur &amp;
+                                        klaim purna jual ditangani sepenuhnya
+                                        oleh Admin After Sales.
                                       </span>
                                     </div>
                                   ) : (
@@ -1695,60 +1703,6 @@ export default function AdminOrdersPage() {
                               </p>
                             )}
                           </div>
-
-                          {/* Pelacakan 2 (Khusus REPLACEMENT): Resi Unit Baru Pengganti */}
-                          {isReplacement && (
-                            <div className="space-y-1.5 rounded-xl border border-blue-200/80 bg-white p-3 dark:border-blue-900/60 dark:bg-slate-900">
-                              <div className="flex items-center justify-between">
-                                <span className="inline-flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
-                                  <Truck className="h-3.5 w-3.5 text-blue-600" />
-                                  Resi Unit Pengganti:
-                                </span>
-                                {selectedOrder.trackingNumber ? (
-                                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                    Unit Baru Dikirim
-                                  </span>
-                                ) : (
-                                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9.5px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                    Menunggu Hasil QC Toko
-                                  </span>
-                                )}
-                              </div>
-
-                              {selectedOrder.trackingNumber ? (
-                                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                                  <div className="font-mono">
-                                    <span className="text-[10px] text-slate-400">
-                                      Kurir & Resi:{' '}
-                                    </span>
-                                    <span className="font-bold text-slate-900 dark:text-white">
-                                      {selectedOrder.courierCode || 'JNE'} —{' '}
-                                      {selectedOrder.trackingNumber}
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setCheckResiQuery(
-                                        selectedOrder.trackingNumber || ''
-                                      )
-                                      setShowCheckResiModal(true)
-                                    }}
-                                    className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-blue-700 active:scale-95"
-                                  >
-                                    <Search className="h-3 w-3" />
-                                    <span>Lacak Unit Pengganti (Biteship)</span>
-                                  </button>
-                                </div>
-                              ) : (
-                                <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                                  Nomor resi unit baru pengganti akan
-                                  diterbitkan toko setelah pemeriksaan fisik
-                                  (QC) selesai dan dinyatakan lolos.
-                                </p>
-                              )}
-                            </div>
-                          )}
 
                           {/* Pelacakan 3 (Khusus REFUND): Rincian Rekening & Pengembalian Dana */}
                           {!isReplacement && (
@@ -1982,16 +1936,16 @@ export default function AdminOrdersPage() {
                 )}
               </div>
 
-              {/* 3. Dialog Footer Actions: Pinned / Sticky Bottom Action Bar */}
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7">
-                <div className="flex items-center gap-2">
+              {/* 3. Dialog Footer Actions: Pinned / Sticky Bottom Action Bar (1 Baris Ramping di Mobile) */}
+              <div className="flex shrink-0 items-center justify-between gap-1.5 border-t border-slate-100 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-800/40 sm:flex-wrap sm:gap-3 sm:px-7 sm:py-3.5">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedOrder(null)
                       setShowLiveTracker(false)
                     }}
-                    className="shadow-2xs rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    className="shadow-2xs shrink-0 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:rounded-2xl sm:px-5 sm:py-2.5"
                   >
                     Tutup
                   </button>
@@ -2006,10 +1960,11 @@ export default function AdminOrdersPage() {
                     <button
                       type="button"
                       onClick={() => setCancelModalOrder(selectedOrder)}
-                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-2xl border border-rose-200/90 bg-rose-50/80 px-4 py-2.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 hover:text-rose-900 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+                      className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-rose-200/90 bg-rose-50/80 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100 hover:text-rose-900 active:scale-95 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 sm:gap-1.5 sm:rounded-2xl sm:px-4 sm:py-2.5"
                     >
-                      <XCircle className="h-3.5 w-3.5 text-rose-600" />
-                      <span>Batalkan Pesanan</span>
+                      <XCircle className="h-3.5 w-3.5 shrink-0 text-rose-600" />
+                      <span className="sm:hidden">Batalkan</span>
+                      <span className="hidden sm:inline">Batalkan Pesanan</span>
                     </button>
                   )}
 
@@ -2017,16 +1972,16 @@ export default function AdminOrdersPage() {
                     <button
                       type="button"
                       onClick={() => setTaxInvoiceOrder(selectedOrder)}
-                      className="shadow-2xs inline-flex items-center gap-1.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-2.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 hover:text-emerald-950 active:scale-95 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 hover:text-emerald-950 active:scale-95 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300 sm:gap-1.5 sm:rounded-2xl sm:px-4 sm:py-2.5"
                       title="Cetak Faktur Pajak Elektronik Standar DJP"
                     >
-                      <Printer className="h-3.5 w-3.5" />
+                      <Printer className="h-3.5 w-3.5 shrink-0" />
                       <span>Faktur Pajak</span>
                     </button>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:flex-wrap sm:gap-2">
                   {selectedOrder.status === 'PENDING_PAYMENT' && (
                     <button
                       type="button"
@@ -2034,14 +1989,17 @@ export default function AdminOrdersPage() {
                         handleUpdateStatus(selectedOrder.id, 'PAID')
                       }
                       disabled={updatingId === selectedOrder.id}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:gap-2 sm:rounded-2xl sm:px-6 sm:py-2.5"
                     >
                       {updatingId === selectedOrder.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
                       ) : (
-                        <CheckCircle2 className="h-4 w-4" />
+                        <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       )}
-                      <span>Konfirmasi Pembayaran Lunas</span>
+                      <span className="sm:hidden">Konfirmasi</span>
+                      <span className="hidden sm:inline">
+                        Konfirmasi Pembayaran Lunas
+                      </span>
                     </button>
                   )}
 
@@ -2050,14 +2008,15 @@ export default function AdminOrdersPage() {
                       type="button"
                       onClick={() => handleRequestPickup(selectedOrder)}
                       disabled={requestingPickupId === selectedOrder.id}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:gap-2 sm:rounded-2xl sm:px-5 sm:py-2.5"
                     >
                       {requestingPickupId === selectedOrder.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin sm:h-4 sm:w-4" />
                       ) : (
-                        <Zap className="h-4 w-4" />
+                        <Zap className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
                       )}
-                      <span>
+                      <span className="sm:hidden">Pick Up</span>
+                      <span className="hidden sm:inline">
                         Request Pick Up (
                         {selectedOrder.courierCode === 'GOJEK'
                           ? 'Gojek Instant'
@@ -2117,23 +2076,38 @@ export default function AdminOrdersPage() {
                     </>
                   )}
 
-                  {selectedOrder.status === 'SHIPPED' && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleUpdateStatus(selectedOrder.id, 'COMPLETED')
-                      }
-                      disabled={updatingId === selectedOrder.id}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                    >
-                      {updatingId === selectedOrder.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="h-4 w-4" />
-                      )}
-                      <span>Tandai Selesai & Diterima</span>
-                    </button>
-                  )}
+                  {selectedOrder.status === 'SHIPPED' &&
+                    (Boolean(
+                      (selectedOrder as any).customerConfirmedAt ||
+                      (selectedOrder.returnRequests &&
+                        selectedOrder.returnRequests.length > 0)
+                    ) ? (
+                      <div className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
+                        <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <span>
+                          {selectedOrder.returnRequests &&
+                          selectedOrder.returnRequests.length > 0
+                            ? 'Mode Pantau: Tanggung Jawab After Sales'
+                            : 'Pesanan Telah Sampai di Pembeli'}
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleUpdateStatus(selectedOrder.id, 'COMPLETED')
+                        }
+                        disabled={updatingId === selectedOrder.id}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                      >
+                        {updatingId === selectedOrder.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4" />
+                        )}
+                        <span>Tandai Selesai & Diterima</span>
+                      </button>
+                    ))}
 
                   {selectedOrder.status === 'COMPLETED' && (
                     <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">

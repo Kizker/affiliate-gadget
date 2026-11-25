@@ -63,6 +63,51 @@ export function AdminOrderPaymentCard({ order }: AdminOrderPaymentCardProps) {
   const fin = calculateOrderFinancials(order)
   const items = order.items || []
 
+  const groupedItems = React.useMemo(() => {
+    if (!items || items.length === 0) return []
+    const map = new Map<
+      string,
+      {
+        key: string
+        name: string
+        variantName?: string | null
+        price: number
+        quantity: number
+        subtotal: number
+      }
+    >()
+
+    for (const item of items) {
+      const prodName =
+        item.product?.name ||
+        item.service?.name ||
+        item.rentalItem?.name ||
+        'Unit Gadget'
+      const varName = item.variantName || null
+      const qty = item.quantity || 1
+      const price = item.price || 0
+      const sub = item.subtotal || price * qty
+      const key = `${(item.product as any)?.id || prodName}__${varName || ''}__${price}`
+
+      const existing = map.get(key)
+      if (existing) {
+        existing.quantity += qty
+        existing.subtotal += sub
+      } else {
+        map.set(key, {
+          key,
+          name: prodName,
+          variantName: varName,
+          price,
+          quantity: qty,
+          subtotal: sub,
+        })
+      }
+    }
+
+    return Array.from(map.values())
+  }, [items])
+
   // State untuk kontrol akordion buka-tutup
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     subtotal: false,
@@ -217,8 +262,29 @@ export function AdminOrderPaymentCard({ order }: AdminOrderPaymentCardProps) {
             </div>
           </div>
           {openSections.subtotal && (
-            <div className="ml-2 mt-1 rounded-lg border-l-2 border-slate-200 bg-slate-50/70 p-2.5 text-[11px] text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
-              <p>
+            <div className="ml-2 mt-1 space-y-2 rounded-lg border-l-2 border-slate-300 bg-slate-50/70 p-2.5 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
+              <div className="space-y-1.5">
+                {groupedItems.map((gItem, idx) => (
+                  <div
+                    key={gItem.key || idx}
+                    className="flex items-center justify-between gap-2 text-[11px]"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-1 pr-1">
+                      <span className="truncate font-medium text-slate-700 dark:text-slate-200">
+                        {gItem.name}
+                        {gItem.variantName ? ` (${gItem.variantName})` : ''}
+                      </span>
+                      <span className="shrink-0 whitespace-nowrap font-bold text-slate-900 dark:text-white">
+                        x {gItem.quantity}
+                      </span>
+                    </div>
+                    <span className="shrink-0 whitespace-nowrap font-mono font-semibold text-slate-900 dark:text-white">
+                      Rp{gItem.subtotal.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="border-t border-slate-200/80 pt-1.5 text-[10.5px] text-slate-500 dark:border-slate-700/80 dark:text-slate-400">
                 Total nilai kotor transaksi penjualan seluruh produk (
                 {items.length} item) sebelum dikenakan komisi platform, biaya
                 layanan, dan pajak.

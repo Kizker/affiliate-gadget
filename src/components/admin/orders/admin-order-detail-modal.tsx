@@ -21,6 +21,7 @@ import {
   Loader2,
   Gift,
   ExternalLink,
+  ShieldCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -386,75 +387,68 @@ export function AdminOrderDetailModal({
         <DialogContent className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-full lg:max-w-4xl">
           <div className="flex max-h-[90vh] flex-1 flex-col overflow-hidden">
             {/* 1. Header Dialog Sticky Top Bar */}
-            <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-4 py-4 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-5">
-              <DialogHeader className="space-y-0 text-left">
-                <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span className="break-words text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        {order.store?.name || 'Pesanan Toko Cabang'}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <DialogTitle className="break-all font-mono text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
-                        #{order.orderNumber}
-                      </DialogTitle>
-                      <button
-                        onClick={handleCopyOrderNumber}
-                        title="Salin Nomor Order"
-                        className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                      >
-                        {copiedId ? (
-                          <>
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="text-emerald-700">Tersalin</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3" />
-                            <span>Salin</span>
-                          </>
-                        )}
-                      </button>
-
-                      <Link
-                        href={`/dashboard/admin/orders?search=${encodeURIComponent(order.orderNumber)}`}
-                        onClick={onClose}
-                        className="shadow-2xs inline-flex shrink-0 items-center gap-1 rounded-lg border border-orange-200/90 bg-orange-50/60 px-2.5 py-0.5 text-[10.5px] font-bold text-orange-700 transition hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300"
-                        title="Buka halaman manajemen pesanan"
-                      >
-                        <span>Halaman Pesanan</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </Link>
-                    </div>
-
-                    <DialogDescription className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-                      <Clock className="h-3.5 w-3.5 text-slate-400" />
-                      <span>
-                        Waktu Transaksi:{' '}
-                        {new Date(order.createdAt).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}{' '}
-                        WIB
-                      </span>
-                    </DialogDescription>
+            {/* 1. Header Dialog: Pinned / Sticky Top Bar */}
+            <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50 sm:px-7 sm:py-4">
+              <DialogHeader className="space-y-2 text-left">
+                {/* Top Row: Store Name & Status Pill */}
+                <div className="flex items-center justify-between gap-2 pr-7">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <Store className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="truncate text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {order.store?.name || 'Pesanan Toko Cabang'}
+                    </span>
                   </div>
 
                   {/* Status Pill in Header */}
                   <div
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${currentStatus.badgeClass}`}
+                    className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold sm:px-3 sm:py-1 sm:text-xs ${currentStatus.badgeClass}`}
                   >
                     <span
-                      className={`h-2 w-2 rounded-full ${currentStatus.dotClass}`}
+                      className={`h-2 w-2 shrink-0 rounded-full ${currentStatus.dotClass}`}
                     />
                     <span>{currentStatus.label}</span>
                   </div>
+                </div>
+
+                {/* Order Number + Copy & Timestamp (Strict Max 2 Rows) */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <DialogTitle className="truncate font-mono text-sm font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
+                      #{order.orderNumber}
+                    </DialogTitle>
+                    <button
+                      onClick={handleCopyOrderNumber}
+                      title="Salin Nomor Order"
+                      className="shadow-2xs inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      {copiedId ? (
+                        <>
+                          <Check className="h-3 w-3 text-emerald-600" />
+                          <span className="text-emerald-700">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          <span>Salin</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <DialogDescription className="flex items-center gap-1.5 truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 sm:text-xs">
+                    <Clock className="h-3 w-3 shrink-0 text-slate-400 sm:h-3.5 sm:w-3.5" />
+                    <span className="truncate">
+                      Waktu Transaksi:{' '}
+                      {new Date(order.createdAt).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}{' '}
+                      WIB
+                    </span>
+                  </DialogDescription>
                 </div>
               </DialogHeader>
             </div>
@@ -664,32 +658,35 @@ export function AdminOrderDetailModal({
               )}
             </div>
 
-            {/* 3. Footer Dialog Sticky Bottom Action Bar */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7">
-              <div className="flex items-center gap-2">
+            {/* 3. Footer Dialog Sticky Bottom Action Bar (1 Baris Ramping di Mobile) */}
+            <div className="flex shrink-0 items-center justify-between gap-1.5 border-t border-slate-100 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-800/40 sm:flex-wrap sm:gap-3 sm:px-7 sm:py-3.5">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="shadow-2xs rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  className="shadow-2xs shrink-0 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:rounded-2xl sm:px-5 sm:py-2.5"
                 >
                   Tutup
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:flex-wrap sm:gap-2">
                 {order.status === 'PENDING_PAYMENT' && (
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus('PAID')}
                     disabled={updatingId === order.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:gap-2 sm:rounded-2xl sm:px-6 sm:py-2.5"
                   >
                     {updatingId === order.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
                     ) : (
-                      <CheckCircle2 className="h-4 w-4" />
+                      <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     )}
-                    <span>Konfirmasi Pembayaran Lunas</span>
+                    <span className="sm:hidden">Konfirmasi</span>
+                    <span className="hidden sm:inline">
+                      Konfirmasi Pembayaran Lunas
+                    </span>
                   </button>
                 )}
 
@@ -698,14 +695,15 @@ export function AdminOrderDetailModal({
                     type="button"
                     onClick={handleRequestPickup}
                     disabled={requestingPickupId === order.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:gap-2 sm:rounded-2xl sm:px-5 sm:py-2.5"
                   >
                     {requestingPickupId === order.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin sm:h-4 sm:w-4" />
                     ) : (
-                      <Zap className="h-4 w-4" />
+                      <Zap className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
                     )}
-                    <span>
+                    <span className="sm:hidden">Pick Up</span>
+                    <span className="hidden sm:inline">
                       Request Pick Up (
                       {order.courierCode === 'GOJEK' ? 'Gojek Instant' : 'JNE'})
                     </span>
@@ -728,21 +726,36 @@ export function AdminOrderDetailModal({
                   </button>
                 )}
 
-                {order.status === 'SHIPPED' && (
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateStatus('COMPLETED')}
-                    disabled={updatingId === order.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                  >
-                    {updatingId === order.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    <span>Tandai Selesai &amp; Diterima</span>
-                  </button>
-                )}
+                {order.status === 'SHIPPED' &&
+                  (Boolean(
+                    (order as any).customerConfirmedAt ||
+                    ((order as any).returnRequests &&
+                      (order as any).returnRequests.length > 0)
+                  ) ? (
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
+                      <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span>
+                        {(order as any).returnRequests &&
+                        (order as any).returnRequests.length > 0
+                          ? 'Mode Pantau: Tanggung Jawab After Sales'
+                          : 'Pesanan Telah Sampai di Pembeli'}
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateStatus('COMPLETED')}
+                      disabled={updatingId === order.id}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    >
+                      {updatingId === order.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      <span>Tandai Selesai &amp; Diterima</span>
+                    </button>
+                  ))}
 
                 {order.status === 'COMPLETED' && (
                   <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">

@@ -48,9 +48,15 @@ describe('Modal Card Mobile Width and Spacing Suite', () => {
     )
     const ordersContent = fs.readFileSync(ordersPath, 'utf-8')
 
-    expect(ordersContent).toContain('px-4 py-4 dark:border-slate-800')
+    expect(ordersContent).toContain('px-4 py-3 dark:border-slate-800')
     expect(ordersContent).toContain('p-4 sm:space-y-6 sm:p-7')
-    expect(ordersContent).toContain('px-4 py-3.5 dark:border-slate-800')
+    expect(ordersContent).toContain('px-3 py-2.5 dark:border-slate-800')
+    expect(ordersContent).toContain(
+      '<span className="sm:hidden">Batalkan</span>'
+    )
+    expect(ordersContent).toContain(
+      '<span className="sm:hidden">Pick Up</span>'
+    )
   })
 
   it('4. verifies Check Resi modal avoids flush screen borders on mobile', () => {

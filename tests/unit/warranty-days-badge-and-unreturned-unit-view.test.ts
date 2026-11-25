@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 import {
   getWarrantyRemainingDays,
   getWarrantyRemainingBadgeText,
@@ -114,5 +116,17 @@ describe('Warranty Days Remaining & Unreturned Unit View Test Suite', () => {
     const itemExtra = unreturnedItems.find((it) => it.item.id === 'item-2')
     expect(itemExtra?.displaySubtotal).toBe(9430000)
     expect(itemExtra?.displayQuantity).toBe(1)
+  })
+
+  it('5. CustomerPaymentBreakdown menampilkan rincian barang satu per satu di dropdown Subtotal Produk dengan kuantitas "x {quantity}" yang tidak terpotong', () => {
+    const breakdownPath = path.join(
+      process.cwd(),
+      'src/components/customer/order-detail/customer-payment-breakdown.tsx'
+    )
+    const content = fs.readFileSync(breakdownPath, 'utf-8')
+
+    expect(content).toContain('groupedItems.map')
+    expect(content).toContain('x {gItem.quantity}')
+    expect(content).toContain('shrink-0 whitespace-nowrap font-bold')
   })
 })

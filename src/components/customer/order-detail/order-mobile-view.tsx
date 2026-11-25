@@ -887,6 +887,34 @@ export function OrderMobileView({
           </div>
         )}
 
+        {/* Bayar Sekarang (jika menunggu pembayaran) */}
+        {order.status === 'PENDING_PAYMENT' && (
+          <button
+            type="button"
+            onClick={onPayNow}
+            className="shadow-xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.99] dark:bg-white dark:text-slate-950"
+          >
+            <span>Bayar Sekarang</span>
+          </button>
+        )}
+
+        {/* Konfirmasi Pesanan Diterima (saat pesanan sedang dikirim / dalam proses) */}
+        {canConfirmReceived && (
+          <button
+            type="button"
+            onClick={onConfirmReceived}
+            disabled={isConfirming}
+            className="shadow-xs flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.99] disabled:opacity-50 dark:bg-white dark:text-slate-950"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            <span>
+              {isConfirming
+                ? 'Mengonfirmasi...'
+                : 'Konfirmasi Pesanan Diterima'}
+            </span>
+          </button>
+        )}
+
         {/* Tombol Selesaikan Pesanan (jika sudah diterima tapi belum diselesaikan) */}
         {canManuallyComplete && onOpenCompleteModal && (
           <button
