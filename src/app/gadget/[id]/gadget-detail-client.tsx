@@ -36,6 +36,7 @@ import {
   Play,
   Star,
   Loader2,
+  Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
@@ -320,7 +321,8 @@ export default function GadgetDetailClient({
             : d.images?.[0] || '')
 
         if (targetProd.variants && targetProd.variants.length > 0) {
-          const requestedVariantId = searchParams?.get('variant')
+          const requestedVariantId =
+            searchParams?.get('variant') || searchParams?.get('variantId')
           const byReq = requestedVariantId
             ? targetProd.variants.find((v: any) => v.id === requestedVariantId)
             : null
@@ -361,8 +363,29 @@ export default function GadgetDetailClient({
         const json = await res.json()
         if (json.valid && json.deal) {
           setActiveDeal(json.deal)
+
+          // Otomatis kunci ke varian produk yang didiskon pada live stream
+          const targetVarId =
+            json.deal.variantId ||
+            searchParams?.get('variantId') ||
+            searchParams?.get('variant')
+          if (targetVarId) {
+            const allVariants = activeUnit?.variants || product?.variants || []
+            const matchedVar = allVariants.find(
+              (v: any) => v.id === targetVarId
+            )
+            if (matchedVar) {
+              setSelectedVariant(matchedVar)
+              if (matchedVar.image) {
+                setSelectedImage(matchedVar.image)
+              }
+            }
+          }
+
           toast.success('Diskon Spesial Siaran Langsung Diterapkan!', {
-            description: `Harga live deal Rp ${json.deal.discountPrice.toLocaleString('id-ID')} (berlaku 1x checkout).`,
+            description: json.deal.variantName
+              ? `Terkunci khusus varian: ${json.deal.variantName} (Rp ${json.deal.discountPrice.toLocaleString('id-ID')}).`
+              : `Harga live deal Rp ${json.deal.discountPrice.toLocaleString('id-ID')} (berlaku 1x checkout).`,
           })
         } else {
           setActiveDeal(null)
@@ -446,10 +469,14 @@ export default function GadgetDetailClient({
   const handleBuyNow = () => {
     if (!product || !activeUnit) return
 
-    const hasLiveDeal =
+    const isDealVariantMatched =
+      !activeDeal?.variantId || activeDeal.variantId === selectedVariant?.id
+    const hasLiveDeal = Boolean(
       activeDeal &&
       (activeDeal.productId === activeUnit.id ||
-        activeDeal.productId === product.id)
+        activeDeal.productId === product.id) &&
+      isDealVariantMatched
+    )
     const basePrice = selectedVariant ? selectedVariant.price : activeUnit.price
     const priceToUse = hasLiveDeal ? activeDeal.discountPrice : basePrice
     const variantName = selectedVariant ? selectedVariant.name : undefined
@@ -508,17 +535,18 @@ export default function GadgetDetailClient({
       toast.info(
         'Silakan masuk terlebih dahulu untuk melanjutkan pembelian langsung.'
       )
-      const targetUrl = dealToken
-        ? `/checkout?buyNow=1&dealToken=${dealToken}`
-        : '/checkout?buyNow=1'
+      const targetUrl =
+        hasLiveDeal && activeDeal
+          ? `/checkout?buyNow=1&dealToken=${activeDeal.dealToken}`
+          : '/checkout?buyNow=1'
       router.push(`/login?callbackUrl=${encodeURIComponent(targetUrl)}`)
       return
     }
 
     // Langsung menuju ke checkout khusus item ini
     router.push(
-      dealToken
-        ? `/checkout?buyNow=1&dealToken=${dealToken}`
+      hasLiveDeal && activeDeal
+        ? `/checkout?buyNow=1&dealToken=${activeDeal.dealToken}`
         : '/checkout?buyNow=1'
     )
   }
@@ -713,10 +741,14 @@ export default function GadgetDetailClient({
   const rawCurrentPrice = selectedVariant
     ? selectedVariant.price
     : (activeUnit?.price ?? product.price)
-  const hasLiveDeal =
+  const isDealVariantMatched =
+    !activeDeal?.variantId || activeDeal.variantId === selectedVariant?.id
+  const hasLiveDeal = Boolean(
     activeDeal &&
     (activeDeal.productId === activeUnit?.id ||
-      activeDeal.productId === product.id)
+      activeDeal.productId === product.id) &&
+    isDealVariantMatched
+  )
   const currentPrice = hasLiveDeal ? activeDeal.discountPrice : rawCurrentPrice
   const activeOriginalPrice = selectedVariant
     ? selectedVariant.originalPrice !== undefined &&
@@ -1086,11 +1118,17 @@ export default function GadgetDetailClient({
                             Diskon Khusus Siaran Langsung Toko!
                           </p>
                           <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                            {activeDeal.variantName ? (
+                              <span className="font-bold text-orange-800 dark:text-orange-200">
+                                Terkunci khusus varian: {activeDeal.variantName}{' '}
+                                •{' '}
+                              </span>
+                            ) : null}
                             Harga spesial Rp{' '}
                             {activeDeal.discountPrice.toLocaleString('id-ID')}{' '}
                             (Normal: Rp{' '}
                             {rawCurrentPrice.toLocaleString('id-ID')}
-                            ). Diskon link ini hanya berlaku 1x checkout.
+                            ). Diskon ini hanya berlaku 1x checkout.
                           </p>
                         </div>
                       </div>
@@ -1099,6 +1137,42 @@ export default function GadgetDetailClient({
                       </span>
                     </div>
                   )}
+
+                  {activeDeal &&
+                    activeDeal.variantId &&
+                    selectedVariant?.id !== activeDeal.variantId && (
+                      <div className="flex items-center justify-between rounded-3xl border border-blue-500/30 bg-blue-50/80 p-3.5 text-xs text-blue-950 dark:bg-blue-950/40 dark:text-blue-200">
+                        <div className="flex items-center gap-2.5">
+                          <Zap className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+                          <div>
+                            <p className="font-bold text-blue-900 dark:text-blue-100">
+                              Diskon Live Deal Tersedia untuk Varian:{' '}
+                              {activeDeal.variantName}
+                            </p>
+                            <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                              Varian yang dipilih saat ini (
+                              {selectedVariant?.name || 'Lainnya'}) menggunakan
+                              harga normal Rp{' '}
+                              {rawCurrentPrice.toLocaleString('id-ID')}.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allVars =
+                              activeUnit?.variants || product?.variants || []
+                            const matched = allVars.find(
+                              (v: any) => v.id === activeDeal.variantId
+                            )
+                            if (matched) setSelectedVariant(matched)
+                          }}
+                          className="shrink-0 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700"
+                        >
+                          Pilih Varian Diskon →
+                        </button>
+                      </div>
+                    )}
 
                   {dealError && (
                     <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">

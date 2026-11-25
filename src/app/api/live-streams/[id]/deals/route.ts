@@ -63,6 +63,8 @@ export async function POST(
     const body = await req.json()
     const {
       productId,
+      variantId,
+      variantName,
       productTitle,
       productImage,
       productSlug,
@@ -141,6 +143,8 @@ export async function POST(
     const newDeal = createLiveDeal({
       streamId,
       productId,
+      variantId: variantId || null,
+      variantName: variantName || null,
       productTitle,
       productImage,
       productSlug,

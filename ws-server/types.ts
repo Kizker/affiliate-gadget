@@ -38,6 +38,8 @@ export interface WsLikePayload {
 
 export interface WsPinProductPayload {
   productId: string
+  variantId?: string
+  variantName?: string
   productTitle?: string
   productPrice?: number
   productImage?: string

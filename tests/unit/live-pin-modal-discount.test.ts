@@ -49,7 +49,7 @@ describe('Live Pin Special Discount Modal Suite', () => {
       'const handleConfirmPinModal = () => {'
     )
     expect(broadcasterContent).toContain(
-      'handlePinProduct(pinModalProduct, discountPrice)'
+      'handlePinProduct(pinModalProduct, discountPrice'
     )
     expect(broadcasterContent).toContain('Sematkan Sekarang')
   })

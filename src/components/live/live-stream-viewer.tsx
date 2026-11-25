@@ -676,6 +676,11 @@ export function LiveStreamViewer({
                   >
                     {pinnedProduct.productTitle}
                   </p>
+                  {pinnedProduct.variantName && (
+                    <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700">
+                      Varian: {pinnedProduct.variantName}
+                    </span>
+                  )}
                   {pinnedProduct.discountPrice &&
                   pinnedProduct.discountPrice <
                     (pinnedProduct.originalPrice ||
@@ -709,8 +714,8 @@ export function LiveStreamViewer({
               <Link
                 href={
                   pinnedProduct.dealToken
-                    ? `/gadget/${pinnedProduct.productId}?dealToken=${pinnedProduct.dealToken}`
-                    : `/gadget/${pinnedProduct.productId}`
+                    ? `/gadget/${pinnedProduct.productId}?dealToken=${pinnedProduct.dealToken}${pinnedProduct.variantId ? `&variantId=${pinnedProduct.variantId}` : ''}`
+                    : `/gadget/${pinnedProduct.productId}${pinnedProduct.variantId ? `?variantId=${pinnedProduct.variantId}` : ''}`
                 }
                 target="_blank"
                 className="shrink-0 rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition-all hover:bg-orange-600 active:scale-95"
@@ -1208,6 +1213,11 @@ export function LiveStreamViewer({
                     <h4 className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
                       {pinnedProduct.productTitle}
                     </h4>
+                    {pinnedProduct.variantName && (
+                      <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        Varian: {pinnedProduct.variantName}
+                      </span>
+                    )}
                     {pinnedProduct.discountPrice &&
                     pinnedProduct.discountPrice <
                       (pinnedProduct.originalPrice ||
@@ -1236,8 +1246,8 @@ export function LiveStreamViewer({
                 <Link
                   href={
                     pinnedProduct.dealToken
-                      ? `/gadget/${pinnedProduct.productId}?dealToken=${pinnedProduct.dealToken}`
-                      : `/gadget/${pinnedProduct.productId}`
+                      ? `/gadget/${pinnedProduct.productId}?dealToken=${pinnedProduct.dealToken}${pinnedProduct.variantId ? `&variantId=${pinnedProduct.variantId}` : ''}`
+                      : `/gadget/${pinnedProduct.productId}${pinnedProduct.variantId ? `?variantId=${pinnedProduct.variantId}` : ''}`
                   }
                   target="_blank"
                   className="shrink-0 rounded-xl bg-orange-500 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95"

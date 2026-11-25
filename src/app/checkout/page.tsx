@@ -645,7 +645,26 @@ function CheckoutContent() {
   const voucherDiscount = useMemo(() => {
     return appliedVouchers.reduce((sum, v) => sum + v.discountAmount, 0)
   }, [appliedVouchers])
-  const liveDealDiscount = liveDealInfo?.discountAmount || 0
+  const isLiveDealVariantMatched = useMemo(() => {
+    if (!liveDealInfo?.deal) return true
+    const deal = liveDealInfo.deal
+    if (isDirectBuy && buyNowItem) {
+      if (buyNowItem.productId !== deal.productId) return false
+      if (deal.variantId && buyNowItem.variantId !== deal.variantId)
+        return false
+      return true
+    }
+    return computedStorePackages.some((pkg) =>
+      pkg.items.some(
+        (it) =>
+          it.productId === deal.productId &&
+          (!deal.variantId || it.variantId === deal.variantId)
+      )
+    )
+  }, [liveDealInfo, isDirectBuy, buyNowItem, computedStorePackages])
+
+  const liveDealDiscount =
+    liveDealInfo && isLiveDealVariantMatched ? liveDealInfo.discountAmount : 0
   const total = Math.max(
     0,
     subtotal + shippingCost + insuranceFee - voucherDiscount - liveDealDiscount
@@ -1861,12 +1880,23 @@ function CheckoutContent() {
                           <Zap className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />
                           <span>
                             {liveDealInfo?.badgeLabel || 'Diskon Live Siaran'}{' '}
+                            {liveDealInfo?.deal.variantName
+                              ? `(${liveDealInfo.deal.variantName})`
+                              : ''}{' '}
                             (1x checkout)
                           </span>
                         </span>
                         <span className="font-bold tabular-nums">
                           - Rp {liveDealDiscount.toLocaleString('id-ID')}
                         </span>
+                      </div>
+                    )}
+
+                    {liveDealInfo && !isLiveDealVariantMatched && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+                        ⚠️ Diskon live deal tidak diterapkan karena hanya
+                        berlaku khusus untuk varian{' '}
+                        <strong>{liveDealInfo.deal.variantName}</strong>.
                       </div>
                     )}
 

@@ -14,6 +14,8 @@ export interface LiveChatMessage {
 
 export interface PinnedProduct {
   productId: string
+  variantId?: string
+  variantName?: string
   productTitle?: string
   productPrice?: number
   productImage?: string

@@ -7,6 +7,8 @@ export interface LiveDeal {
   dealToken: string
   streamId: string
   productId: string
+  variantId?: string | null
+  variantName?: string | null
   productTitle?: string
   productImage?: string
   productSlug?: string
@@ -75,6 +77,8 @@ function saveDeals() {
 export function createLiveDeal(params: {
   streamId: string
   productId: string
+  variantId?: string | null
+  variantName?: string | null
   productTitle?: string
   productImage?: string
   productSlug?: string
@@ -86,11 +90,12 @@ export function createLiveDeal(params: {
   const deals = loadDeals()
   const dealType = params.dealType || 'PINNED_DEAL'
 
-  // Nonaktifkan deal sebelumnya dengan tipe yang sama untuk produk ini pada stream ini
+  // Nonaktifkan deal sebelumnya dengan tipe yang sama untuk produk ini (dan varian ini) pada stream ini
   for (const existing of deals.values()) {
     if (
       existing.streamId === params.streamId &&
       existing.productId === params.productId &&
+      (!params.variantId || existing.variantId === params.variantId) &&
       (existing.dealType || 'PINNED_DEAL') === dealType &&
       existing.isActive
     ) {
@@ -104,6 +109,8 @@ export function createLiveDeal(params: {
     dealToken,
     streamId: params.streamId,
     productId: params.productId,
+    variantId: params.variantId || null,
+    variantName: params.variantName || null,
     productTitle: params.productTitle,
     productImage: params.productImage,
     productSlug: params.productSlug,

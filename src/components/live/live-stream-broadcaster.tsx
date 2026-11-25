@@ -87,7 +87,20 @@ function scrollInputIntoContainer(el: HTMLElement) {
   }
 }
 
-interface StoreProduct {
+export interface ProductVariantData {
+  id: string
+  name: string
+  price: number
+  originalPrice?: number | null
+  stock: number
+  image?: string | null
+  ram?: string | null
+  storage?: string | null
+  color?: string | null
+  sku?: string | null
+}
+
+export interface StoreProduct {
   id: string
   name: string
   price: number
@@ -95,6 +108,7 @@ interface StoreProduct {
   brand: string | null
   stock: number
   rating: number
+  variants?: ProductVariantData[]
 }
 
 interface LiveStreamData {
@@ -142,6 +156,7 @@ function LiveKitStudioControls({
   const [pinModalProduct, setPinModalProduct] = useState<StoreProduct | null>(
     null
   )
+  const [pinModalVariantId, setPinModalVariantId] = useState<string>('')
   const [pinModalDiscount, setPinModalDiscount] = useState<string>('')
   const [liveCatalogDeals, setLiveCatalogDeals] = useState<
     Record<
@@ -491,17 +506,22 @@ function LiveKitStudioControls({
   // Handle Pin Product (memakai diskon katalog biasa atau menambahkan diskon ekstra sematan)
   const handlePinProduct = async (
     prod: StoreProduct,
-    extraPinnedDiscount?: number
+    extraPinnedDiscount?: number,
+    selectedVariant?: ProductVariantData
   ) => {
     const catalogDeal = liveCatalogDeals[prod.id]
     let dealToken: string | undefined
     let effectiveDiscountPrice: number | undefined
+    const baseOriginalPrice = selectedVariant
+      ? selectedVariant.price
+      : prod.price
+    const baseImage = selectedVariant?.image || prod.images[0] || ''
 
     // 1. Jika host memasukkan diskon ekstra saat pin (harus lebih rendah dari harga normal)
     if (
       extraPinnedDiscount &&
       extraPinnedDiscount > 0 &&
-      extraPinnedDiscount < prod.price
+      extraPinnedDiscount < baseOriginalPrice
     ) {
       try {
         const res = await fetch(`/api/live-streams/${stream.id}/deals`, {
@@ -509,10 +529,12 @@ function LiveKitStudioControls({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             productId: prod.id,
+            variantId: selectedVariant?.id || null,
+            variantName: selectedVariant?.name || null,
             productTitle: prod.name,
-            productImage: prod.images[0] || '',
+            productImage: baseImage,
             productSlug: prod.id,
-            originalPrice: prod.price,
+            originalPrice: baseOriginalPrice,
             discountPrice: extraPinnedDiscount,
             dealType: 'PINNED_DEAL',
             badgeLabel: 'Diskon Spesial Sematan Live',
@@ -534,11 +556,13 @@ function LiveKitStudioControls({
 
     pinProduct({
       productId: prod.id,
+      variantId: selectedVariant?.id,
+      variantName: selectedVariant?.name,
       productTitle: prod.name,
-      productPrice: prod.price,
-      productImage: prod.images[0] || '',
+      productPrice: baseOriginalPrice,
+      productImage: baseImage,
       productSlug: prod.id,
-      originalPrice: prod.price,
+      originalPrice: baseOriginalPrice,
       discountPrice: effectiveDiscountPrice,
       dealToken,
     })
@@ -582,26 +606,39 @@ function LiveKitStudioControls({
   const handleOpenPinModal = (prod: StoreProduct) => {
     setPinModalProduct(prod)
     setPinModalDiscount('')
+    if (prod.variants && prod.variants.length > 0) {
+      const inStock = prod.variants.find((v) => v.stock > 0) || prod.variants[0]
+      setPinModalVariantId(inStock.id)
+    } else {
+      setPinModalVariantId('')
+    }
   }
 
   const handleCancelPinModal = () => {
     setPinModalProduct(null)
     setPinModalDiscount('')
+    setPinModalVariantId('')
   }
 
   const handleConfirmPinModal = () => {
     if (!pinModalProduct) return
     const rawVal = pinModalDiscount.replace(/\D/g, '')
     const discountPrice = rawVal ? parseInt(rawVal, 10) : undefined
+
+    const chosenVariant =
+      pinModalProduct.variants?.find((v) => v.id === pinModalVariantId) ||
+      pinModalProduct.variants?.[0]
+
     if (pinModalDiscount) {
       setDiscountInputs((prev) => ({
         ...prev,
         [pinModalProduct.id]: pinModalDiscount,
       }))
     }
-    handlePinProduct(pinModalProduct, discountPrice)
+    handlePinProduct(pinModalProduct, discountPrice, chosenVariant)
     setPinModalProduct(null)
     setPinModalDiscount('')
+    setPinModalVariantId('')
     setIsProductDrawerOpen(false)
   }
 
@@ -1201,12 +1238,25 @@ function LiveKitStudioControls({
         {/* Modal Diskon Spesial Saat Sematkan (Mobile) */}
         {pinModalProduct &&
           (() => {
+            const chosenVariant =
+              pinModalProduct.variants?.find(
+                (v) => v.id === pinModalVariantId
+              ) || pinModalProduct.variants?.[0]
+            const activeNormalPrice = chosenVariant
+              ? chosenVariant.price
+              : pinModalProduct.price
+            const activeStock = chosenVariant
+              ? chosenVariant.stock
+              : pinModalProduct.stock
+            const activeImage =
+              chosenVariant?.image || pinModalProduct.images[0] || ''
+
             const catalogDeal = liveCatalogDeals[pinModalProduct.id]
             const hasCatalogPromo =
-              catalogDeal && catalogDeal.discountPrice < pinModalProduct.price
+              catalogDeal && catalogDeal.discountPrice < activeNormalPrice
             const liveCatalogPrice = hasCatalogPromo
               ? catalogDeal.discountPrice
-              : pinModalProduct.price
+              : activeNormalPrice
 
             return (
               <div
@@ -1250,12 +1300,41 @@ function LiveKitStudioControls({
                     </button>
                   </div>
 
+                  {/* Pilihan Varian Produk jika memiliki varian */}
+                  {pinModalProduct.variants &&
+                    pinModalProduct.variants.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800">
+                            Pilih Varian yang Disematkan:
+                          </label>
+                          <span className="text-[10px] text-slate-500">
+                            Stok: {activeStock} unit
+                          </span>
+                        </div>
+                        <select
+                          value={
+                            pinModalVariantId || pinModalProduct.variants[0].id
+                          }
+                          onChange={(e) => setPinModalVariantId(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                        >
+                          {pinModalProduct.variants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name} • Rp {v.price.toLocaleString('id-ID')}{' '}
+                              (Stok: {v.stock})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                   {/* Ringkasan Produk */}
                   <div className="my-3.5 flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-2.5">
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                      {pinModalProduct.images[0] ? (
+                      {activeImage ? (
                         <Image
-                          src={pinModalProduct.images[0]}
+                          src={activeImage}
                           alt={pinModalProduct.name}
                           fill
                           unoptimized
@@ -1269,6 +1348,11 @@ function LiveKitStudioControls({
                       <p className="truncate text-xs font-bold text-slate-900">
                         {pinModalProduct.name}
                       </p>
+                      {chosenVariant && (
+                        <p className="text-[10px] font-semibold text-orange-600">
+                          Varian: {chosenVariant.name}
+                        </p>
+                      )}
                       <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
                         {hasCatalogPromo ? (
                           <>
@@ -1276,7 +1360,7 @@ function LiveKitStudioControls({
                               Rp {liveCatalogPrice.toLocaleString('id-ID')}
                             </span>
                             <span className="text-[10px] text-slate-400 line-through">
-                              Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                              Rp {activeNormalPrice.toLocaleString('id-ID')}
                             </span>
                             <span className="py-0.2 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700">
                               Promo Live
@@ -1284,7 +1368,7 @@ function LiveKitStudioControls({
                           </>
                         ) : (
                           <span className="text-xs font-black text-slate-800">
-                            Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                            Rp {activeNormalPrice.toLocaleString('id-ID')}
                           </span>
                         )}
                       </div>
@@ -1326,7 +1410,7 @@ function LiveKitStudioControls({
                         placeholder={
                           hasCatalogPromo
                             ? `Diskon ekstra di bawah Rp ${liveCatalogPrice.toLocaleString('id-ID')} (opsional)`
-                            : `Harga diskon spesial (opsional)`
+                            : `Harga diskon (Normal: Rp ${activeNormalPrice.toLocaleString('id-ID')})`
                         }
                         className="w-full rounded-xl border border-orange-200 bg-orange-50/50 py-2.5 pl-9 pr-3 text-sm font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/20"
                       />
@@ -1789,12 +1873,24 @@ function LiveKitStudioControls({
       {/* Modal Diskon Spesial Saat Sematkan (Desktop) */}
       {pinModalProduct &&
         (() => {
+          const chosenVariant =
+            pinModalProduct.variants?.find((v) => v.id === pinModalVariantId) ||
+            pinModalProduct.variants?.[0]
+          const activeNormalPrice = chosenVariant
+            ? chosenVariant.price
+            : pinModalProduct.price
+          const activeStock = chosenVariant
+            ? chosenVariant.stock
+            : pinModalProduct.stock
+          const activeImage =
+            chosenVariant?.image || pinModalProduct.images[0] || ''
+
           const catalogDeal = liveCatalogDeals[pinModalProduct.id]
           const hasCatalogPromo =
-            catalogDeal && catalogDeal.discountPrice < pinModalProduct.price
+            catalogDeal && catalogDeal.discountPrice < activeNormalPrice
           const liveCatalogPrice = hasCatalogPromo
             ? catalogDeal.discountPrice
-            : pinModalProduct.price
+            : activeNormalPrice
 
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
@@ -1823,12 +1919,41 @@ function LiveKitStudioControls({
                   </button>
                 </div>
 
+                {/* Pilihan Varian Produk jika memiliki varian */}
+                {pinModalProduct.variants &&
+                  pinModalProduct.variants.length > 0 && (
+                    <div className="mt-3.5 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          Pilih Varian yang Disematkan:
+                        </label>
+                        <span className="text-[10px] text-slate-500">
+                          Stok: {activeStock} unit
+                        </span>
+                      </div>
+                      <select
+                        value={
+                          pinModalVariantId || pinModalProduct.variants[0].id
+                        }
+                        onChange={(e) => setPinModalVariantId(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 outline-none transition focus:border-orange-500 focus:ring-1 focus:ring-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      >
+                        {pinModalProduct.variants.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name} • Rp {v.price.toLocaleString('id-ID')}{' '}
+                            (Stok: {v.stock})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                 {/* Ringkasan Produk */}
                 <div className="my-4 flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
                   <div className="h-13 w-13 relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700">
-                    {pinModalProduct.images[0] ? (
+                    {activeImage ? (
                       <Image
-                        src={pinModalProduct.images[0]}
+                        src={activeImage}
                         alt={pinModalProduct.name}
                         fill
                         unoptimized
@@ -1842,6 +1967,11 @@ function LiveKitStudioControls({
                     <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
                       {pinModalProduct.name}
                     </p>
+                    {chosenVariant && (
+                      <p className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+                        Varian: {chosenVariant.name}
+                      </p>
+                    )}
                     <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
                       {hasCatalogPromo ? (
                         <>
@@ -1849,7 +1979,7 @@ function LiveKitStudioControls({
                             Rp {liveCatalogPrice.toLocaleString('id-ID')}
                           </span>
                           <span className="text-[10px] text-slate-400 line-through">
-                            Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                            Rp {activeNormalPrice.toLocaleString('id-ID')}
                           </span>
                           <span className="py-0.2 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700 dark:bg-orange-950 dark:text-orange-300">
                             Promo Live
@@ -1857,7 +1987,7 @@ function LiveKitStudioControls({
                         </>
                       ) : (
                         <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                          Rp {pinModalProduct.price.toLocaleString('id-ID')}
+                          Rp {activeNormalPrice.toLocaleString('id-ID')}
                         </span>
                       )}
                     </div>
@@ -1933,6 +2063,7 @@ export function LiveStreamBroadcaster() {
   const [activeStream, setActiveStream] = useState<LiveStreamData | null>(null)
   const [products, setProducts] = useState<StoreProduct[]>([])
   const [featuredProductIds, setFeaturedProductIds] = useState<string[]>([])
+  const [setupVariants, setSetupVariants] = useState<Record<string, string>>({})
   const [setupDiscounts, setSetupDiscounts] = useState<Record<string, string>>(
     {}
   )
@@ -2031,17 +2162,25 @@ export function LiveStreamBroadcaster() {
 
           if (prodObj && discountRaw) {
             const discPrice = parseInt(discountRaw, 10)
-            if (discPrice > 0 && discPrice < prodObj.price) {
+            const chosenVarId = setupVariants[prodId]
+            const chosenVar =
+              prodObj.variants?.find((v) => v.id === chosenVarId) ||
+              prodObj.variants?.[0]
+            const basePrice = chosenVar ? chosenVar.price : prodObj.price
+
+            if (discPrice > 0 && discPrice < basePrice) {
               try {
                 await fetch(`/api/live-streams/${json.data.id}/deals`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     productId: prodObj.id,
+                    variantId: chosenVar?.id || null,
+                    variantName: chosenVar?.name || null,
                     productTitle: prodObj.name,
-                    productImage: prodObj.images[0] || '',
+                    productImage: chosenVar?.image || prodObj.images[0] || '',
                     productSlug: prodObj.id,
-                    originalPrice: prodObj.price,
+                    originalPrice: basePrice,
                     discountPrice: discPrice,
                     dealType: 'LIVE_FEATURED',
                     badgeLabel: 'Promo Live Siaran',
@@ -2259,6 +2398,12 @@ export function LiveStreamBroadcaster() {
             <div className="max-h-60 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60 p-2.5 dark:border-slate-800 dark:bg-slate-950/40">
               {products.slice(0, 15).map((p) => {
                 const isSelected = featuredProductIds.includes(p.id)
+                const chosenVar =
+                  p.variants?.find((v) => v.id === setupVariants[p.id]) ||
+                  p.variants?.[0]
+                const normalPrice = chosenVar ? chosenVar.price : p.price
+                const currentStock = chosenVar ? chosenVar.stock : p.stock
+
                 return (
                   <div
                     key={p.id}
@@ -2276,15 +2421,25 @@ export function LiveStreamBroadcaster() {
                           )
                         } else if (featuredProductIds.length < 5) {
                           setFeaturedProductIds([...featuredProductIds, p.id])
+                          if (
+                            p.variants &&
+                            p.variants.length > 0 &&
+                            !setupVariants[p.id]
+                          ) {
+                            setSetupVariants((prev) => ({
+                              ...prev,
+                              [p.id]: p.variants![0].id,
+                            }))
+                          }
                         }
                       }}
                       className="flex cursor-pointer items-center justify-between"
                     >
                       <div className="flex min-w-0 items-center gap-3 pr-2">
                         <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                          {p.images[0] && (
+                          {(chosenVar?.image || p.images[0]) && (
                             <Image
-                              src={p.images[0]}
+                              src={chosenVar?.image || p.images[0]}
                               alt={p.name}
                               fill
                               className="object-cover"
@@ -2295,9 +2450,16 @@ export function LiveStreamBroadcaster() {
                           <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
                             {p.name}
                           </p>
-                          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                            Rp {p.price.toLocaleString('id-ID')}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                              Rp {normalPrice.toLocaleString('id-ID')}
+                            </p>
+                            {chosenVar && (
+                              <span className="truncate text-[10px] text-slate-400">
+                                ({chosenVar.name})
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div
@@ -2311,11 +2473,45 @@ export function LiveStreamBroadcaster() {
                       </div>
                     </div>
 
+                    {/* Dropdown Pemilihan Varian Produk jika memiliki varian */}
+                    {isSelected && p.variants && p.variants.length > 0 && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2.5 space-y-1 border-t border-slate-100 pt-2 dark:border-slate-700/60"
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                            Pilih Varian Diskon Live:
+                          </label>
+                          <span className="text-[10px] text-slate-500">
+                            Stok: {currentStock} unit
+                          </span>
+                        </div>
+                        <select
+                          value={setupVariants[p.id] || p.variants[0].id}
+                          onChange={(e) =>
+                            setSetupVariants((prev) => ({
+                              ...prev,
+                              [p.id]: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        >
+                          {p.variants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name} • Rp {v.price.toLocaleString('id-ID')}{' '}
+                              (Stok: {v.stock})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     {/* Kolom Diskon Promo Live Katalog untuk produk pilihan awal */}
                     {isSelected && (
                       <div
                         onClick={(e) => e.stopPropagation()}
-                        className="mt-2.5 space-y-1.5 border-t border-slate-100 pt-2.5 dark:border-slate-700/60"
+                        className="mt-2 space-y-1.5"
                       >
                         <div className="flex items-center gap-2">
                           <span className="shrink-0 text-[10px] font-bold text-slate-700 dark:text-slate-300">
@@ -2337,7 +2533,7 @@ export function LiveStreamBroadcaster() {
                                 [p.id]: formatPriceInput(e.target.value),
                               }))
                             }
-                            placeholder={`Harga promo live (Normal: Rp ${p.price.toLocaleString('id-ID')})`}
+                            placeholder={`Harga promo live (Normal: Rp ${normalPrice.toLocaleString('id-ID')})`}
                             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           />
                         </div>

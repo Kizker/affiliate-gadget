@@ -61,6 +61,11 @@ export function LiveProductPin({
         <h4 className="line-clamp-1 truncate text-xs font-bold text-slate-900">
           {product.productTitle || 'Produk Pilihan'}
         </h4>
+        {product.variantName && (
+          <span className="mt-0.5 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700">
+            Varian: {product.variantName}
+          </span>
+        )}
         <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
           {product.discountPrice &&
           product.discountPrice <
@@ -95,8 +100,8 @@ export function LiveProductPin({
       <Link
         href={
           product.dealToken
-            ? `/gadget/${product.productId}?dealToken=${product.dealToken}`
-            : `/gadget/${product.productId}`
+            ? `/gadget/${product.productId}?dealToken=${product.dealToken}${product.variantId ? `&variantId=${product.variantId}` : ''}`
+            : `/gadget/${product.productId}${product.variantId ? `?variantId=${product.variantId}` : ''}`
         }
         target="_blank"
         className="flex shrink-0 items-center gap-1 rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95"

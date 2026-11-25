@@ -687,7 +687,9 @@ export async function POST(request: NextRequest) {
                   )
                 }
                 const matchedItem = verifiedItems.find(
-                  (vi) => vi.raw.productId === deal.productId
+                  (vi) =>
+                    vi.raw.productId === deal.productId &&
+                    (!deal.variantId || vi.raw.variantId === deal.variantId)
                 )
 
                 if (matchedItem) {
@@ -697,6 +699,12 @@ export async function POST(request: NextRequest) {
                   )
                   appliedDiscountAmount += dealDiff
                   appliedLiveDealToken = deal.dealToken
+                } else if (deal.variantId) {
+                  throw new CheckoutError(
+                    `Diskon live deal ini hanya berlaku khusus untuk varian ${deal.variantName || 'tertentu'}. Silakan pilih varian yang sesuai.`,
+                    CHECKOUT_ERROR_CODES.PRODUK_TIDAK_AKTIF,
+                    400
+                  )
                 }
               }
 
