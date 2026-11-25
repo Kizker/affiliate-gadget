@@ -67,6 +67,19 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-25 (Resolusi Alur Loop Rekomendasi Penolakan Retur After Sales vs Superadmin, Eliminasi Tombol Retur pada Unit yang Ditolak, & Deploy Live VPS Hostinger):**
+  - **1. Siklus Loop Penelaahan Penolakan Retur (After Sales <-> Superadmin):**
+    - Memperbaiki akar masalah di `/api/returns/[id]`: Status hanya menjadi `REJECTED` (Ditolak Final) jika Superadmin secara eksplisit menyetujui (`isApprove === true`) rekomendasi penolakan After Sales.
+    - Jika Superadmin tidak setuju dengan rekomendasi penolakan After Sales (`!isApprove` / `Kembalikan ke After Sales`), tiket dikembalikan ke status `IN_REVIEW` dengan marker `[Dikembalikan Superadmin ke After Sales]`, `resolvedAt: null`, dan dinormalisasi kembali ke antrean kerja aktif After Sales.
+    - Pada meja kerja After Sales (`/dashboard/after-sales/returns`), tiket yang dikembalikan Superadmin menampilkan badge `Dikembalikan Superadmin (Revisi)` dan mengaktifkan kembali tombol awal pasca-QC (`[ Setujui Permintaan ]` & `[ Tolak Permintaan ]`), sehingga keputusan terus bergulir hingga tercapai persetujuan final sebelum berdampak ke pembeli.
+  - **2. Penegakan Aturan Retur Ditolak (Tidak Boleh Diretur Kembali):**
+    - Menyematkan fungsi `getRemainingReturnableQuantityForItem` pada `order-return-utils.ts` dan validasi backend `POST /api/returns`.
+    - Unit gadget yang pengajuan returnya telah ditolak (`REJECTED`) otomatis **tidak memiliki tombol `[ Ajukan Retur Unit Ini ]`** (Desktop & Mobile); kartu unit hanya menampilkan badge informasi `[ 🔄 Retur Ditolak ]`.
+    - Jika seluruh unit dalam pesanan telah ditolak atau selesai, tombol utama `[ Ajukan Komplain / Klaim Garansi ]` pada panel aksi pesanan otomatis disembunyikan.
+    - Pada modal retur (`ReturnModal`), unit yang sudah ditolak otomatis difilter keluar dari daftar pilihan unit produk.
+    - Pengecualian tukar unit baru (`REPLACEMENT`): Jika unit pengganti telah diterima pembeli dan ternyata rusak kembali dalam masa garansi 30 hari, pembeli tetap dapat mengajukan retur unit pengganti tersebut hingga ditolak atau pesanan diselesaikan oleh customer.
+  - **3. Pembersihan Elemen Usang & Typo:** Menghapus badge `Live` dan teks bantuan pada modal cek resi, menghapus nomor pesanan terpotong pada kartu 1 mobile, menyelaraskan badge sisa hari garansi (`Garansi Tersisa X Hari`), dan tombol konfirmasi terima unit.
+  - **4. Health Verification & Deploy Live VPS:** TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100%, commit & push ke GitHub `origin/main` (commit `441e699`), serta build ulang container Next.js di VPS Hostinger berhasil ter-deploy sukses (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-24 (Resolusi Hilangnya Tombol Retur & Implementasi Retur Parsial Berbasis Kuantitas Unit [1, 2, Semua] Serta Penyesuaian Dana/Unit Pengganti):**
   - **1. Resolusi Akar Masalah Hilangnya Tombol Retur (`order-detail-client.tsx` & `order-desktop-payment-card.tsx`):**
     - Memperbaiki kalkulasi `isCompleted`: sebelumnya keliru mensyaratkan `isWarrantyOver === true` (garansi harus habis > 30 hari), sehingga pesanan yang baru diterima dan garansinya masih aktif dianggap belum selesai dan memblokir tombol retur. Kini `isCompleted` murni mengevaluasi `order.status === 'COMPLETED' || Boolean(order.customerConfirmedAt) || Boolean(order.completedAt)`.
