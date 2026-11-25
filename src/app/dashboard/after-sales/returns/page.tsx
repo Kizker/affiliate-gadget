@@ -297,12 +297,21 @@ export default function AfterSalesReturnsPage() {
 
       if (statusFilter === 'ALL') return true
       if (statusFilter === 'PENDING')
-        return item.status === 'PENDING' || item.status === 'IN_REVIEW'
+        return (
+          item.status === 'PENDING' ||
+          item.status === 'IN_REVIEW' ||
+          item.storeResponse?.includes(
+            '[Dikembalikan Superadmin ke After Sales]'
+          )
+        )
       if (statusFilter === 'DECIDED')
         return (
-          item.status === 'APPROVED' ||
-          item.status === 'REJECTED' ||
-          item.status === 'COMPLETED'
+          (item.status === 'APPROVED' ||
+            item.status === 'REJECTED' ||
+            item.status === 'COMPLETED') &&
+          !item.storeResponse?.includes(
+            '[Dikembalikan Superadmin ke After Sales]'
+          )
         )
       return true
     })
@@ -315,10 +324,13 @@ export default function AfterSalesReturnsPage() {
         (r) =>
           r.status === 'PENDING' ||
           r.status === 'APPROVED' ||
-          r.status === 'IN_REVIEW'
+          r.status === 'IN_REVIEW' ||
+          r.storeResponse?.includes('[Dikembalikan Superadmin ke After Sales]')
       ).length,
       decided: returns.filter(
-        (r) => r.status === 'REJECTED' || r.status === 'COMPLETED'
+        (r) =>
+          (r.status === 'REJECTED' || r.status === 'COMPLETED') &&
+          !r.storeResponse?.includes('[Dikembalikan Superadmin ke After Sales]')
       ).length,
     }
   }, [returns])
@@ -726,11 +738,18 @@ export default function AfterSalesReturnsPage() {
                       Selesai Dieksekusi
                     </span>
                   )}
-                  {item.status === 'REJECTED' && (
+                  {item.storeResponse?.includes(
+                    '[Dikembalikan Superadmin ke After Sales]'
+                  ) ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-600" />{' '}
+                      Dikembalikan Superadmin (Revisi)
+                    </span>
+                  ) : item.status === 'REJECTED' ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-300">
                       <XCircle className="h-3.5 w-3.5 text-rose-600" /> Ditolak
                     </span>
-                  )}
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => toggleExpandItem(item.id)}
@@ -1178,7 +1197,10 @@ export default function AfterSalesReturnsPage() {
                       </>
                     )}
                   </div>
-                ) : item.status === 'REJECTED' ? (
+                ) : item.status === 'REJECTED' &&
+                  !item.storeResponse?.includes(
+                    '[Dikembalikan Superadmin ke After Sales]'
+                  ) ? (
                   <span className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
                     <XCircle className="h-3.5 w-3.5 text-rose-600" />
                     Klaim Ditolak
@@ -1189,7 +1211,9 @@ export default function AfterSalesReturnsPage() {
                       item.packageReceivedAt ||
                       item.storeResponse?.includes(
                         '[Paket Fisik Tiba di Cabang]'
-                      )
+                      ) ||
+                      item.storeResponse?.includes('Catatan QC:') ||
+                      item.qcNotes
                     )
                     const isWaitingSuperadmin =
                       item.status === 'IN_REVIEW' &&

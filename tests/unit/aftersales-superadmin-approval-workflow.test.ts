@@ -102,7 +102,7 @@ describe('Dual-Tier Return Approval: After Sales Confirmation & Superadmin Final
 
     // Tombol aksi Superadmin langsung (1-klik tanpa modal)
     expect(page).toContain('ACC Final')
-    expect(page).toContain('Tolak &amp; Kembalikan')
+    expect(page).toContain('Kembalikan ke After Sales')
     expect(page).toContain('handleDirectApprove')
     expect(page).toContain('handleDirectRejectAndReturn')
   })

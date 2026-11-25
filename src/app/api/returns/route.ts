@@ -5,6 +5,7 @@ import { calculateNetRefundAmount } from '@/lib/returns/refund-calculator'
 import {
   doesReturnMatchOrderItem,
   extractReturnedQuantityFromDescription,
+  getRemainingReturnableQuantityForItem,
 } from '@/lib/order-return-utils'
 
 // GET - List return requests
@@ -240,8 +241,14 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const isReturnedToAfterSales = Boolean(
+        r.storeResponse?.includes('[Dikembalikan Superadmin ke After Sales]')
+      )
+      const effectiveStatus = isReturnedToAfterSales ? 'IN_REVIEW' : r.status
+
       return {
         ...r,
+        status: effectiveStatus,
         order: r.order
           ? {
               ...r.order,
@@ -401,11 +408,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if there is already an active return request for this specific item
-    const existingActiveReturns = await prisma.returnRequest.findMany({
+    // Check existing returns for this order
+    const existingReturns = await prisma.returnRequest.findMany({
       where: {
         orderId,
-        status: { in: ['PENDING', 'IN_REVIEW', 'APPROVED'] },
       },
     })
 
@@ -415,26 +421,60 @@ export async function POST(request: NextRequest) {
           doesReturnMatchOrderItem({ description }, it, order.items.length)
         ) || order.items[0]
 
-    const isDuplicateForItem = existingActiveReturns.some((ret) => {
-      if (order.items.length <= 1) return true
-      if (targetOrderItem) {
-        return doesReturnMatchOrderItem(
-          ret,
-          targetOrderItem,
-          order.items.length
+    if (targetOrderItem) {
+      const remainingQty = getRemainingReturnableQuantityForItem(
+        targetOrderItem,
+        existingReturns,
+        order
+      )
+
+      if (remainingQty <= 0) {
+        const isRejected = existingReturns.some(
+          (r) =>
+            r.status === 'REJECTED' &&
+            doesReturnMatchOrderItem(r, targetOrderItem, order.items.length)
+        )
+        if (isRejected) {
+          return NextResponse.json(
+            {
+              error:
+                'Pengajuan retur untuk produk ini telah ditolak sebelumnya dan tidak dapat diajukan kembali.',
+            },
+            { status: 400 }
+          )
+        }
+
+        const isActive = existingReturns.some(
+          (r) =>
+            ['PENDING', 'IN_REVIEW', 'APPROVED'].includes(r.status) &&
+            doesReturnMatchOrderItem(r, targetOrderItem, order.items.length)
+        )
+        if (isActive) {
+          return NextResponse.json(
+            {
+              error:
+                'Sudah ada pengajuan pengembalian aktif untuk produk ini. Harap tunggu verifikasi terlebih dahulu.',
+            },
+            { status: 400 }
+          )
+        }
+
+        return NextResponse.json(
+          {
+            error: 'Semua unit untuk produk ini sudah diajukan pengembalian.',
+          },
+          { status: 400 }
         )
       }
-      return true
-    })
 
-    if (isDuplicateForItem) {
-      return NextResponse.json(
-        {
-          error:
-            'Sudah ada pengajuan pengembalian aktif untuk produk ini. Harap tunggu verifikasi terlebih dahulu.',
-        },
-        { status: 400 }
-      )
+      if (returnQuantity && Number(returnQuantity) > remainingQty) {
+        return NextResponse.json(
+          {
+            error: `Jumlah unit yang diajukan (${returnQuantity}) melebihi sisa unit yang dapat diretur (${remainingQty} unit).`,
+          },
+          { status: 400 }
+        )
+      }
     }
 
     // Pastikan description menyertakan informasi unit jika diajukan pada multi-item

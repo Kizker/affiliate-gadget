@@ -135,6 +135,7 @@ export interface OrderWarrantyInfo {
   customerConfirmedAt?: string | Date | null
   updatedAt?: string | Date | null
   createdAt?: string | Date | null
+  items?: MatchableOrderItem[] | null
   returnRequests?: Array<{
     id?: string
     status: string
@@ -330,6 +331,79 @@ export function splitOrderItemsForDisplay<T extends MatchableOrderItem>(
 }
 
 /**
+ * Menghitung sisa kuantitas suatu OrderItem yang masih dapat diajukan retur / komplain.
+ * Memperhitungkan aturan bisnis:
+ * 1. Jika retur sudah DITOLAK (REJECTED), unit tersebut TIDAK dapat diajukan retur lagi.
+ * 2. Jika retur sedang berlangsung (PENDING, IN_REVIEW, APPROVED), unit tersebut sedang diproses.
+ * 3. Jika retur selesai REFUND, dana sudah dicairkan sehingga unit tersebut tidak dapat diretur lagi.
+ * 4. Jika retur selesai REPLACEMENT (Tukar Unit Baru):
+ *    - Jika unit pengganti sudah diterima pembeli dan garansi masih aktif, unit pengganti dapat diretur kembali jika ternyata rusak lagi,
+ *      sampai ditolak atau pesanan diselesaikan secara manual oleh customer.
+ */
+export function getRemainingReturnableQuantityForItem(
+  item: MatchableOrderItem,
+  returnRequests?: ReturnRequestSummary[] | null,
+  order?: {
+    customerConfirmedAt?: Date | string | null
+    completedAt?: Date | string | null
+    status?: string
+  }
+): number {
+  const totalQty = item.quantity || 1
+  if (!returnRequests || returnRequests.length === 0) {
+    return totalQty
+  }
+
+  // Cari seluruh pengajuan retur yang menargetkan item ini
+  const matchingReturns = returnRequests.filter((r) =>
+    doesReturnMatchOrderItem(r, item)
+  )
+
+  if (matchingReturns.length === 0) {
+    return totalQty
+  }
+
+  let nonReturnableQty = 0
+
+  for (const ret of matchingReturns) {
+    const qtyInRet = extractReturnedQuantityFromDescription(ret.description, 1)
+
+    // 1. REJECTED: Jika retur sudah ditolak, tidak ada opsi untuk retur lagi
+    if (ret.status === 'REJECTED') {
+      nonReturnableQty += qtyInRet
+      continue
+    }
+
+    // 2. PENDING, IN_REVIEW, APPROVED: Sedang dalam proses telaah/verifikasi
+    if (
+      ret.status === 'PENDING' ||
+      ret.status === 'IN_REVIEW' ||
+      ret.status === 'APPROVED'
+    ) {
+      nonReturnableQty += qtyInRet
+      continue
+    }
+
+    // 3. COMPLETED
+    if (ret.status === 'COMPLETED') {
+      if (ret.type === 'REFUND') {
+        // Refund selesai: dana sudah cair, tidak dapat diretur lagi
+        nonReturnableQty += qtyInRet
+      } else if (ret.type === 'REPLACEMENT') {
+        // Tukar unit selesai: Hanya dapat diretur lagi jika unit pengganti telah diterima pembeli dan belum diselesaikan
+        const isReplacementReceived = Boolean(order?.customerConfirmedAt)
+        const isManuallyCompleted = Boolean(order?.completedAt)
+        if (!isReplacementReceived || isManuallyCompleted) {
+          nonReturnableQty += qtyInRet
+        }
+      }
+    }
+  }
+
+  return Math.max(0, totalQty - nonReturnableQty)
+}
+
+/**
  * Checks if a specific OrderItem is eligible for a new return request.
  * Even if another item in the same order has an active return, this item remains eligible!
  */
@@ -344,21 +418,12 @@ export function isOrderItemReturnEligible(
   if (order.status === 'COMPLETED' && order.completedAt) return false
   if (isWarrantyExpired(order)) return false
 
-  const matchingReturn = findReturnForOrderItem(
-    order.returnRequests,
+  const remainingQty = getRemainingReturnableQuantityForItem(
     item,
-    totalOrderItemsCount
+    order.returnRequests,
+    order
   )
-  if (matchingReturn) {
-    const isBlocked =
-      matchingReturn.status === 'PENDING' ||
-      matchingReturn.status === 'IN_REVIEW' ||
-      matchingReturn.status === 'APPROVED' ||
-      matchingReturn.status === 'COMPLETED'
-    if (isBlocked) return false
-  }
-
-  return true
+  return remainingQty > 0
 }
 
 /**
@@ -505,15 +570,28 @@ export function isReturnEligible(order: OrderWarrantyInfo): boolean {
   if (order.status === 'COMPLETED' && order.completedAt) return false
   if (isWarrantyExpired(order)) return false
 
+  // Jika detail items tersedia, periksa apakah masih ada unit yang dapat diretur
+  if (order.items && order.items.length > 0) {
+    return order.items.some((it) =>
+      isOrderItemReturnEligible(order, it, order.items?.length || 1)
+    )
+  }
+
+  // Fallback untuk pesanan tanpa detail items:
+  // Jika retur sudah ditolak, sedang diproses, atau selesai refund -> tidak dapat diretur lagi
   if (order.returnRequests && order.returnRequests.length > 0) {
-    const activeOrResolved = order.returnRequests.some(
-      (r) =>
+    const isBlocked = order.returnRequests.some((r) => {
+      if (r.status === 'REJECTED') return true
+      if (
         r.status === 'PENDING' ||
         r.status === 'IN_REVIEW' ||
-        r.status === 'APPROVED' ||
-        r.status === 'COMPLETED'
-    )
-    if (activeOrResolved) return false
+        r.status === 'APPROVED'
+      )
+        return true
+      if (r.status === 'COMPLETED' && r.type === 'REFUND') return true
+      return false
+    })
+    if (isBlocked) return false
   }
 
   return true

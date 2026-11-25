@@ -804,6 +804,29 @@ export default function SuperAdminReturnsPage() {
                       )}
                     </div>
                   )}
+
+                  {!isPendingDecision && item.status === 'REJECTED' && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-300">
+                        <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                        Klaim Ditolak
+                      </span>
+                      <button
+                        type="button"
+                        disabled={processingId === item.id}
+                        onClick={() => handleDirectRejectAndReturn(item)}
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                        title="Buka kembali klaim ini dan kembalikan ke meja kerja After Sales untuk ditinjau ulang"
+                      >
+                        {processingId === item.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-3.5 w-3.5 text-amber-600" />
+                        )}
+                        <span>Kembalikan ke After Sales (Tinjau Ulang)</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )

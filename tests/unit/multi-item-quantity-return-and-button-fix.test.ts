@@ -45,7 +45,9 @@ describe('Multi-Item & Quantity-Based Return Flow Suite', () => {
 
     expect(content).toContain('Ajukan Retur Unit Ini')
     expect(content).toContain('onOpenReturnForItem?.(item)')
-    expect(content).toContain('{isCompleted && !isItemClaimActive && (')
+    expect(content).toContain(
+      '{isCompleted && !isItemClaimActive && !isItemRejected && ('
+    )
   })
 
   it('4. ReturnModal menggunakan stepper angka (- / +) saja tanpa pill opsi tambahan dan tanpa box keterangan dana', () => {

@@ -169,24 +169,17 @@ export function CheckResiModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] w-[calc(100%-3rem)] overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-full sm:max-w-lg">
         {/* Modal Header */}
-        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-6 pr-14 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7 sm:py-7">
-          <div className="flex items-start gap-3.5">
-            <div className="shadow-2xs flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-200/80 bg-blue-100 text-blue-600 dark:border-blue-800 dark:bg-blue-950/70 dark:text-blue-400">
-              <Truck className="h-6 w-6" />
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4 pr-12 dark:border-slate-800 dark:bg-slate-800/40 sm:px-7 sm:py-5 sm:pr-14">
+          <div className="flex items-center gap-3">
+            <div className="shadow-2xs flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-200/80 bg-blue-100 text-blue-600 dark:border-blue-800 dark:bg-blue-950/70 dark:text-blue-400 sm:h-11 sm:w-11">
+              <Truck className="h-5 w-5" />
             </div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <DialogTitle className="text-base font-bold leading-tight text-slate-900 dark:text-white sm:text-[17px]">
-                  Cek Resi & Lacak Pengiriman
-                </DialogTitle>
-                <span className="inline-flex items-center gap-1 rounded-full border border-blue-200/80 bg-blue-50/90 px-2 py-0.5 text-[9.5px] font-bold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/50 dark:text-blue-300">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
-                  Live
-                </span>
-              </div>
-              <DialogDescription className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Lacak status ekspedisi real-time nomor resi kurir (AWB) atau
-                nomor pesanan platform.
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="truncate text-base font-bold leading-tight text-slate-900 dark:text-white sm:text-[17px]">
+                Cek Resi &amp; Lacak Pengiriman
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Lacak status ekspedisi nomor resi kurir atau pesanan
               </DialogDescription>
             </div>
           </div>

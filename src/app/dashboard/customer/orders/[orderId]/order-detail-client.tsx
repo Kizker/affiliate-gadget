@@ -30,6 +30,7 @@ import {
   splitOrderItemsForDisplay,
   getWarrantyRemainingDays,
   getWarrantyRemainingBadgeText,
+  getRemainingReturnableQuantityForItem,
 } from '@/lib/order-return-utils'
 import {
   OrderDetailProps,
@@ -494,13 +495,53 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
     order.status !== 'CANCELLED' &&
     order.status !== 'RETURNED'
   )
+  const returnEligibleItems = useMemo(() => {
+    if (!order.items || order.items.length === 0) return []
+    return order.items
+      .map((it) => {
+        const returnableQty = getRemainingReturnableQuantityForItem(
+          it,
+          order.returnRequests,
+          order
+        )
+        return {
+          ...it,
+          quantity: returnableQty,
+        }
+      })
+      .filter((it) => it.quantity > 0)
+  }, [order.items, order.returnRequests, order])
+
+  const hasReturnableItems =
+    order.items && order.items.length > 0
+      ? returnEligibleItems.length > 0
+      : Boolean(
+          !latestReturnRequest ||
+          (latestReturnRequest.status === 'COMPLETED' &&
+            latestReturnRequest.type === 'REPLACEMENT')
+        )
+
   const hasActiveClaim =
     latestReturnRequest &&
     (latestReturnRequest.status === 'PENDING' ||
       latestReturnRequest.status === 'IN_REVIEW' ||
       latestReturnRequest.status === 'APPROVED')
+
+  // Jika retur sudah ditolak, tidak ada opsi untuk retur lagi (kecuali barang pengganti diterima dan rusak lagi)
+  const isWholeOrderReturnRejected = Boolean(
+    order.items &&
+    order.items.length <= 1 &&
+    latestReturnRequest &&
+    latestReturnRequest.status === 'REJECTED'
+  )
+
   const canRequestReturnOrComplaint =
-    isReceived && !isCompleted && !hasActiveClaim && !isWarrantyOver
+    isReceived &&
+    !isCompleted &&
+    !hasActiveClaim &&
+    !isWarrantyOver &&
+    hasReturnableItems &&
+    !isWholeOrderReturnRejected
 
   // Construct chat parameters for all chat entry points
   const firstItem = order.items?.[0]
@@ -730,7 +771,12 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
               isViewingUnreturned ? false : Boolean(hasActiveClaim)
             }
             canRequestReturnOrComplaint={
-              isViewingUnreturned ? true : canRequestReturnOrComplaint
+              isViewingUnreturned
+                ? isReceived &&
+                  !isCompleted &&
+                  !isWarrantyOver &&
+                  hasReturnableItems
+                : canRequestReturnOrComplaint
             }
             isConfirming={isConfirming}
             currentReview={currentReview}
@@ -858,7 +904,12 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
                     isViewingUnreturned ? false : Boolean(hasActiveClaim)
                   }
                   canRequestReturnOrComplaint={
-                    isViewingUnreturned ? true : canRequestReturnOrComplaint
+                    isViewingUnreturned
+                      ? isReceived &&
+                        !isCompleted &&
+                        !isWarrantyOver &&
+                        hasReturnableItems
+                      : canRequestReturnOrComplaint
                   }
                   isConfirming={isConfirming}
                   latestReturnRequest={effectiveLatestReturnRequest}
@@ -968,7 +1019,9 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         shippingCost={order.shippingCost}
         tax={order.tax}
         insuranceFee={order.insuranceFee}
-        items={order.items}
+        items={
+          returnEligibleItems.length > 0 ? returnEligibleItems : order.items
+        }
         initialSelectedItemId={selectedReturnItem?.id || null}
         onSuccess={() => {
           toast.success(

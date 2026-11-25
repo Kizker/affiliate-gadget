@@ -448,9 +448,9 @@ export async function PUT(
         existing.storeResponse?.includes('[Rekomendasi After Sales: DITOLAK]')
       )
 
-      // Jika After Sales merekomendasikan DITOLAK, dan Superadmin menyetujui rekomendasi tersebut:
-      // Status pengajuan harus menjadi REJECTED (Ditolak Final), dan dana escrow TIDAK boleh dicairkan!
-      if (isSuperAdmin && isAfterSalesRecommendingReject) {
+      // Jika After Sales merekomendasikan DITOLAK, dan Superadmin MENYETUJUI (APPROVE) rekomendasi penolakan tersebut:
+      // Status pengajuan menjadi REJECTED (Ditolak Final), dan dana escrow TIDAK dicairkan.
+      if (isSuperAdmin && isApprove && isAfterSalesRecommendingReject) {
         const finalRejectNote =
           body.adminNotes?.trim() ||
           body.rejectionReason?.trim() ||
@@ -490,8 +490,12 @@ export async function PUT(
         })
       }
 
-      // Jika Superadmin menolak rekomendasi After Sales (mengembalikan tiket ke After Sales untuk ditinjau ulang)
-      if (isSuperAdmin && !isApprove) {
+      // Jika Superadmin menolak usulan After Sales (mengembalikan tiket ke After Sales untuk ditinjau ulang):
+      // Tiket TIDAK berhenti/batal, melainkan dikembalikan ke status IN_REVIEW dan opsi awal After Sales aktif kembali!
+      if (
+        (isSuperAdmin && !isApprove) ||
+        body.action === 'REOPEN_TO_AFTER_SALES'
+      ) {
         const rejectReason = (
           body.rejectionReason ||
           body.adminNotes ||
@@ -504,6 +508,7 @@ export async function PUT(
             status: 'IN_REVIEW',
             storeResponse: `[Dikembalikan Superadmin ke After Sales] ${rejectReason}`,
             qcStatus: 'NEEDS_REVISION',
+            resolvedAt: null,
           },
           include: {
             order: true,

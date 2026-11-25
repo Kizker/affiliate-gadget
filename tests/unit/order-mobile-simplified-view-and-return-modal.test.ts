@@ -32,10 +32,10 @@ describe('Mobile Order Detail & Return Modal Simplified Layout Suite', () => {
     )
     const content = fs.readFileSync(filePath, 'utf-8')
 
-    // Card 1: Identitas Pesanan
-    expect(content).toContain('No. Pesanan')
+    // Card 1: Status Pesanan & Waktu Transaksi (Tanpa nomor pesanan terlipat & tanpa salin)
+    expect(content).toContain('Status Pesanan')
     expect(content).toContain('Waktu Transaksi')
-    expect(content).toContain('Salin')
+    expect(content).not.toContain('No. Pesanan')
 
     // Card 2: Produk Dipesan
     expect(content).toContain('PRODUK DIPESAN')
