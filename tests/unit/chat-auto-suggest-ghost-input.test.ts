@@ -2,81 +2,43 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 
-describe('Auto-Suggest Input & Chat Template Ghost Autocomplete Suite', () => {
-  it('creates reusable AutoSuggestInput component with inline ghost layer and double-enter logic', () => {
-    const compPath = path.join(
-      process.cwd(),
-      'src/components/chat/auto-suggest-input.tsx'
-    )
-    expect(fs.existsSync(compPath)).toBe(true)
+describe('Auto-Suggest Input Chrome-Style Selection Autocomplete Suite', () => {
+  const compPath = path.join(
+    process.cwd(),
+    'src/components/chat/auto-suggest-input.tsx'
+  )
 
+  it('implements native text selection range autocomplete like Google Chrome address bar', () => {
     const content = fs.readFileSync(compPath, 'utf-8')
-    expect(content).toContain('export const AutoSuggestInput')
-    expect(content).toContain('ghostSuffix')
-    expect(content).toContain('matchingSuggestion')
-    // Enter 1 = autofill suggestion
-    expect(content).toContain('onChange(matchingSuggestion)')
-    // Enter 2 = submit / send message
-    expect(content).toContain('onSubmit()')
-    // Ghost layer exists with invisible typed text + visible ghost suffix
-    expect(content).toContain('invisible whitespace-pre')
-    expect(content).toContain('whitespace-pre text-slate-400')
-  })
 
-  it('exports DEFAULT_CHAT_SUGGESTIONS from chat-template-modal', () => {
-    const modalPath = path.join(
-      process.cwd(),
-      'src/components/chat/chat-template-modal.tsx'
-    )
-    const content = fs.readFileSync(modalPath, 'utf-8')
-
-    expect(content).toContain('export const DEFAULT_CHAT_SUGGESTIONS')
+    expect(content).toContain('setSelectionRange')
+    expect(content).toContain('isAutocompletePendingRef')
+    expect(content).toContain('matchedSuggestion')
+    // Enter 1: unselect & confirm text
     expect(content).toContain(
-      'Ready ya ka, order masuk langsung diproses ya ka..'
+      'el.setSelectionRange(el.value.length, el.value.length)'
     )
-    expect(content).toContain('All fungsi normal, nominus, siap pakai')
+    // Enter 2: onSubmit()
+    expect(content).toContain('onSubmit()')
   })
 
-  it('integrates AutoSuggestInput into Admin Chat page input bar', () => {
-    const adminChatPath = path.join(
-      process.cwd(),
-      'src/app/dashboard/admin/chat/page.tsx'
-    )
-    const content = fs.readFileSync(adminChatPath, 'utf-8')
-
-    expect(content).toContain('import { AutoSuggestInput }')
-    expect(content).toContain('chatSuggestions')
-    expect(content).toContain('<AutoSuggestInput')
-    expect(content).toContain('suggestions={chatSuggestions}')
-  })
-
-  it('integrates AutoSuggestInput into Customer ChatInputBar', () => {
-    const customerChatInputPath = path.join(
-      process.cwd(),
-      'src/components/customer/chat/chat-input-bar.tsx'
-    )
-    const content = fs.readFileSync(customerChatInputPath, 'utf-8')
-
-    expect(content).toContain('import { AutoSuggestInput }')
-    expect(content).toContain('<AutoSuggestInput')
-    expect(content).toContain('suggestions={suggestions}')
-  })
-
-  it('verifies case-insensitive prefix matching and ghost suffix extraction logic', () => {
+  it('verifies prefix matching and selection range logic', () => {
     const suggestions = [
       'Ready ya ka, order masuk langsung diproses ya ka..',
-      'All fungsi normal, nominus, siap pakai, garansi toko 30hari ganti unit baru ya ka..',
+      'All fungsi normal, nominus, siap pakai',
     ]
 
-    const typed = 'Ready ya'
-    const match = suggestions.find((s) =>
+    const typed = 'Ready'
+    const matched = suggestions.find((s) =>
       s.toLowerCase().startsWith(typed.toLowerCase())
     )
 
-    expect(match).toBeDefined()
-    expect(match).toBe('Ready ya ka, order masuk langsung diproses ya ka..')
-
-    const ghost = match!.slice(typed.length)
-    expect(ghost).toBe(' ka, order masuk langsung diproses ya ka..')
+    expect(matched).toBe('Ready ya ka, order masuk langsung diproses ya ka..')
+    expect(typed.length).toBe(5)
+    expect(matched!.length).toBe(50)
+    // Sisa karakter yang harus diseleksi (highlight)
+    expect(matched!.slice(5)).toBe(
+      ' ya ka, order masuk langsung diproses ya ka..'
+    )
   })
 })

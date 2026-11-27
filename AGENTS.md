@@ -67,6 +67,13 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-27 (Implementasi Chrome-Style Text Selection Autocomplete pada Chat Input):**
+  - **1. Native Selection Autocomplete (Persis Omnibox / Address Bar Google Chrome):**
+    - Mengganti teknik overlay ghost text statis dengan teknik `input.setSelectionRange()`.
+    - Saat mengetik kata kunci (misal "Ready"), sistem langsung melengkapi kalimat secara utuh di dalam `<input>` dengan bagian sisa kalimat (" ya ka, order masuk langsung diproses ya ka..") berada dalam status **terseleksi/ter-highlight (blok biru)** persis seperti gambar address bar Chrome yang Anda tunjukkan.
+    - Menekan `Enter` (atau `Tab` / `Panah Kanan`) pertama akan mengonfirmasi seleksi (kursor langsung pindah ke ujung kalimat tanpa terkirim).
+    - Menekan `Enter` kedua akan langsung mengirimkan pesan ke chat.
+    - Menekan `Backspace` langsung menghapus highlight seleksi dan mengembalikan teks yang diketik secara natural.
 - **2026-11-27 (Deploy VPS Hostinger: Ghost Auto-Fill Suggestion Chat, Eliminasi Tombol Ambigu Dikirim, Auto-Fill Cek Resi Email, Sederhanakan Dropdown Komisi & Gateway, Eliminasi Peringatan Selesaikan Pesanan, Eliminasi Kartu Retur Palsu):**
   - **1. Ghost Auto-Fill Suggestion saat Mengetik Chat (`auto-suggest-input.tsx`, `admin/chat/page.tsx`, & `chat-input-bar.tsx`):**
     - Saat admin toko, superadmin, after sales, atau customer mengetik kata kunci template (misal "Ready ya"), bayang-bayang abu-abu transparan Google-style otomatis muncul melengkapi sisa kalimat di samping kursor.

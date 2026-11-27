@@ -1,6 +1,11 @@
 'use client'
 
-import React, { useRef, useImperativeHandle, forwardRef } from 'react'
+import React, {
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+  useEffect,
+} from 'react'
 
 export interface AutoSuggestInputHandle {
   focus: () => void
@@ -24,14 +29,17 @@ interface AutoSuggestInputProps {
 }
 
 /**
- * Reusable Auto-Suggest Input with Google-style Inline Ghost Autocomplete
+ * Native Text-Selection Autocomplete Input (Persis Seperti Address Bar Google Chrome / Edge)
  *
- * Behavior:
- * 1. User types characters (e.g. "Ready ya").
- * 2. Matches against suggestions list (case-insensitive prefix match).
- * 3. Shows gray ghost text immediately after typed text (" ka, order masuk langsung diproses ya ka..").
- * 4. Pressing Enter (or Tab / ArrowRight at end of text) auto-completes the input with the suggestion.
- * 5. Once completed, pressing Enter again sends / submits the message!
+ * Cara Kerja:
+ * 1. User mengetik "Ready" (atau "sh")
+ * 2. Sistem mencocokkan ke suggestion "Ready ya ka, order masuk langsung diproses ya ka.."
+ * 3. Nilai input menjadi teks lengkap: "Ready ya ka, order masuk langsung diproses ya ka.."
+ *    dengan bagian sisa (" ya ka, order masuk langsung diproses ya ka..") DALAM KEADAAN TERSELEKSI (HIGHLIGHT BIRU/ORANYE SEPERTI GOOGLE)
+ * 4. Jika user terus mengetik karakter baru: seleksi otomatis terhapus dan digantikan ketikan user
+ * 5. Jika user tekan Backspace/Delete: seleksi terhapus dan kembali ke teks asli yang diketik
+ * 6. Jika user tekan Enter pertama: seleksi diterima (unselect) sehingga teks komplit
+ * 7. Jika user tekan Enter kedua: pesan dikirimkan!
  */
 export const AutoSuggestInput = forwardRef<
   AutoSuggestInputHandle,
@@ -54,6 +62,8 @@ export const AutoSuggestInput = forwardRef<
   ref
 ) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const isAutocompletePendingRef = useRef(false)
+  const lastTypedTextRef = useRef(value)
 
   useImperativeHandle(ref, () => ({
     focus: () => inputRef.current?.focus(),
@@ -61,110 +71,123 @@ export const AutoSuggestInput = forwardRef<
     inputElement: inputRef.current,
   }))
 
-  // Calculate best matching suggestion
-  const trimmed = value.trimStart()
-  const matchingSuggestion = React.useMemo(() => {
-    if (!trimmed || trimmed.length < 2) return null
-    const lowerTyped = trimmed.toLowerCase()
-
-    // Cari suggestion yang diawali dengan teks yang diketik (prefix match)
-    const exactPrefix = suggestions.find((s) => {
-      const lowerS = s.trim().toLowerCase()
-      return lowerS.startsWith(lowerTyped) && lowerS !== lowerTyped
-    })
-    if (exactPrefix) return exactPrefix
-
-    // Fallback: pencocokan kata pertama / token
-    const firstWord = lowerTyped.split(/\s+/)[0]
-    if (firstWord.length >= 3) {
-      const wordMatch = suggestions.find((s) => {
-        const lowerS = s.trim().toLowerCase()
-        return lowerS.startsWith(firstWord) && lowerS !== lowerTyped
-      })
-      if (wordMatch && wordMatch.toLowerCase().startsWith(lowerTyped)) {
-        return wordMatch
-      }
-    }
-
-    return null
-  }, [trimmed, suggestions])
-
-  // Ghost suffix (teks bayang-bayang di belakang teks yang sedang diketik)
-  const ghostSuffix = React.useMemo(() => {
-    if (!matchingSuggestion || !trimmed) return ''
-    if (matchingSuggestion.toLowerCase().startsWith(trimmed.toLowerCase())) {
-      return matchingSuggestion.slice(trimmed.length)
-    }
-    return ''
-  }, [matchingSuggestion, trimmed])
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const el = inputRef.current
+    if (!el) return
+
+    const hasSelection =
+      el.selectionStart !== null &&
+      el.selectionEnd !== null &&
+      el.selectionStart < el.selectionEnd
+
     if (e.key === 'Enter' && !e.shiftKey) {
-      // Jika ada bayang-bayang saran (ghost suggestion) yang cocok:
-      // Enter pertama = PILIH & AUTOFILL suggestion ke input
-      if (ghostSuffix && matchingSuggestion) {
-        e.preventDefault()
-        onChange(matchingSuggestion)
+      e.preventDefault()
+
+      // Jika ada teks yang sedang terseleksi (sedang ada bayangan autofill):
+      // Enter pertama = konfirmasi pilihan (pindahkan kursor ke paling akhir tanpa kirim)
+      if (hasSelection && isAutocompletePendingRef.current) {
+        el.setSelectionRange(el.value.length, el.value.length)
+        isAutocompletePendingRef.current = false
+        lastTypedTextRef.current = el.value
         return
       }
 
-      // Enter kedua (atau tanpa suggestion) = SUBMIT / KIRIM PESAN!
-      e.preventDefault()
+      // Enter kedua (atau tanpa seleksi bayangan) = KIRIM PESAN!
+      isAutocompletePendingRef.current = false
       onSubmit()
       return
     }
 
-    // Tombol Tab atau Panah Kanan di ujung teks juga bisa menerima suggestion
+    // Tombol Tab atau Panah Kanan juga mengonfirmasi bayangan autofill
     if (
       (e.key === 'Tab' || e.key === 'ArrowRight') &&
-      ghostSuffix &&
-      matchingSuggestion
+      hasSelection &&
+      isAutocompletePendingRef.current
     ) {
-      const isAtEnd =
-        inputRef.current &&
-        inputRef.current.selectionStart === inputRef.current.value.length
-      if (e.key === 'Tab' || isAtEnd) {
-        e.preventDefault()
-        onChange(matchingSuggestion)
-      }
+      e.preventDefault()
+      el.setSelectionRange(el.value.length, el.value.length)
+      isAutocompletePendingRef.current = false
+      lastTypedTextRef.current = el.value
+      return
+    }
+
+    // Backspace saat ada bayangan seleksi: hapus bayangan seleksi dan biarkan ketikan asli
+    if (
+      e.key === 'Backspace' &&
+      hasSelection &&
+      isAutocompletePendingRef.current
+    ) {
+      e.preventDefault()
+      const typed = lastTypedTextRef.current
+      isAutocompletePendingRef.current = false
+      onChange(typed)
+      requestAnimationFrame(() => {
+        el.value = typed
+        el.setSelectionRange(typed.length, typed.length)
+      })
+      return
+    }
+
+    // Jika tombol karakter biasa ditekan saat ada seleksi:
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      isAutocompletePendingRef.current = false
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value
+    lastTypedTextRef.current = rawVal
+
+    // Cari suggestion yang cocok (case-insensitive prefix match)
+    const trimmed = rawVal.trimStart()
+    let matchedSuggestion: string | null = null
+
+    if (trimmed.length >= 2) {
+      const lowerTyped = trimmed.toLowerCase()
+      matchedSuggestion =
+        suggestions.find((s) => {
+          const lowerS = s.trim().toLowerCase()
+          return lowerS.startsWith(lowerTyped) && lowerS !== lowerTyped
+        }) || null
+    }
+
+    if (matchedSuggestion && inputRef.current) {
+      // Rekonstruksi kalimat lengkap dengan prefix spasi asli
+      const prefixSpaces = rawVal.match(/^\s*/)?.[0] || ''
+      const fullText = prefixSpaces + matchedSuggestion
+      const typedLength = rawVal.length
+
+      isAutocompletePendingRef.current = true
+      onChange(fullText)
+
+      // Seleksi teks bagian bayangan seperti Google Chrome Address Bar
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          inputRef.current.value = fullText
+          inputRef.current.setSelectionRange(typedLength, fullText.length)
+        }
+      })
+    } else {
+      isAutocompletePendingRef.current = false
+      onChange(rawVal)
     }
   }
 
   return (
     <div className={`relative flex items-center ${className}`}>
-      {/* Background Ghost Layer (Menampilkan bayangan abu-abu persis di posisi kursor/teks) */}
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 flex items-center overflow-hidden px-4 py-2 text-xs font-medium ${inputClassName}`}
-        style={{
-          border: '1px solid transparent',
-          background: 'transparent',
-        }}
-      >
-        {/* Bagian teks yang diketik dibuat transparan */}
-        <span className="invisible whitespace-pre">{value}</span>
-        {/* Bagian bayangan abu-abu Google-style */}
-        {ghostSuffix && (
-          <span className="whitespace-pre text-slate-400/80 dark:text-slate-500/80">
-            {ghostSuffix}
-          </span>
-        )}
-      </div>
-
-      {/* Foreground Real Input Element */}
       <input
         ref={inputRef}
         type="text"
         value={value}
         disabled={disabled}
         autoFocus={autoFocus}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
         onFocus={onFocus}
         onBlur={onBlur}
         aria-label={ariaLabel || placeholder}
         placeholder={placeholder}
-        className={`relative z-10 w-full rounded-full border border-slate-200 bg-transparent px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-transparent dark:border-slate-700 dark:text-white ${inputClassName}`}
+        className={`w-full rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:text-white ${inputClassName}`}
       />
     </div>
   )
