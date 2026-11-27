@@ -67,6 +67,28 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-28 (Resolusi 502 Bad Gateway Nginx VPS Hostinger via Penyesuaian Buffer Proxy):**
+  - **1. Analisa Akar Masalah (Root Cause):**
+    - Dari inspeksi log Nginx VPS (`/var/log/nginx/error.log`):
+      `upstream sent too big header while reading response header from upstream, request: "GET / HTTP/2.0"`
+    - Next.js mengirimkan header respons yang sangat panjang (kebijakan keamanan CSP yang ketat, permissions-policy, cookie sesi NextAuth, dan tag `link: rel=preload`). Ukuran header tersebut melebihi kapasitas buffer bawaan Nginx (4KB–8KB) sehingga Nginx menolak meneruskannya dan memotong koneksi dengan status **502 Bad Gateway**.
+  - **2. Solusi Konfigurasi Nginx (`nginx/nginx.conf`):**
+    - Menambahkan konfigurasi buffer proxy di blok `http` dan server utama `affiliategadget.id`:
+      ```nginx
+      proxy_buffer_size 128k;
+      proxy_buffers 4 256k;
+      proxy_busy_buffers_size 256k;
+      ```
+    - Memungkinkan Nginx menampung header respons besar dari upstream Node.js / Next.js tanpa hambatan.
+  - **3. Verifikasi Live VPS:**
+    - Nginx di-restart dan seluruh endpoint publik diverifikasi langsung via HTTPS:
+      - `https://affiliategadget.id/` -> **200 OK**
+      - `https://affiliategadget.id/gadget` -> **200 OK**
+      - `https://affiliategadget.id/toko` -> **200 OK**
+      - `https://affiliategadget.id/servis` -> **200 OK**
+      - `https://affiliategadget.id/resi` -> **200 OK**
+      - `https://affiliategadget.id/login` -> **200 OK**
+    - Layanan kembali normal 100%.
 - **2026-11-27 (Implementasi Chrome-Style Text Selection Autocomplete pada Chat Input):**
   - **1. Native Selection Autocomplete (Persis Omnibox / Address Bar Google Chrome):**
     - Mengganti teknik overlay ghost text statis dengan teknik `input.setSelectionRange()`.
