@@ -449,12 +449,12 @@ export default function EditStorePage() {
                   Kontak Saluran Pelayanan CS
                 </h2>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                  Nomor telepon toko dan WhatsApp CS untuk pemesanan/konsultasi
+                  Nomor telepon resmi toko untuk layanan operasional & kurir
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3.5">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Nomor Telepon Toko <span className="text-rose-500">*</span>
@@ -464,24 +464,14 @@ export default function EditStorePage() {
                   required
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
+                    setFormData({
+                      ...formData,
+                      phone: e.target.value,
+                      whatsapp: e.target.value,
+                    })
                   }
                   className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
-                  placeholder="021-63859988"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nomor WhatsApp CS / Sales
-                </label>
-                <input
-                  type="tel"
-                  value={formData.whatsapp}
-                  onChange={(e) =>
-                    setFormData({ ...formData, whatsapp: e.target.value })
-                  }
-                  className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
-                  placeholder="6281288997701"
+                  placeholder="081288997701"
                 />
               </div>
             </div>

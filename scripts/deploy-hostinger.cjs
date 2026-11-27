@@ -55,7 +55,7 @@ async function main() {
 
       // 2. Build app container and ws-server
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose build app ws-server')
-      await runRemoteCommand('cd /opt/affiliate-gadget && docker compose up -d app ws-server')
+      await runRemoteCommand('cd /opt/affiliate-gadget && docker compose up -d --force-recreate app ws-server')
 
       // 3. Restart nginx to refresh upstream IPs
       await runRemoteCommand('cd /opt/affiliate-gadget && docker compose restart nginx')

@@ -693,7 +693,7 @@ export default function StoreAdminOnboardingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Nomor Telepon Toko <span className="text-rose-500">*</span>
@@ -702,23 +702,14 @@ export default function StoreAdminOnboardingPage() {
                   type="text"
                   required
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="Contoh: 081288997701"
-                  className="w-full rounded-xl border border-slate-200/90 bg-slate-50/60 px-3.5 py-2.5 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Nomor WhatsApp Sales
-                </label>
-                <input
-                  type="text"
-                  value={form.whatsapp}
                   onChange={(e) =>
-                    setForm({ ...form, whatsapp: e.target.value })
+                    setForm({
+                      ...form,
+                      phone: e.target.value,
+                      whatsapp: e.target.value,
+                    })
                   }
-                  placeholder="Contoh: 6281288997701"
+                  placeholder="Contoh: 081288997701"
                   className="w-full rounded-xl border border-slate-200/90 bg-slate-50/60 px-3.5 py-2.5 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
@@ -736,7 +727,7 @@ export default function StoreAdminOnboardingPage() {
                 />
               </div>
 
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-2">
                 <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-800/40 sm:grid-cols-2">
                   <div>
                     <p className="mb-2 text-xs font-bold text-slate-700 dark:text-slate-300">
