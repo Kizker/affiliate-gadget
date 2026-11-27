@@ -1,10 +1,33 @@
 import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 import {
   validateBankAccountFormat,
   resolveBankSpec,
 } from '@/lib/bank-validation'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
-describe('Bank Account Validation Engine Suite', () => {
+describe('Bank Account Validation & Phone Normalization Suite', () => {
+  it('0. Menormalisasi berbagai format nomor HP (+62 878-2732-3427, 628..., 878...) menjadi 087827323427', () => {
+    expect(normalizeToLocalPhone('+62 878-2732-3427')).toBe('087827323427')
+    expect(normalizeToLocalPhone('6287827323427')).toBe('087827323427')
+    expect(normalizeToLocalPhone('+62 0878-2732-3427')).toBe('087827323427')
+    expect(normalizeToLocalPhone('0878-2732-3427')).toBe('087827323427')
+    expect(normalizeToLocalPhone('87827323427')).toBe('087827323427')
+
+    const etalaseModalContent = fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        'src/components/admin/etalase-form-modal.tsx'
+      ),
+      'utf-8'
+    )
+    expect(etalaseModalContent).toContain("'Buat Etalase Toko Baru'")
+    expect(etalaseModalContent).not.toContain(
+      'Buat Etalase Toko Baru (Ala Shopee)'
+    )
+  })
+
   it('1. Memvalidasi jumlah digit wajib sesuai masing-masing bank di Indonesia', () => {
     // Bank Mandiri wajib 13 digit
     expect(

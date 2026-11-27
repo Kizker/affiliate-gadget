@@ -269,6 +269,23 @@ export function resolveStorePageContent(
     )
     if (selectedHero) {
       topFlagship = selectedHero
+      // Jika produk hero berada di dalam etalase, gunakan produk aslinya (bukan etalase/cover)
+      // supaya link, harga, varian, dan foto hero mengikuti produk yang dipilih admin.
+      if (
+        (selectedHero.id !== store.heroProductId || selectedHero.isEtalase) &&
+        Array.isArray(selectedHero.etalaseItems)
+      ) {
+        const heroItem = selectedHero.etalaseItems.find(
+          (item: any) => item.productId === store.heroProductId
+        )
+        if (heroItem?.product) {
+          topFlagship = {
+            ...selectedHero,
+            ...heroItem.product,
+            id: heroItem.productId,
+          }
+        }
+      }
     }
   }
 
@@ -286,6 +303,24 @@ export function resolveStorePageContent(
               (item: any) => item.productId === store.campaignProductId
             ))
       ) || null
+
+    if (
+      campaignProduct &&
+      ((campaignProduct as any).id !== store.campaignProductId ||
+        (campaignProduct as any).isEtalase) &&
+      Array.isArray((campaignProduct as any).etalaseItems)
+    ) {
+      const campItem = (campaignProduct as any).etalaseItems.find(
+        (item: any) => item.productId === store.campaignProductId
+      )
+      if (campItem?.product) {
+        campaignProduct = {
+          ...(campaignProduct as any),
+          ...campItem.product,
+          id: campItem.productId,
+        }
+      }
+    }
   }
 
   // 1. Hero Content

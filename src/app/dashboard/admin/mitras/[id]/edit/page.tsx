@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 interface StoreDetail {
   id: string
@@ -461,15 +462,17 @@ export default function EditStorePage() {
                 </label>
                 <input
                   type="tel"
+                  inputMode="tel"
                   required
                   value={formData.phone}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const norm = normalizeToLocalPhone(e.target.value)
                     setFormData({
                       ...formData,
-                      phone: e.target.value,
-                      whatsapp: e.target.value,
+                      phone: norm,
+                      whatsapp: norm,
                     })
-                  }
+                  }}
                   className="dark:focus:bg-slate-850 shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/50 px-3.5 py-2 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-slate-900 focus:bg-white dark:border-slate-700/80 dark:bg-slate-800/50 dark:text-white dark:focus:border-slate-400"
                   placeholder="081288997701"
                 />

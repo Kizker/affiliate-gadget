@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 interface CreateUserModalProps {
   isOpen: boolean
@@ -198,9 +199,13 @@ export default function CreateUserModal({
                 <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="tel"
+                  inputMode="tel"
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
+                    setFormData({
+                      ...formData,
+                      phone: normalizeToLocalPhone(e.target.value),
+                    })
                   }
                   className="shadow-2xs w-full rounded-xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-9 pr-3.5 text-xs font-medium text-slate-900 placeholder-slate-400 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-orange-400"
                   placeholder="081234567890"

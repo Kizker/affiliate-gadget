@@ -19,6 +19,7 @@ import {
 import Link from 'next/link'
 import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 interface Service {
   name: string
@@ -388,9 +389,13 @@ export default function CreateMitraPage() {
                 </label>
                 <input
                   type="tel"
+                  inputMode="tel"
                   value={newUser.phone}
                   onChange={(e) =>
-                    setNewUser({ ...newUser, phone: e.target.value })
+                    setNewUser({
+                      ...newUser,
+                      phone: normalizeToLocalPhone(e.target.value),
+                    })
                   }
                   className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                   placeholder="081234567890"
@@ -644,12 +649,16 @@ export default function CreateMitraPage() {
                   <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   value={profile.phone}
                   onChange={(e) =>
-                    setProfile({ ...profile, phone: e.target.value })
+                    setProfile({
+                      ...profile,
+                      phone: normalizeToLocalPhone(e.target.value),
+                    })
                   }
-                  placeholder="+62 812-xxxx-xxxx"
+                  placeholder="0812xxxxxxxx"
                   className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>

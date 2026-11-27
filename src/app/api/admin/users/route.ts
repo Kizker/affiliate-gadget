@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { UserRole, Prisma } from '@prisma/client'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -127,7 +128,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, email, password, phone, role } = body
+    const { name, email, password, phone: rawPhone, role } = body
+    const phone = rawPhone ? normalizeToLocalPhone(rawPhone) || null : null
 
     // Validation
     if (!name || !email || !password || !role) {

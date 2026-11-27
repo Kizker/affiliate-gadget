@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ImageUpload from '@/components/upload/image-upload'
+import { normalizeToLocalPhone } from '@/lib/utils'
 import MultiImageUpload from '@/components/upload/multi-image-upload'
 import AddressMapPicker, {
   GeocodeAddressData,
@@ -433,8 +434,8 @@ export default function MitraProfileEdit() {
             mapsUrl: data.mapsUrl || '',
             latitude: data.latitude || undefined,
             longitude: data.longitude || undefined,
-            phone: data.phone || '',
-            whatsapp: data.whatsapp || data.phone || '',
+            phone: normalizeToLocalPhone(data.phone || ''),
+            whatsapp: normalizeToLocalPhone(data.whatsapp || data.phone || ''),
             email: data.email || '',
             website: data.website || '',
             banner: data.banner || '',
@@ -1497,12 +1498,16 @@ export default function MitraProfileEdit() {
                     <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="tel"
                     value={profile.phone}
                     onChange={(e) =>
-                      setProfile({ ...profile, phone: e.target.value })
+                      setProfile({
+                        ...profile,
+                        phone: normalizeToLocalPhone(e.target.value),
+                      })
                     }
-                    placeholder="021-xxxx-xxxx / 0812-xxxx-xxxx"
+                    placeholder="0812xxxxxxxx"
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>
@@ -1513,12 +1518,16 @@ export default function MitraProfileEdit() {
                     <span>Nomor WhatsApp Resmi</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="tel"
                     value={profile.whatsapp}
                     onChange={(e) =>
-                      setProfile({ ...profile, whatsapp: e.target.value })
+                      setProfile({
+                        ...profile,
+                        whatsapp: normalizeToLocalPhone(e.target.value),
+                      })
                     }
-                    placeholder="0812-xxxx-xxxx (Untuk chat konsultasi)"
+                    placeholder="0812xxxxxxxx (Untuk chat konsultasi)"
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                   />
                 </div>

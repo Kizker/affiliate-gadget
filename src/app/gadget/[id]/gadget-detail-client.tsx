@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { RichText } from '@/components/ui/rich-text'
 import { Navbar } from '@/components/layouts/navbar'
 import { Footer } from '@/components/layouts/footer'
 import { useCartStore } from '@/lib/store/cart-store'
@@ -101,6 +102,27 @@ export default function GadgetDetailClient({
     ) {
       return null
     }
+
+    // 1. Cek jika URL membawa parameter variant, cari item etalase mana yang memiliki variant tersebut!
+    const requestedVariantId =
+      searchParams?.get('variant') || searchParams?.get('variantId')
+    if (requestedVariantId) {
+      const byVariant = initialProduct.etalaseItems.find((i: any) =>
+        i.product?.variants?.some((v: any) => v.id === requestedVariantId)
+      )
+      if (byVariant) return byVariant
+    }
+
+    // 2. Cek jika URL membawa parameter product / productId
+    const requestedProductId =
+      searchParams?.get('product') || searchParams?.get('productId')
+    if (requestedProductId) {
+      const byProd = initialProduct.etalaseItems.find(
+        (i: any) => i.productId === requestedProductId
+      )
+      if (byProd) return byProd
+    }
+
     if (initialProduct.activeProductId) {
       const byActive = initialProduct.etalaseItems.find(
         (i: any) => i.productId === initialProduct.activeProductId
@@ -111,7 +133,7 @@ export default function GadgetDetailClient({
       (i: any) => (Number(i.totalStock) || 0) > 0
     )
     return firstWithStock || initialProduct.etalaseItems[0]
-  }, [initialProduct])
+  }, [initialProduct, searchParams])
 
   const defaultVariant = useMemo(() => {
     const targetProd = defaultEtalaseItem?.product || initialProduct
@@ -300,7 +322,27 @@ export default function GadgetDetailClient({
         setProduct(d)
         let chosenEtalaseItem: any = null
         if (Array.isArray(d.etalaseItems) && d.etalaseItems.length > 0) {
+          const requestedVariantId =
+            searchParams?.get('variant') || searchParams?.get('variantId')
+          const byVariant = requestedVariantId
+            ? d.etalaseItems.find((i: any) =>
+                i.product?.variants?.some(
+                  (v: any) => v.id === requestedVariantId
+                )
+              )
+            : null
+
+          const requestedProductId =
+            searchParams?.get('product') || searchParams?.get('productId')
+          const byProd = requestedProductId
+            ? d.etalaseItems.find(
+                (i: any) => i.productId === requestedProductId
+              )
+            : null
+
           chosenEtalaseItem =
+            byVariant ||
+            byProd ||
             d.etalaseItems.find(
               (i: any) =>
                 i.productId === d.activeProductId &&
@@ -1404,22 +1446,38 @@ export default function GadgetDetailClient({
                               : ''
                           }`}
                         >
-                          <p className="whitespace-pre-line">
-                            {product.description ||
-                              'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'}
-                          </p>
+                          <RichText
+                            text={
+                              activeUnit?.description ||
+                              product.description ||
+                              'Unit smartphone second original bergaransi toko fisik 30 hari tukar unit. Seluruh unit telah melalui uji fungsi komprehensif teknisi (layar, kamera, baterai, sinyal & IMEI bebas blokir), dan dilengkapi bonus aksesoris 3-in-1.'
+                            }
+                          />
                         </div>
 
                         {/* Subtle fade overlay when collapsed */}
                         {!isDesktopDescExpanded &&
-                          ((product.description || '').length > 200 ||
-                            (product.description || '').includes('\n')) && (
+                          ((
+                            activeUnit?.description ||
+                            product.description ||
+                            ''
+                          ).length > 200 ||
+                            (
+                              activeUnit?.description ||
+                              product.description ||
+                              ''
+                            ).includes('\n')) && (
                             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/80" />
                           )}
                       </div>
 
-                      {((product.description || '').length > 200 ||
-                        (product.description || '').includes('\n')) && (
+                      {((activeUnit?.description || product.description || '')
+                        .length > 200 ||
+                        (
+                          activeUnit?.description ||
+                          product.description ||
+                          ''
+                        ).includes('\n')) && (
                         <button
                           type="button"
                           onClick={() =>

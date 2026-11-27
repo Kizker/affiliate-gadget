@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react'
 import { registerSchema, type RegisterInput } from '@/lib/validations/auth'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 export function RegisterForm() {
   const router = useRouter()
@@ -50,7 +51,12 @@ export function RegisterForm() {
       // Redirect to login after successful registration
       router.push('/login?registered=true')
     } catch (err) {
-      if (err && typeof err === 'object' && 'errors' in err && Array.isArray((err as { errors?: Array<{ message?: string }> }).errors)) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'errors' in err &&
+        Array.isArray((err as { errors?: Array<{ message?: string }> }).errors)
+      ) {
         const errorObj = err as { errors: Array<{ message?: string }> }
         setError(errorObj.errors[0]?.message || 'Data tidak valid')
       } else {
@@ -116,9 +122,13 @@ export function RegisterForm() {
           <input
             id="phone"
             type="tel"
+            inputMode="tel"
             value={formData.phone}
             onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
+              setFormData({
+                ...formData,
+                phone: normalizeToLocalPhone(e.target.value),
+              })
             }
             className="w-full rounded-xl border border-gray-700 bg-gray-800/50 py-3 pl-12 pr-4 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-cyan-500"
             placeholder="08123456789"

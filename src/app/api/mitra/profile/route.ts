@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { invalidateMitraServiceDataCache } from '@/lib/mitra-service-data'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 // GET /api/mitra/profile - Get current user's mitra profile
 export async function GET() {
@@ -152,8 +153,9 @@ export async function POST(request: NextRequest) {
       address: body.address,
       city: body.city,
       province: body.province || 'DKI Jakarta',
-      phone: body.phone,
-      whatsapp: body.whatsapp || body.phone || null,
+      phone: normalizeToLocalPhone(body.phone),
+      whatsapp:
+        normalizeToLocalPhone(body.whatsapp || body.phone || '') || null,
       email: body.email || null,
       website: body.website || null,
       features: Array.isArray(body.features) ? body.features.slice(0, 10) : [],

@@ -1012,9 +1012,9 @@ export default function EditProductPage() {
                     </div>
                   </div>
 
-                  {/* Inputs Grid: Nama, SKU, RAM, Storage, Warna, Harga, Coret, Modal, Stok, Berat */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-10">
-                    <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
+                  {/* Inputs Grid: Baris 1 (Identitas & Spesifikasi) + Baris 2 (Harga, Modal, Stok & Berat) */}
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-12">
+                    <div className="sm:col-span-2 lg:col-span-4">
                       <CreatableCombobox
                         label="Nama Varian"
                         placeholder="e.g. 256GB - Natural Titanium"
@@ -1029,23 +1029,33 @@ export default function EditProductPage() {
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2">
                       <label className="mb-1 block text-[10px] font-bold text-slate-500 dark:text-slate-400">
                         Kode SKU
                       </label>
                       <input
                         type="text"
                         value={v.sku || ''}
-                        onChange={(e) =>
+                        onFocus={(e) => {
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
+                        }}
+                        onChange={(e) => {
                           updateVariant(i, 'sku', e.target.value)
-                        }
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
+                        }}
                         placeholder="e.g. SKU-256-NAT"
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        title="Kode SKU spesifik varian ini"
+                        className="h-9 w-full rounded-xl border border-slate-200 px-3 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        title={v.sku || 'Kode SKU spesifik varian ini'}
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2">
                       <CreatableCombobox
                         label="RAM"
                         placeholder="8GB"
@@ -1056,7 +1066,7 @@ export default function EditProductPage() {
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2">
                       <CreatableCombobox
                         label="Storage"
                         placeholder="256GB"
@@ -1080,7 +1090,7 @@ export default function EditProductPage() {
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2">
                       <CreatableCombobox
                         label="Warna"
                         placeholder="Natural Titanium"
@@ -1104,7 +1114,7 @@ export default function EditProductPage() {
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-3">
                       <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
                         Harga Jual <span className="text-rose-500">*</span>
                       </label>
@@ -1112,16 +1122,26 @@ export default function EditProductPage() {
                         type="text"
                         inputMode="numeric"
                         value={formatRupiahInput(v.price)}
+                        onFocus={(e) => {
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
+                        }}
                         onChange={(e) => {
                           const raw = e.target.value.replace(/\D/g, '')
                           updateVariant(i, 'price', raw)
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
                         }}
                         placeholder="18.999.000"
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className="h-9 w-full rounded-xl border border-slate-200 px-3 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-3">
                       <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
                         Harga Coret
                       </label>
@@ -1129,17 +1149,27 @@ export default function EditProductPage() {
                         type="text"
                         inputMode="numeric"
                         value={formatRupiahInput(v.originalPrice)}
+                        onFocus={(e) => {
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
+                        }}
                         onChange={(e) => {
                           const raw = e.target.value.replace(/\D/g, '')
                           updateVariant(i, 'originalPrice', raw)
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
                         }}
                         placeholder="21.999.000"
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className="h-9 w-full rounded-xl border border-slate-200 px-3 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         title="Harga coret pembanding spesifik varian"
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2">
                       <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
                         HPP Modal
                       </label>
@@ -1147,17 +1177,27 @@ export default function EditProductPage() {
                         type="text"
                         inputMode="numeric"
                         value={formatRupiahInput(v.costPrice)}
+                        onFocus={(e) => {
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
+                        }}
                         onChange={(e) => {
                           const raw = e.target.value.replace(/\D/g, '')
                           updateVariant(i, 'costPrice', raw)
+                          const el = e.currentTarget
+                          requestAnimationFrame(() => {
+                            el.scrollLeft = el.scrollWidth
+                          })
                         }}
                         placeholder="16.500.000"
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className="h-9 w-full rounded-xl border border-slate-200 px-3 text-xs font-medium outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         title="Modal / HPP varian"
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2">
                       <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
                         Stok <span className="text-rose-500">*</span>
                       </label>
@@ -1168,11 +1208,11 @@ export default function EditProductPage() {
                         onChange={(e) =>
                           updateVariant(i, 'stock', e.target.value)
                         }
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className="h-9 w-full rounded-xl border border-slate-200 px-3 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2">
                       <label className="mb-1 block truncate whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400">
                         Berat (gram)
                       </label>
@@ -1184,7 +1224,7 @@ export default function EditProductPage() {
                           updateVariant(i, 'weightGram', e.target.value)
                         }
                         placeholder="500"
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        className="h-9 w-full rounded-xl border border-slate-200 px-3 text-xs font-medium outline-none transition focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         title="Berat fisik varian dalam gram (isi 0 jika jasa/digital)"
                       />
                     </div>

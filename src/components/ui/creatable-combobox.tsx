@@ -183,26 +183,37 @@ export function CreatableCombobox({
           value={inputValue}
           required={required}
           placeholder={placeholder}
-          onFocus={() => {
+          onFocus={(e) => {
             setIsOpen(true)
             setHighlightedIndex(-1)
+            const el = e.currentTarget
+            requestAnimationFrame(() => {
+              el.scrollLeft = el.scrollWidth
+            })
           }}
           onChange={(e) => {
             setInputValue(e.target.value)
             setIsOpen(true)
             setHighlightedIndex(-1)
+            const el = e.currentTarget
+            requestAnimationFrame(() => {
+              el.scrollLeft = el.scrollWidth
+            })
           }}
           onKeyDown={handleKeyDown}
+          title={inputValue}
           className={`w-full font-medium text-slate-900 outline-none transition placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500 ${
             isSmall
-              ? 'h-9 rounded-xl border border-slate-200 bg-white px-3 pr-12 text-xs focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800'
-              : 'h-10 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 pr-14 text-xs font-medium focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900'
+              ? `h-9 rounded-xl border border-slate-200 bg-white px-3 ${isOpen ? 'pr-7' : 'pr-10'} text-xs focus:border-slate-900 dark:border-slate-700 dark:bg-slate-800`
+              : `h-10 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 ${isOpen ? 'pr-8' : 'pr-12'} text-xs font-medium focus:border-slate-900 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900`
           } ${disabled ? 'cursor-not-allowed bg-slate-100 opacity-50 dark:bg-slate-900' : ''} ${
-            isOpen ? 'border-slate-900 dark:border-slate-400' : ''
+            isOpen
+              ? 'border-slate-900 ring-2 ring-slate-900/10 dark:border-slate-400'
+              : ''
           }`}
         />
 
-        <div className="absolute right-2.5 flex items-center gap-1">
+        <div className="absolute right-1.5 flex items-center gap-0.5">
           {inputValue && !disabled && (
             <button
               type="button"
@@ -218,30 +229,32 @@ export function CreatableCombobox({
             </button>
           )}
 
-          <button
-            type="button"
-            tabIndex={-1}
-            disabled={disabled}
-            onClick={() => {
-              if (!disabled) {
-                setIsOpen(!isOpen)
-                if (!isOpen) inputRef.current?.focus()
-              }
-            }}
-            className="cursor-pointer rounded-full p-1 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
-          >
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                isOpen ? 'rotate-180 text-slate-900 dark:text-white' : ''
-              }`}
-            />
-          </button>
+          {!isOpen && (
+            <button
+              type="button"
+              tabIndex={-1}
+              disabled={disabled}
+              onClick={() => {
+                if (!disabled) {
+                  setIsOpen(!isOpen)
+                  if (!isOpen) inputRef.current?.focus()
+                }
+              }}
+              className="cursor-pointer rounded-full p-1 text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                  isOpen ? 'rotate-180 text-slate-900 dark:text-white' : ''
+                }`}
+              />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Dropdown Menu Popover */}
+      {/* Dropdown Menu Popover — Dynamic width so options are never truncated */}
       {isOpen && (
-        <div className="absolute left-0 right-0 z-50 mt-1.5 max-h-56 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-xl duration-150 animate-in fade-in zoom-in-95 dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute left-0 z-50 mt-1.5 max-h-56 w-max min-w-full max-w-[300px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-xl duration-150 animate-in fade-in zoom-in-95 dark:border-slate-700 dark:bg-slate-900">
           <ul
             ref={listRef}
             className="no-scrollbar max-h-52 space-y-0.5 overflow-y-auto text-xs"

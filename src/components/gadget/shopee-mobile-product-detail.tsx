@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { RichText } from '@/components/ui/rich-text'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
@@ -1037,10 +1038,14 @@ export function ShopeeMobileProductDetail({
             {isSpecsExpanded ? 'Tutup Detail' : 'Buka Detail'}
           </button>
         </div>
-        <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-          {product.description ||
-            'Ponsel fotografi legendaris quad-camera Leica 1-inch sensor dengan aperture variabel kontinu f/1.63-f/4.0. Dilengkapi Snapdragon 8 Gen 3, baterai 5000mAh, dan layar 120Hz WQHD+ AMOLED.'}
-        </p>
+        <RichText
+          className="text-xs leading-relaxed text-slate-600 dark:text-slate-300"
+          text={
+            selectedEtalaseItem?.product?.description ||
+            product.description ||
+            'Ponsel fotografi legendaris quad-camera Leica 1-inch sensor dengan aperture variabel kontinu f/1.63-f/4.0. Dilengkapi Snapdragon 8 Gen 3, baterai 5000mAh, dan layar 120Hz WQHD+ AMOLED.'
+          }
+        />
 
         {isSpecsExpanded && (
           <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-2.5 text-xs dark:border-slate-800">

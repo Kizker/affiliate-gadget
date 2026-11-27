@@ -359,11 +359,10 @@ export function EtalaseFormModal({
             <DialogTitle className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
               {editingEtalase
                 ? 'Atur Cover & Isi Etalase'
-                : 'Buat Etalase Toko Baru (Ala Shopee)'}
+                : 'Buat Etalase Toko Baru'}
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Gabungkan beberapa produk ke dalam 1 etalase pancingan, pilih
-              barang cover atau atur gambar, judul &amp; harga sendiri.
+            <DialogDescription className="sr-only">
+              Pengaturan etalase toko
             </DialogDescription>
           </div>
         </div>

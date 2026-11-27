@@ -24,6 +24,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import StoreDataForm from '@/components/mitra/store-data-form'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -131,7 +132,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: formData.name.trim(),
           email: formData.email.trim().toLowerCase(),
-          phone: formData.phone.trim() || undefined,
+          phone: normalizeToLocalPhone(formData.phone) || undefined,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
           role: formData.role,
@@ -666,11 +667,23 @@ export default function RegisterPage() {
                         id="phone"
                         name="phone"
                         type="tel"
+                        inputMode="tel"
                         autoComplete="tel"
                         value={formData.phone}
                         onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
+                          setFormData({
+                            ...formData,
+                            phone: normalizeToLocalPhone(e.target.value),
+                          })
                         }
+                        onBlur={() => {
+                          if (formData.phone) {
+                            setFormData({
+                              ...formData,
+                              phone: normalizeToLocalPhone(formData.phone),
+                            })
+                          }
+                        }}
                         placeholder="Contoh: 081234567890"
                         className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />

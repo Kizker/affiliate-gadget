@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'
 import { registerSchema } from '@/lib/validations/auth'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { sendVerificationEmail } from '@/lib/email'
-import { maskEmail } from '@/lib/utils'
+import { maskEmail, normalizeToLocalPhone } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,7 +49,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 4. Server-Side Input Validation via Zod
+    // 4. Normalize phone to local 08xxxx format before validation
+    if (body && typeof body.phone === 'string' && body.phone.trim()) {
+      body.phone = normalizeToLocalPhone(body.phone)
+    }
+
+    // 4b. Server-Side Input Validation via Zod
     const validatedFields = registerSchema.safeParse(body)
     if (!validatedFields.success) {
       const firstErrorMessage =
@@ -64,7 +69,7 @@ export async function POST(req: NextRequest) {
     const normalizedEmail = email.trim().toLowerCase()
     const sanitizedName = name.trim()
     const formattedPhone =
-      phone && phone.trim().length > 0 ? phone.trim() : null
+      phone && phone.trim().length > 0 ? normalizeToLocalPhone(phone) : null
 
     // 6. Rate Limit per Email: Max 3 registration attempts per email per 1 hour
     const emailRateLimit = await checkRateLimit(

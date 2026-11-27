@@ -40,7 +40,7 @@ export function maskEmail(email: string): string {
 }
 
 /**
- * Mengubah format nomor telepon internasional / ber-strip (+62 878-2732-3427 / 62878...)
+ * Mengubah format nomor telepon internasional / ber-strip (+62 878-2732-3427 / 62878... / 878...)
  * menjadi format lokal bersih berawalan "08xxxxxx"
  */
 export function normalizeToLocalPhone(raw: string | null | undefined): string {
@@ -49,11 +49,15 @@ export function normalizeToLocalPhone(raw: string | null | undefined): string {
     .trim()
     .replace(/[^\d+]/g, '')
   if (cleaned.startsWith('+62')) {
-    cleaned = '0' + cleaned.slice(3)
+    const rest = cleaned.slice(3).replace(/^0+/, '')
+    cleaned = rest ? '0' + rest : '0'
   } else if (cleaned.startsWith('62')) {
-    cleaned = '0' + cleaned.slice(2)
+    const rest = cleaned.slice(2).replace(/^0+/, '')
+    cleaned = rest ? '0' + rest : '0'
   } else if (cleaned.startsWith('+')) {
     cleaned = cleaned.slice(1)
+  } else if (cleaned.startsWith('8') && cleaned.length >= 2) {
+    cleaned = '0' + cleaned
   }
   return cleaned.replace(/\D/g, '')
 }

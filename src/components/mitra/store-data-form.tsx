@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { StoreDataInput } from '@/lib/validations/auth'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 interface StoreDataFormProps {
   initialData?: {
@@ -225,12 +226,16 @@ export default function StoreDataForm({
             <div className="relative flex items-center">
               <input
                 type="tel"
+                inputMode="tel"
                 required
                 value={formData.phone}
                 onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
+                  setFormData({
+                    ...formData,
+                    phone: normalizeToLocalPhone(e.target.value),
+                  })
                 }
-                placeholder="022-1234567 atau 081234..."
+                placeholder="Contoh: 081234567890"
                 className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/70 py-2.5 pl-10 pr-4 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
               <Phone className="pointer-events-none absolute left-3.5 h-4 w-4 text-slate-400" />

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 import { DayOfWeek } from '@prisma/client'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -291,8 +292,10 @@ export async function POST(req: NextRequest) {
             longitude !== undefined && longitude !== null && longitude !== ''
               ? Number(longitude)
               : null,
-          phone: String(phone).trim(),
-          whatsapp: whatsapp ? String(whatsapp).trim() : String(phone).trim(),
+          phone: normalizeToLocalPhone(String(phone)),
+          whatsapp: normalizeToLocalPhone(
+            whatsapp ? String(whatsapp) : String(phone)
+          ),
           email: email ? String(email).trim() : user.email,
           logo: logo || null,
           banner: banner || null,

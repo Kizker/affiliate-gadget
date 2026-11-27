@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react'
 
 import { usePageGuard } from '@/hooks/use-page-guard'
 import { validateAndCompressImage } from '@/lib/media-upload-client'
+import { normalizeToLocalPhone } from '@/lib/utils'
 import {
   User,
   Phone,
@@ -198,7 +199,7 @@ export default function AdminSettingsPage() {
 
         setUserForm({
           name: user.name || '',
-          phone: user.phone || '',
+          phone: normalizeToLocalPhone(user.phone || ''),
           image: user.image || '',
           email: user.email || '',
           currentPassword: '',
@@ -252,8 +253,10 @@ export default function AdminSettingsPage() {
             city: store.city || 'Jakarta Pusat',
             province: store.province || 'DKI Jakarta',
             postalCode: store.postalCode || '',
-            phone: store.phone || '',
-            whatsapp: store.whatsapp || '',
+            phone: normalizeToLocalPhone(store.phone || ''),
+            whatsapp: normalizeToLocalPhone(
+              store.whatsapp || store.phone || ''
+            ),
             bankName: primaryBank.bankName || 'Bank Central Asia (BCA)',
             accountNumber: primaryBank.accountNumber || '5270918234',
             accountName:
@@ -923,11 +926,17 @@ export default function AdminSettingsPage() {
                   Nomor Telepon Toko *
                 </label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   value={storeForm.whatsapp}
-                  onChange={(e) =>
-                    setStoreForm({ ...storeForm, whatsapp: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const norm = normalizeToLocalPhone(e.target.value)
+                    setStoreForm({
+                      ...storeForm,
+                      whatsapp: norm,
+                      phone: norm,
+                    })
+                  }}
                   className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2 font-medium outline-none focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800"
                 />
               </div>
@@ -1311,14 +1320,17 @@ export default function AdminSettingsPage() {
                           Nomor Telepon Toko *
                         </label>
                         <input
-                          type="text"
+                          type="tel"
+                          inputMode="tel"
                           value={storeForm.whatsapp}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const norm = normalizeToLocalPhone(e.target.value)
                             setStoreForm({
                               ...storeForm,
-                              whatsapp: e.target.value,
+                              whatsapp: norm,
+                              phone: norm,
                             })
-                          }
+                          }}
                           placeholder="misal: 081288997701"
                           className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           required
@@ -2658,10 +2670,14 @@ export default function AdminSettingsPage() {
                   <div className="relative">
                     <Phone className="absolute left-3.5 top-3 h-3.5 w-3.5 text-slate-400" />
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="tel"
                       value={userForm.phone}
                       onChange={(e) =>
-                        setUserForm({ ...userForm, phone: e.target.value })
+                        setUserForm({
+                          ...userForm,
+                          phone: normalizeToLocalPhone(e.target.value),
+                        })
                       }
                       placeholder="081288997701"
                       className="w-full rounded-2xl border border-slate-200/90 bg-white py-2.5 pl-9 pr-4 font-medium outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"

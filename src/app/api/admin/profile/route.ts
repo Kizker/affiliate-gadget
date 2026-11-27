@@ -4,6 +4,7 @@ import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
 import { isAdminStaffRole } from '@/lib/dashboard-utils'
+import { normalizeToLocalPhone } from '@/lib/utils'
 
 // GET - Fetch admin & store profile
 export async function GET() {
@@ -214,7 +215,8 @@ export async function PATCH(request: NextRequest) {
     // Sanitasi nomor telepon agar tidak melanggar unique constraint
     let sanitizedPhone: string | null | undefined = undefined
     if (phone !== undefined) {
-      const trimmed = typeof phone === 'string' ? phone.trim() : null
+      const trimmed =
+        typeof phone === 'string' ? normalizeToLocalPhone(phone) : null
       sanitizedPhone = trimmed && trimmed.length > 0 ? trimmed : null
     }
 
@@ -466,9 +468,13 @@ export async function PATCH(request: NextRequest) {
             ...(postalCode !== undefined && {
               postalCode: postalCode ? String(postalCode).trim() : null,
             }),
-            ...(storePhone && { phone: storePhone }),
+            ...(storePhone && {
+              phone: normalizeToLocalPhone(String(storePhone)),
+            }),
             ...(whatsapp !== undefined && {
-              whatsapp: whatsapp ? String(whatsapp).trim() : null,
+              whatsapp: whatsapp
+                ? normalizeToLocalPhone(String(whatsapp))
+                : null,
             }),
             ...(isPkp !== undefined && { isPkp: Boolean(isPkp) }),
             ...(vatRate !== undefined && {
