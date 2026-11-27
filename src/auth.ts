@@ -260,13 +260,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.mitraStatus = (user as any).mitraStatus || null
       }
 
-      // If token is missing role or storeId (only for store roles), check if database now has it linked
-      if (
-        token.id &&
-        (!token.role ||
-          (!token.storeId &&
-            (token.role === 'STORE_ADMIN' || token.role === 'STORE_SALES')))
-      ) {
+      // Always sync role, storeId, and mitraStatus from database so Superadmin role/status updates apply immediately
+      if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
@@ -279,12 +274,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           })
           if (dbUser) {
             token.role = dbUser.role || 'CUSTOMER'
-            if (dbUser.storeId) {
-              token.storeId = dbUser.storeId
-            }
-            if (dbUser.mitraStatus) {
-              token.mitraStatus = dbUser.mitraStatus
-            }
+            token.storeId = dbUser.storeId || null
+            token.storeSlug = dbUser.store?.slug || null
+            token.mitraStatus = dbUser.mitraStatus || null
           }
         } catch {
           // ignore error to avoid blocking jwt

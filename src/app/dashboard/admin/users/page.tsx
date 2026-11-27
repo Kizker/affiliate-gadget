@@ -162,7 +162,7 @@ export default function UsersPage() {
 
   // Helper to determine if a user account is effectively active
   const isUserActive = (user: User) => {
-    if (user.role === 'MITRA') {
+    if (user.role === 'MITRA' || user.role === 'STORE_ADMIN') {
       return Boolean(user.isActive && user.mitraStatus === 'APPROVED')
     }
     return Boolean(user.isActive)
@@ -178,9 +178,11 @@ export default function UsersPage() {
     const currentlyActive = isUserActive(user)
     const newStatus = !currentlyActive
 
-    const payload: { isActive: boolean; mitraStatus?: string } = {
-      isActive: newStatus,
-    }
+    const payload: { isActive: boolean; mitraStatus?: string; role?: string } =
+      {
+        isActive: newStatus,
+        role: user.role,
+      }
 
     // Jika mengaktifkan akun mitra / admin toko, otomatis setujui status kemitraannya
     if (user.role === 'MITRA' && newStatus) {

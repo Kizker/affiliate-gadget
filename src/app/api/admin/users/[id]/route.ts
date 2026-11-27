@@ -105,8 +105,8 @@ export async function PATCH(
       } catch {}
     }
 
-    // If mitraStatus is being updated explicitly, also update Mitra table and user role
-    if (mitraStatus !== undefined) {
+    // If mitraStatus is being updated explicitly AND targetRole is MITRA, update Mitra table and user role
+    if (mitraStatus !== undefined && targetRole === 'MITRA') {
       const isApproved = mitraStatus === 'APPROVED'
       await prisma.mitra.updateMany({
         where: { userId: id },
@@ -125,11 +125,18 @@ export async function PATCH(
       }
     }
 
-    // Otomatis sinkronisasi toko jika user diangkat menjadi STORE_ADMIN
+    // Otomatis sinkronisasi toko jika user adalah atau diangkat menjadi STORE_ADMIN
     if (targetRole === 'STORE_ADMIN') {
-      if (isActive === true) {
+      updateData.role = 'STORE_ADMIN'
+      if (isActive === true || mitraStatus === 'APPROVED') {
         updateData.mitraStatus = 'APPROVED'
+        updateData.isActive = true
+      } else if (mitraStatus === 'REJECTED') {
+        updateData.mitraStatus = 'REJECTED'
+        updateData.isActive = false
       }
+      // Hapus profil Mitra Servis jika sebelumnya sempat terdaftar sebagai MITRA agar tidak nyangkut ke form Mitra Servis
+      await prisma.mitra.deleteMany({ where: { userId: id } }).catch(() => {})
       const fullUser = await prisma.user.findUnique({
         where: { id },
         select: { storeId: true, email: true, name: true },

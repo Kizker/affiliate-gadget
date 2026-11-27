@@ -20,10 +20,12 @@ describe('Admin Users Mitra Activation & Nonaktif Lifecycle Suite', () => {
   const usersApiContent = fs.readFileSync(usersApiPath, 'utf-8')
   const registerApiContent = fs.readFileSync(registerApiPath, 'utf-8')
 
-  it('1. Di halaman Superadmin Kelola Pengguna, akun mitra yang belum di-acc (mitraStatus !== APPROVED) berstatus Nonaktif', () => {
-    // Helper isUserActive memeriksa mitraStatus APPROVED khusus untuk role MITRA
+  it('1. Di halaman Superadmin Kelola Pengguna, akun mitra/admin toko yang belum di-acc (mitraStatus !== APPROVED) berstatus Nonaktif', () => {
+    // Helper isUserActive memeriksa mitraStatus APPROVED untuk role MITRA dan STORE_ADMIN
     expect(usersPageContent).toContain('isUserActive')
-    expect(usersPageContent).toContain("if (user.role === 'MITRA')")
+    expect(usersPageContent).toContain(
+      "if (user.role === 'MITRA' || user.role === 'STORE_ADMIN')"
+    )
     expect(usersPageContent).toContain(
       "user.isActive && user.mitraStatus === 'APPROVED'"
     )
@@ -38,21 +40,23 @@ describe('Admin Users Mitra Activation & Nonaktif Lifecycle Suite', () => {
     )
   })
 
-  it('2. Ketika Superadmin menekan tombol Aktifkan pada akun mitra, payload menyertakan mitraStatus APPROVED', () => {
+  it('2. Ketika Superadmin menekan tombol Aktifkan pada akun mitra/admin toko, payload menyertakan mitraStatus APPROVED dan mempertahankan role asli', () => {
     expect(usersPageContent).toContain(
       "if (user.role === 'MITRA' && newStatus)"
     )
+    expect(usersPageContent).toContain(
+      "if (user.role === 'STORE_ADMIN' && newStatus)"
+    )
     expect(usersPageContent).toContain("payload.mitraStatus = 'APPROVED'")
+    expect(usersPageContent).toContain('role: user.role')
   })
 
-  it('3. API PATCH /api/admin/users/[id] otomatis meng-acc pendaftaran mitra saat akun diaktifkan (isActive: true)', () => {
-    expect(usersApiContent).toContain("if (targetRole === 'MITRA')")
+  it('3. API PATCH /api/admin/users/[id] TIDAK mengubah role STORE_ADMIN menjadi MITRA saat mitraStatus APPROVED dikirim', () => {
     expect(usersApiContent).toContain(
-      "if (isActive === true || (role === 'MITRA' && isActive !== false))"
+      "if (mitraStatus !== undefined && targetRole === 'MITRA')"
     )
-    expect(usersApiContent).toContain("updateData.mitraStatus = 'APPROVED'")
-    expect(usersApiContent).toContain('isApproved: true')
-    expect(usersApiContent).toContain('isActive: true')
+    expect(usersApiContent).toContain("if (targetRole === 'STORE_ADMIN')")
+    expect(usersApiContent).toContain("updateData.role = 'STORE_ADMIN'")
   })
 
   it('4. Pendaftaran mitra baru secara otomatis berstatus nonaktif (isActive: false) hingga diaktifkan Superadmin', () => {

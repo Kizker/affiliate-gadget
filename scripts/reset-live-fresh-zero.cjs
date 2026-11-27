@@ -76,8 +76,11 @@ async function main() {
         echo "{}" > .data/shipping-store.json
         echo "[]" > .data/store-withdrawals.json
         echo "{}" > .data/two-factor-store.json
+        echo "[]" > .data/live-deals.json
         find public/uploads -type f ! -name ".gitkeep" -delete 2>/dev/null || true
       '`)
+      await runRemoteCommand(`docker exec -u root affiliate-gadget-app sh -c 'mkdir -p /app/.data && echo "{}" > /app/.data/shipping-store.json && echo "[]" > /app/.data/store-withdrawals.json && echo "{}" > /app/.data/two-factor-store.json && echo "[]" > /app/.data/live-deals.json && chown -R nextjs:nodejs /app/.data' || true`)
+      await runRemoteCommand(`docker exec affiliate-gadget-redis redis-cli FLUSHALL || true`)
 
       // 6. Check counts to verify everything is 0 except 1 Superadmin user
       console.log('\n--- Verifying final DB count ---')

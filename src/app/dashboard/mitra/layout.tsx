@@ -16,16 +16,39 @@ export default function MitraLayout({
   const router = useRouter()
   const { data: session, status } = useSession()
 
-  // Redirect pending mitra to pending page
+  // Redirect STORE_ADMIN to Store Admin Onboarding / Dashboard, or pending MITRA to pending page
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.role === 'MITRA') {
-      const mitraStatus = (session.user as { mitraStatus?: string }).mitraStatus
-      if (
-        mitraStatus === 'PENDING' &&
-        pathname !== '/dashboard/mitra/pending'
-      ) {
-        router.push('/dashboard/mitra/pending')
+    if (status === 'authenticated') {
+      if (session?.user?.role === 'STORE_ADMIN') {
+        const hasStore = Boolean((session.user as any)?.storeId)
+        window.location.href = hasStore
+          ? '/dashboard/admin'
+          : '/dashboard/admin/onboarding'
+        return
       }
+
+      if (session?.user?.role === 'MITRA') {
+        const mitraStatus = (session.user as { mitraStatus?: string })
+          .mitraStatus
+        if (
+          mitraStatus === 'PENDING' &&
+          pathname !== '/dashboard/mitra/pending'
+        ) {
+          router.push('/dashboard/mitra/pending')
+        }
+      }
+
+      // Verifikasi langsung ke DB jika role di DB adalah STORE_ADMIN (mencegah sesi lama nyangkut di halaman Mitra Servis)
+      fetch('/api/admin/onboarding?_t=' + Date.now(), { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.user?.role === 'STORE_ADMIN') {
+            window.location.href = data.hasStore
+              ? '/dashboard/admin'
+              : '/dashboard/admin/onboarding'
+          }
+        })
+        .catch(() => {})
     }
   }, [status, session, pathname, router])
 
