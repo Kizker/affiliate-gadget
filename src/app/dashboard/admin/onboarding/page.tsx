@@ -20,9 +20,16 @@ import {
   Mail,
   User,
   Lock,
+  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal'
+import { CustomSelect } from '@/components/ui/custom-select'
+import {
+  resolveBankSpec,
+  validateBankAccountFormat,
+  type BankAccountValidationResult,
+} from '@/lib/bank-validation'
 
 const INDONESIAN_BANKS = [
   'Bank Mandiri',
@@ -43,6 +50,10 @@ export default function StoreAdminOnboardingPage() {
   const [isChecking, setIsChecking] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [isVerifyingBank, setIsVerifyingBank] = useState(false)
+  const [bankValidationResult, setBankValidationResult] =
+    useState<BankAccountValidationResult | null>(null)
+  const [bankError, setBankError] = useState<string | null>(null)
 
   const [userData, setUserData] = useState<{
     id: string
@@ -203,6 +214,72 @@ export default function StoreAdminOnboardingPage() {
     )
   }
 
+  const handleVerifyBankAccount = async (silent = false): Promise<boolean> => {
+    const localCheck = validateBankAccountFormat(
+      form.bankName,
+      form.accountNumber
+    )
+    if (!localCheck.valid) {
+      setBankError(localCheck.error || 'Nomor rekening tidak valid.')
+      setBankValidationResult(null)
+      if (!silent) {
+        toast.error(localCheck.error || 'Nomor rekening tidak valid.')
+      }
+      return false
+    }
+
+    setIsVerifyingBank(true)
+    setBankError(null)
+    try {
+      const res = await fetch('/api/bank/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankName: form.bankName,
+          accountNumber: localCheck.cleanNumber,
+          accountName: form.accountName,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.valid) {
+        const msg =
+          data.error ||
+          `Nomor rekening ${localCheck.cleanNumber} tidak ditemukan pada jaringan ${form.bankName}.`
+        setBankError(msg)
+        setBankValidationResult(null)
+        if (!silent) toast.error(msg)
+        return false
+      }
+
+      setBankValidationResult(data.result)
+      setBankError(null)
+      if (data.result?.accountHolderName && !form.accountName.trim()) {
+        setForm((prev) => ({
+          ...prev,
+          accountName: data.result.accountHolderName,
+        }))
+      }
+      if (!silent) {
+        toast.success(data.result?.message || 'Nomor rekening valid!')
+      }
+      return true
+    } catch {
+      // Fallback ke hasil validasi format lokal bila jaringan terputus
+      setBankValidationResult({
+        valid: true,
+        bankName: localCheck.spec.name,
+        bankCode: localCheck.spec.code,
+        accountNumber: localCheck.cleanNumber,
+        source: 'FORMAT_VERIFIED',
+        message: `Format rekening ${localCheck.spec.name} (${localCheck.cleanNumber.length} digit) valid.`,
+      })
+      setBankError(null)
+      return true
+    } finally {
+      setIsVerifyingBank(false)
+    }
+  }
+
   const handleSubmitStore = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isSubmitting) return
@@ -229,6 +306,12 @@ export default function StoreAdminOnboardingPage() {
     }
     if (!form.accountNumber.trim() || !form.accountName.trim()) {
       toast.error('Nomor rekening dan nama pemilik rekening wajib diisi.')
+      return
+    }
+
+    // Validasi nomor rekening bank sebelum membuat toko
+    const isBankValid = await handleVerifyBankAccount(false)
+    if (!isBankValid) {
       return
     }
 
@@ -823,38 +906,79 @@ export default function StoreAdminOnboardingPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Nama Bank <span className="text-rose-500">*</span>
-                </label>
-                <select
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Nama Bank <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+                    Wajib {resolveBankSpec(form.bankName).lengthLabel}
+                  </span>
+                </div>
+                <CustomSelect
                   value={form.bankName}
-                  onChange={(e) =>
-                    setForm({ ...form, bankName: e.target.value })
-                  }
-                  className="w-full rounded-xl border border-slate-200/90 bg-slate-50/60 px-3.5 py-2.5 text-xs font-semibold text-slate-900 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  {INDONESIAN_BANKS.map((bank) => (
-                    <option key={bank} value={bank}>
-                      {bank}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val: string) => {
+                    setForm({ ...form, bankName: val })
+                    setBankValidationResult(null)
+                    setBankError(null)
+                  }}
+                  options={INDONESIAN_BANKS.map((bank) => ({
+                    value: bank,
+                    label: bank,
+                  }))}
+                  placeholder="Pilih Bank"
+                  className="w-full"
+                />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Nomor Rekening <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={form.accountNumber}
-                  onChange={(e) =>
-                    setForm({ ...form, accountNumber: e.target.value })
-                  }
-                  placeholder="Contoh: 1230009876543"
-                  className="w-full rounded-xl border border-slate-200/90 bg-slate-50/60 px-3.5 py-2.5 font-mono text-xs font-medium text-slate-900 outline-none transition focus:border-orange-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Nomor Rekening <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="font-mono text-[10px] text-slate-400">
+                    {form.accountNumber.replace(/\D/g, '').length} digit
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    value={form.accountNumber}
+                    onChange={(e) => {
+                      const digitsOnly = e.target.value.replace(/\D/g, '')
+                      setForm({ ...form, accountNumber: digitsOnly })
+                      setBankValidationResult(null)
+                      setBankError(null)
+                    }}
+                    onBlur={() => {
+                      if (form.accountNumber.trim().length >= 8) {
+                        handleVerifyBankAccount(true)
+                      }
+                    }}
+                    placeholder={`Contoh: ${resolveBankSpec(form.bankName).example}`}
+                    className={`w-full rounded-xl border px-3.5 py-2.5 font-mono text-xs font-medium text-slate-900 outline-none transition focus:bg-white dark:bg-slate-800 dark:text-white ${
+                      bankError
+                        ? 'border-rose-400 bg-rose-50/40 focus:border-rose-500'
+                        : bankValidationResult?.valid
+                          ? 'border-emerald-400 bg-emerald-50/30 focus:border-emerald-500'
+                          : 'border-slate-200/90 bg-slate-50/60 focus:border-orange-500 dark:border-slate-700'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    disabled={isVerifyingBank || !form.accountNumber.trim()}
+                    onClick={() => handleVerifyBankAccount(false)}
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-[11px] font-bold text-orange-600 transition hover:bg-orange-100 disabled:opacity-50 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-400"
+                  >
+                    {isVerifyingBank ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    <span>Cek</span>
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -874,6 +998,21 @@ export default function StoreAdminOnboardingPage() {
                 />
               </div>
             </div>
+
+            {/* Status Hasil Validasi Nomor Rekening */}
+            {bankValidationResult?.valid && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-2 text-xs font-semibold text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span>{bankValidationResult.message}</span>
+              </div>
+            )}
+
+            {bankError && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-rose-200/80 bg-rose-50/70 px-3.5 py-2 text-xs font-semibold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{bankError}</span>
+              </div>
+            )}
           </div>
 
           {/* Submit Footer */}

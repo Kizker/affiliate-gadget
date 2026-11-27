@@ -208,6 +208,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const { verifyIndonesianBankAccount } =
+      await import('@/lib/bank-validation')
+    const bankCheck = await verifyIndonesianBankAccount({
+      bankName: String(bankName),
+      accountNumber: String(accountNumber),
+      inputAccountName: String(accountName),
+    })
+
+    if (!bankCheck.valid) {
+      return NextResponse.json(
+        {
+          error: bankCheck.message,
+        },
+        { status: 400 }
+      )
+    }
+
     // Generate unique slug
     let baseSlug = String(name)
       .toLowerCase()
