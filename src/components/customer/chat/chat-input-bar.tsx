@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Plus, Send, Loader2, Camera, Package } from 'lucide-react'
+import { AutoSuggestInput } from '@/components/chat/auto-suggest-input'
+import { DEFAULT_CHAT_SUGGESTIONS } from '@/components/chat/chat-template-modal'
 
 interface ChatInputBarProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>
@@ -12,6 +14,7 @@ interface ChatInputBarProps {
   sending: boolean
   placeholder?: string
   onOpenOrderPicker?: () => void
+  suggestions?: string[]
 }
 
 export function ChatInputBar({
@@ -23,6 +26,7 @@ export function ChatInputBar({
   sending,
   placeholder = 'Ketik pesan...',
   onOpenOrderPicker,
+  suggestions = DEFAULT_CHAT_SUGGESTIONS,
 }: ChatInputBarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -104,19 +108,15 @@ export function ChatInputBar({
           )}
         </div>
 
-        <input
-          type="text"
+        <AutoSuggestInput
           value={messageInput}
-          onChange={(e) => setMessageInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              onSendMessage()
-            }
-          }}
-          aria-label={placeholder}
+          onChange={(val) => setMessageInput(val)}
+          onSubmit={onSendMessage}
+          suggestions={suggestions}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          ariaLabel={placeholder}
+          className="min-w-0 flex-1"
+          inputClassName="bg-slate-50/80 focus:bg-white dark:bg-slate-800"
         />
 
         <button

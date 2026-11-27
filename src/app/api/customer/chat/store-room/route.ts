@@ -284,18 +284,19 @@ export async function POST(req: NextRequest) {
     const effectiveReturnType = latestReturn?.type || returnType || 'REFUND'
     const effectiveReturnId = latestReturn?.id || returnId || null
 
-    // Pemisahan tegas alur: Hanya masuk After Sales jika dan hanya jika pesanan sudah berstatus COMPLETED, RETURNED, atau memiliki klaim retur/komplain aktif!
-    // Sebelum status menunjukkan selesai (PAID, IN_PROGRESS, SHIPPED, PENDING_PAYMENT), chat 100% MUTLAK dengan Admin Toko!
+    // Pemisahan tegas alur:
+    // Chat masuk ke After Sales jika pesanan COMPLETED/RETURNED atau ada klaim retur/komplain.
+    // Tapi BUBBLE 'return_reference' HANYA BOLEH TERBUAT JIKA CUSTOMER BENAR-BENAR MENGAJUKAN RETUR (ada returnId/latestReturn nyata)!
+    // Jika customer hanya chat biasa setelah pesanan selesai, JANGAN kirim bubble kartu retur!
     const isOrderCompletedOrReturned =
       resolvedOrder?.status === 'COMPLETED' ||
       resolvedOrder?.status === 'RETURNED'
-    const hasActiveReturnClaim = Boolean(
-      latestReturn || effectiveReturnId || effectiveReturnReason || returnReason
-    )
+    const hasActiveReturnClaim = Boolean(latestReturn?.id || returnId)
 
-    const isReturnInquiry = resolvedOrder
+    const isAfterSalesRoute = resolvedOrder
       ? Boolean(isOrderCompletedOrReturned || hasActiveReturnClaim)
       : Boolean(reqType === 'after_sales' || effectiveReturnId)
+    const isReturnInquiry = hasActiveReturnClaim
     const isOrderInquiry = Boolean(orderId || effectiveOrderNumber)
 
     const firstItem = resolvedOrder?.items?.[0]
@@ -353,10 +354,10 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Untuk percakapan retur / klaim garansi / pertukaran barang: Alihkan ke Admin After Sales jika ada group
+    // Untuk percakapan retur / klaim garansi / pesanan selesai: Alihkan ke Admin After Sales jika ada group
     let assignedAdmin = storeAdmin
 
-    if (isReturnInquiry) {
+    if (isAfterSalesRoute) {
       const storeWithGroup = await prisma.store.findUnique({
         where: { id: store.id },
         include: {
@@ -399,7 +400,7 @@ export async function POST(req: NextRequest) {
     // 2. Admin Toko: 1 room chat tunggal per customer + store (semua konsultasi/produk/order berlangsung masuk ke sini)
     let room: any = null
 
-    if (isReturnInquiry && assignedAdmin?.role === 'AFTER_SALES') {
+    if (isAfterSalesRoute && assignedAdmin?.role === 'AFTER_SALES') {
       const targetOrderId = resolvedOrder?.id || orderId || null
       if (targetOrderId) {
         room = await prisma.adminChatRoom.findFirst({

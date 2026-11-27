@@ -67,6 +67,26 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-27 (Deploy VPS Hostinger: Ghost Auto-Fill Suggestion Chat, Eliminasi Tombol Ambigu Dikirim, Auto-Fill Cek Resi Email, Sederhanakan Dropdown Komisi & Gateway, Eliminasi Peringatan Selesaikan Pesanan, Eliminasi Kartu Retur Palsu):**
+  - **1. Ghost Auto-Fill Suggestion saat Mengetik Chat (`auto-suggest-input.tsx`, `admin/chat/page.tsx`, & `chat-input-bar.tsx`):**
+    - Saat admin toko, superadmin, after sales, atau customer mengetik kata kunci template (misal "Ready ya"), bayang-bayang abu-abu transparan Google-style otomatis muncul melengkapi sisa kalimat di samping kursor.
+    - Menekan tombol `Enter` (atau `Tab` / `Panah Kanan`) pertama mengisi otomatis (autofill) kalimat saran ke input; menekan `Enter` kedua langsung mengirimkan pesan ke lawan bicara.
+  - **2. Eliminasi Tombol Ambigu "Tandai Sedang Dikirim" (`orders/page.tsx` & `api/shipping/pickup/route.ts`):**
+    - Menghapus tombol manual "Tandai Sedang Dikirim" di modal rincian pesanan.
+    - Saat toko menekan `Request Pick Up (Gojek / JNE)`, sistem sekarang otomatis langsung memperbarui status pesanan menjadi `SHIPPED` dan menerbitkan resi/AWB resmi Biteship tanpa perlu aksi konfirmasi ganda.
+  - **3. Auto-Fill & Auto-Track Cek Resi dari Tautan Email (`src/app/resi/page.tsx`):**
+    - Mengintegrasikan pembacaan parameter URL (`?no=...`, `?awb=...`, `?resi=...`, `?order=...`) pada halaman `/resi` dengan boundary Next.js Suspense.
+    - Saat customer mengklik tautan "Lacak Perjalanan Paket" di email, nomor resi terisi otomatis dan pencarian langsung dieksekusi seketika.
+    - Menghapus box deskripsi subtitle atas dan teks keterangan footer bawah sesuai permintaan.
+  - **4. Dropdown Finansial Simpel untuk Komisi Platform & Gateway Midtrans (`mutations-view.tsx`):**
+    - Dropdown mutasi "Bagi Hasil Platform": Sesimpel menyajikan Dana Awal (Subtotal), Persen Potongan Komisi, dan Hasil Potongan Komisi (minus merah).
+    - Dropdown mutasi "Biaya Gateway Midtrans": Sesimpel menyajikan nama biaya gateway pemrosesan dan nominal potongan flat minus (`- Rp 4.000`). Box HPP modal, ongkir, dan asuransi yang tidak relevan dihilangkan dari kedua kategori ini.
+  - **5. Eliminasi Peringatan pada Modal "Selesaikan Pesanan?" (`order-complete-modal.tsx`):**
+    - Menghapus box peringatan amber "Konsekuensi Penyelesaian Manual" (hilang garansi, dll). Modal kini bersih murni hanya meminta konfirmasi pemeriksaan unit gadget.
+  - **6. Eliminasi Bubble Kartu Retur Palsu pada Chat After Sales (`store-room/route.ts`, `orders-client.tsx`, `order-detail-client.tsx`, `mobile-orders-view.tsx`):**
+    - Memisahkan rute After Sales dengan pembuatan kartu `return_reference`. Chat dengan After Sales untuk konsultasi umum atau pertanyaan santai pasca-pesanan selesai tidak lagi memicu pembuatan bubble kartu "Pengajuan Retur" jika customer tidak sedang mengajukan retur aktif.
+  - **7. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100%, commit & push ke GitHub `origin/main`, container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-27 (Deploy VPS Hostinger: Target Produk Hero & Kampanye, Deskripsi Dinamis Etalase, Rich Text Markdown, Input Varian Auto-Shift, Auto-Normalize No HP, & Pembersihan UI Banner):**
   - **1. Target Produk Hero & Kampanye Toko (`src/lib/store-page-content.ts` & `src/app/gadget/[id]/gadget-detail-client.tsx`):**
     - Saat admin memilih produk yang berada di dalam etalase multi-produk sebagai Hero atau Kampanye Promosi (misal iPhone 15 Pro di dalam etalase Samsung), tautan tombol "Beli Sekarang" dan "Beli" mengunci ID produk asli beserta varian targetnya (`/gadget/{id}?variant={variantId}`).

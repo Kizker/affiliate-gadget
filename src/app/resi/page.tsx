@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   Search,
   Package,
@@ -82,37 +83,58 @@ const STATUS_ICON: Record<string, string> = {
   EXCEPTION: '⚠️',
 }
 
-export default function CekResiPage() {
-  const [awbInput, setAwbInput] = useState('')
+function CekResiContent() {
+  const searchParams = useSearchParams()
+  const initialAwb =
+    searchParams?.get('no') ||
+    searchParams?.get('awb') ||
+    searchParams?.get('resi') ||
+    searchParams?.get('order') ||
+    ''
+
+  const [awbInput, setAwbInput] = useState(initialAwb)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<TrackingResult | null>(null)
   const [searched, setSearched] = useState(false)
 
-  const handleSearch = async () => {
-    const raw = awbInput.trim().toUpperCase()
-    const cleanAwb = raw.replace(/^#/, '')
-    if (!cleanAwb) return
+  const handleSearch = useCallback(
+    async (overrideAwb?: string) => {
+      const raw = (overrideAwb !== undefined ? overrideAwb : awbInput)
+        .trim()
+        .toUpperCase()
+      const cleanAwb = raw.replace(/^#/, '')
+      if (!cleanAwb) return
 
-    setLoading(true)
-    setSearched(true)
-    setResult(null)
+      setLoading(true)
+      setSearched(true)
+      setResult(null)
 
-    try {
-      // Find via AWB or Order Number lookup
-      const res = await fetch(
-        `/api/shipping/tracking/awb-lookup?awb=${encodeURIComponent(cleanAwb)}`
-      )
-      const json: TrackingResult = await res.json()
-      setResult(json)
-    } catch {
-      setResult({
-        success: false,
-        error: 'Gagal mengambil data tracking. Coba lagi.',
-      })
-    } finally {
-      setLoading(false)
+      try {
+        // Find via AWB or Order Number lookup
+        const res = await fetch(
+          `/api/shipping/tracking/awb-lookup?awb=${encodeURIComponent(cleanAwb)}`
+        )
+        const json: TrackingResult = await res.json()
+        setResult(json)
+      } catch {
+        setResult({
+          success: false,
+          error: 'Gagal mengambil data tracking. Coba lagi.',
+        })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [awbInput]
+  )
+
+  // Otomatis lacak saat pertama kali dibuka dari email / link yang membawa nomor resi
+  useEffect(() => {
+    if (initialAwb) {
+      setAwbInput(initialAwb)
+      handleSearch(initialAwb)
     }
-  }
+  }, [initialAwb, handleSearch])
 
   const data = result?.data
   const exception = result?.exception
@@ -154,10 +176,6 @@ export default function CekResiPage() {
           <h1 className="text-2xl font-black text-slate-900">
             Lacak Status Pengiriman
           </h1>
-          <p className="text-sm text-slate-500">
-            Masukkan nomor resi atau nomor pesanan Anda untuk melacak posisi
-            paket secara real-time
-          </p>
         </div>
 
         {/* Search Box */}
@@ -175,7 +193,7 @@ export default function CekResiPage() {
               <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
             </div>
             <button
-              onClick={handleSearch}
+              onClick={() => handleSearch()}
               disabled={loading || !awbInput.trim()}
               className="inline-flex items-center gap-2 rounded-2xl bg-[#2563EB] px-5 py-3 text-sm font-bold text-white shadow-md shadow-blue-600/25 transition hover:bg-[#1E3A8A] active:scale-95 disabled:opacity-50"
             >
@@ -400,19 +418,21 @@ export default function CekResiPage() {
             </div>
           </div>
         )}
-
-        {/* Info footer */}
-        <div className="flex flex-col items-center justify-center gap-1.5 text-center text-[11px] text-slate-400">
-          <div className="flex items-center gap-2">
-            <span>Pelacakan paket resmi via</span>
-            <BiteshipLogo height={15} width={64} className="opacity-75" />
-          </div>
-          <p>
-            Terintegrasi langsung armada JNE & Gojek · Asuransi pengiriman 100%
-            terlindungi
-          </p>
-        </div>
       </div>
     </div>
+  )
+}
+
+export default function CekResiPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-50">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        </div>
+      }
+    >
+      <CekResiContent />
+    </Suspense>
   )
 }

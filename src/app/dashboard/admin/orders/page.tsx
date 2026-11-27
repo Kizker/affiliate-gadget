@@ -786,7 +786,7 @@ export default function AdminOrdersPage() {
       if (selectedOrder && selectedOrder.id === order.id) {
         setSelectedOrder({
           ...selectedOrder,
-          status: 'IN_PROGRESS',
+          status: 'SHIPPED',
           trackingNumber: data.data.trackingNumber,
         })
       }
@@ -795,7 +795,7 @@ export default function AdminOrdersPage() {
           o.id === order.id
             ? {
                 ...o,
-                status: 'IN_PROGRESS',
+                status: 'SHIPPED',
                 trackingNumber: data.data.trackingNumber,
               }
             : o
@@ -2040,22 +2040,6 @@ export default function AdminOrdersPage() {
                           <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
                         )}
                         <span>Refresh Status</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateStatus(selectedOrder.id, 'SHIPPED')
-                        }
-                        disabled={updatingId === selectedOrder.id}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                      >
-                        {updatingId === selectedOrder.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Truck className="h-4 w-4" />
-                        )}
-                        <span>Tandai Sedang Dikirim</span>
                       </button>
 
                       <button

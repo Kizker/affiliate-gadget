@@ -661,10 +661,9 @@ export async function POST(request: Request) {
       })
     }
 
-    // 3. Bidirectional Return Inquiry: Pastikan bubble kartu retur (return_reference) terbuat di room jika belum ada
+    // 3. Bidirectional Return Inquiry: Bubble kartu retur (return_reference) HANYA dibuat jika ADA retur/klaim nyata (bukan sekedar chat biasa)
     const isReturnInquiry = Boolean(
       returnId ||
-      returnReason ||
       (fullOrder?.returnRequests && fullOrder.returnRequests.length > 0)
     )
 

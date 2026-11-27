@@ -657,7 +657,11 @@ export function MobileOrdersView({
                             chatParams.set('storeId', order.store.id)
                           if (order.orderNumber)
                             chatParams.set('orderNumber', order.orderNumber)
-                          if (latestReturn) {
+                          if (
+                            latestReturn &&
+                            latestReturn.status !== 'COMPLETED' &&
+                            latestReturn.status !== 'REJECTED'
+                          ) {
                             chatParams.set('returnId', latestReturn.id)
                             chatParams.set(
                               'returnReason',

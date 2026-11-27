@@ -550,7 +550,11 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
   chatParams.set('orderId', order.id)
   if (order.store?.id) chatParams.set('storeId', order.store.id)
   if (order.orderNumber) chatParams.set('orderNumber', order.orderNumber)
-  if (latestReturnRequest) {
+  if (
+    latestReturnRequest &&
+    latestReturnRequest.status !== 'COMPLETED' &&
+    latestReturnRequest.status !== 'REJECTED'
+  ) {
     chatParams.set('returnId', latestReturnRequest.id)
     chatParams.set(
       'returnReason',

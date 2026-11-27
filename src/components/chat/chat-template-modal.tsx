@@ -14,6 +14,20 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+export const DEFAULT_CHAT_SUGGESTIONS: string[] = [
+  'Ready ya ka, order masuk langsung diproses ya ka..',
+  'All fungsi normal, nominus, siap pakai, garansi toko 30hari ganti unit baru ya ka..',
+  'Pakai voucher promo toko ka pas klik beli ada pilihan gunakan voucher ya..',
+  'Barang kami original resmi teruji teknisi, sinyal & IMEI aman selamanya..',
+  'Ditunggu ordernya ya ka.. Sehat selalu dan murah rezeki. aminn 😊',
+  'Mau tipe apa dan varian memory storage berapa ka ya?',
+  'Pas klik beli ada pilihan tipe varian dan storage ya ka. Silakan dicoba.',
+  'Pas klik beli sudah tertera rincian harga per variannya ya ka.',
+  'Rencana mau checkout pembelian kapan ya ka?',
+  'Unit retur sudah kami terima di cabang dan saat ini sedang dalam proses pemeriksaan teknis (QC).',
+  'Pengajuan garansi Anda sedang ditindaklanjuti oleh tim After Sales, mohon ditunggu ya kak.',
+]
+
 export interface ChatTemplateItem {
   id: string
   content: string

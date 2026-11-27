@@ -803,7 +803,11 @@ export default function OrdersClient({
                                       'orderNumber',
                                       order.orderNumber
                                     )
-                                  if (firstItemReturn) {
+                                  if (
+                                    firstItemReturn &&
+                                    firstItemReturn.status !== 'COMPLETED' &&
+                                    firstItemReturn.status !== 'REJECTED'
+                                  ) {
                                     chatParams.set(
                                       'returnId',
                                       firstItemReturn.id
@@ -1304,7 +1308,12 @@ export default function OrdersClient({
                                       'orderNumber',
                                       order.orderNumber
                                     )
-                                  if (latestReturn) {
+                                  // Hanya sertakan data returnId jika retur berstatus aktif/berjalan (bukan selesai atau dibatalkan)
+                                  if (
+                                    latestReturn &&
+                                    latestReturn.status !== 'COMPLETED' &&
+                                    latestReturn.status !== 'REJECTED'
+                                  ) {
                                     chatParams.set('returnId', latestReturn.id)
                                     chatParams.set(
                                       'returnReason',

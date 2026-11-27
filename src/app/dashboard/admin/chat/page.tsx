@@ -34,7 +34,11 @@ import {
   Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { ChatTemplateModal } from '@/components/chat/chat-template-modal'
+import {
+  ChatTemplateModal,
+  DEFAULT_CHAT_SUGGESTIONS,
+} from '@/components/chat/chat-template-modal'
+import { AutoSuggestInput } from '@/components/chat/auto-suggest-input'
 import { DateSeparator } from '@/components/chat/date-separator'
 import { ChatVideoPlayer } from '@/components/chat/chat-video-player'
 import { isSameDay } from '@/utils/chat-helpers'
@@ -463,6 +467,9 @@ function AdminChatContent() {
   // Order Modal States
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [chatSuggestions, setChatSuggestions] = useState<string[]>(
+    DEFAULT_CHAT_SUGGESTIONS
+  )
   const [orderItems, setOrderItems] = useState<any[]>([])
   const [orderLoading, setOrderLoading] = useState(false)
   const [orderSearch, setOrderSearch] = useState('')
@@ -483,6 +490,20 @@ function AdminChatContent() {
 
   useEffect(() => {
     setMounted(true)
+    // Fetch custom templates to enrich auto-suggestions list
+    fetch('/api/admin/chat/templates')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data?.templates) && data.templates.length > 0) {
+          const contents = data.templates
+            .map((t: any) => t.content)
+            .filter(Boolean)
+          setChatSuggestions(
+            Array.from(new Set([...contents, ...DEFAULT_CHAT_SUGGESTIONS]))
+          )
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Keyboard shortcut listener (ESC to close lightbox)
@@ -2782,18 +2803,13 @@ function AdminChatContent() {
                       )}
                     </button>
 
-                    <input
-                      type="text"
+                    <AutoSuggestInput
                       value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
+                      onChange={(val) => setMessageInput(val)}
+                      onSubmit={() => handleSendMessage('text')}
+                      suggestions={chatSuggestions}
                       onFocus={() => {
                         setTimeout(() => scrollToBottom(true), 120)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          handleSendMessage('text')
-                        }
                       }}
                       placeholder={
                         isSelectedStoreHelpChat
@@ -2804,7 +2820,8 @@ function AdminChatContent() {
                               ? `Ketik caption untuk pesanan #${activeOrderContext.orderNumber}... (Enter untuk kirim)`
                               : 'Tulis balasan untuk customer...'
                       }
-                      className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      className="min-w-0 flex-1"
+                      inputClassName="bg-slate-50/80 focus:bg-white dark:bg-slate-800"
                     />
 
                     <button

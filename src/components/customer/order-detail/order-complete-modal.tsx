@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { CheckCircle, AlertTriangle, Loader2, X } from 'lucide-react'
+import { CheckCircle, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -77,22 +77,8 @@ export function OrderCompleteModal({
           </div>
         </div>
 
-        <div className="my-4 space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3.5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <div className="space-y-1">
-                <p className="font-bold">Konsekuensi Penyelesaian Manual:</p>
-                <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
-                  Dengan menyelesaikan pesanan ini sekarang, masa garansi toko
-                  30 hari akan <strong>otomatis berakhir/hilang</strong> dan
-                  dana pembayaran akan langsung dicairkan dari Escrow ke toko.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-slate-500 dark:text-slate-400">
+        <div className="my-5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          <p className="text-slate-600 dark:text-slate-400">
             Pastikan unit gadget Anda telah diperiksa dan berfungsi normal
             secara menyeluruh sebelum menyelesaikan pesanan.
           </p>

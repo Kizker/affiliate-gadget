@@ -128,11 +128,11 @@ export async function POST(request: NextRequest) {
       items,
     })
 
-    // Update order in database to IN_PROGRESS and save trackingNumber
+    // Update order in database to SHIPPED and save trackingNumber
     await prisma.order.update({
       where: { id: order.id },
       data: {
-        status: 'IN_PROGRESS',
+        status: 'SHIPPED',
         trackingNumber: booking.trackingNumber,
       },
     })

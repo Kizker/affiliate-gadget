@@ -163,238 +163,339 @@ export function TransactionItemRow({ tx }: { tx: TransactionMutation }) {
       {/* Dropdown Rincian Lengkap Mutasi Transaksi (Accordion Expand) */}
       {isExpanded && (
         <div className="mb-4 mt-1 space-y-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 text-xs duration-200 animate-in fade-in slide-in-from-top-1 dark:border-slate-800 dark:bg-slate-900/60 sm:p-5">
-          {/* 1. Rincian Produk & Varian */}
-          {tx.items && tx.items.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
+          {/* A. Tampilan Khusus Dropdown Komisi Platform (Simple & To The Point: Dana Awal, Persen Potong, Hasil Minus) */}
+          {tx.category === 'COMMISSION' && b ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5 dark:border-slate-800">
                 <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Rincian Unit Produk & Varian ({tx.items.length} Item)
+                  Rincian Potongan Komisi Platform
                 </span>
-                {b && (
-                  <span className="text-[11px] text-slate-400">
-                    No. Order:{' '}
-                    <strong className="font-mono text-slate-700 dark:text-slate-300">
-                      #{tx.refNumber.replace(/^(FEE|GW|REFUND)-/, '')}
-                    </strong>
-                  </span>
-                )}
+                <span className="text-[11px] text-slate-400">
+                  Pesanan:{' '}
+                  <strong className="font-mono text-slate-700 dark:text-slate-300">
+                    #{tx.refNumber.replace(/^(FEE|GW|REFUND)-/, '')}
+                  </strong>
+                </span>
               </div>
 
-              <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950">
-                {tx.items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between gap-3 p-3"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.productName}
-                          className="h-11 w-11 shrink-0 rounded-lg border border-slate-100 object-cover dark:border-slate-800"
-                        />
-                      ) : (
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
-                          <Package className="h-5 w-5" />
-                        </div>
-                      )}
-                      <div className="min-w-0 space-y-0.5">
-                        <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                          {item.productName}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                          {item.variantName && (
-                            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
-                              Varian: {item.variantName}
-                            </span>
-                          )}
-                          <span>•</span>
-                          <span>
-                            {item.quantity} unit @ {formatRupiah(item.price)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-                        {formatRupiah(item.subtotal)}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        HPP:{' '}
-                        {item.costPrice > 0
-                          ? formatRupiah(item.costPrice * item.quantity)
-                          : 'Rp 0'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 2. Rincian Finansial & Kalkulasi Beban (2 Kolom Bento) */}
-          {b && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {/* Kolom 1: Penjualan & Modal */}
-              <div className="space-y-2 rounded-xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-950">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Komponen Penjualan & Modal
-                </span>
-                <div className="space-y-1.5 pt-0.5">
-                  <div className="flex justify-between">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
                     <span className="text-slate-600 dark:text-slate-400">
-                      Subtotal Produk
+                      Dana Awal (Subtotal Pesanan)
                     </span>
-                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
                       {formatRupiah(b.subtotal)}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+
+                  <div className="flex items-center justify-between">
                     <span className="text-slate-600 dark:text-slate-400">
-                      Total Modal (HPP Toko)
+                      Dipotong Persen Komisi
                     </span>
-                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                      {b.costPrice > 0
-                        ? formatRupiah(b.costPrice)
-                        : 'Rp 0 (Bebas Modal)'}
+                    <span className="rounded-md bg-orange-50 px-2 py-0.5 font-mono text-[11px] font-bold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
+                      {b.commissionRate || 2}%
                     </span>
                   </div>
-                  <div className="flex justify-between border-t border-slate-100 pt-1.5 font-bold dark:border-slate-800">
-                    <span className="text-emerald-700 dark:text-emerald-400">
-                      Estimasi Laba Kotor Toko
+
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2 font-bold dark:border-slate-800">
+                    <span className="text-rose-700 dark:text-rose-400">
+                      Hasil Potongan Komisi
                     </span>
-                    <span className="font-mono text-emerald-700 dark:text-emerald-400">
-                      + {formatRupiah(b.grossProfit)}
+                    <span className="font-mono text-sm font-black text-rose-600 dark:text-rose-400">
+                      - {formatRupiah(tx.amount || b.commissionAmount)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Kolom 2: Rincian Potongan, Admin & Biaya */}
-              <div className="space-y-2 rounded-xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-950">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Rincian Potongan & Biaya
-                </span>
-                <div className="space-y-1.5 pt-0.5">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Diskon Voucher {b.voucherCode ? `(${b.voucherCode})` : ''}
-                    </span>
-                    <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
-                      {b.discountAmount > 0
-                        ? `- ${formatRupiah(b.discountAmount)}`
-                        : 'Rp 0'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Biaya Admin Platform ({b.commissionRate || 1.5}%)
-                    </span>
-                    <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
-                      - {formatRupiah(b.commissionAmount)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Biaya Payment Gateway
-                    </span>
-                    <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
-                      - {formatRupiah(b.gatewayFee || 4000)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-t border-slate-100 pt-1.5 text-[11px] text-slate-500 dark:border-slate-800">
-                    <span>Ongkos Kirim ({b.courierCode || 'Kurir'})</span>
-                    <span className="font-mono">
-                      {formatRupiah(b.shippingCost)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-500">
-                    <span>Asuransi Pengiriman Wajib</span>
-                    <span className="font-mono">
-                      {formatRupiah(b.insuranceFee)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 3. Ringkasan Penerimaan Bersih Toko (Net Settlement) */}
-          {b && (
-            <div className="flex flex-col gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3.5 dark:border-emerald-900/50 dark:bg-emerald-950/30 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-0.5">
-                <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                  Hak Bersih Toko: + {formatRupiah(b.netStoreAmount)}
-                </p>
-                <p className="text-[11px] text-emerald-700/90 dark:text-emerald-400">
-                  {tx.type === 'ESCROW'
-                    ? '🔒 Dana saat ini diamankan di Rekening Escrow Midtrans dan otomatis cair ke saldo toko setelah barang diterima pembeli.'
-                    : '✓ Dana telah selesai dan masuk ke saldo siap cair toko.'}
-                </p>
-              </div>
-              <div className="shrink-0 sm:text-right">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Total Dibayar Pembeli
-                </span>
-                <p className="font-mono text-xs font-black text-slate-900 dark:text-white">
-                  {formatRupiah(b.totalCustomerPaid)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 4. Detail Pembeli, Pengiriman & Pembayaran */}
-          {b && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-slate-200/60 bg-white p-3 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
               {b.customerName && (
-                <span>
-                  Customer:{' '}
-                  <strong className="text-slate-900 dark:text-white">
-                    {b.customerName}
-                  </strong>
-                </span>
-              )}
-              {b.customerPhone && (
-                <span>
-                  Telp:{' '}
-                  <strong className="font-mono text-slate-900 dark:text-white">
-                    {b.customerPhone}
-                  </strong>
-                </span>
-              )}
-              {b.courierCode && (
-                <span>
-                  Ekspedisi:{' '}
-                  <strong className="text-slate-900 dark:text-white">
-                    {b.courierCode} {b.courierService || ''}
-                  </strong>
-                </span>
-              )}
-              {b.trackingNumber && (
-                <span>
-                  No. Resi:{' '}
-                  <strong className="font-mono text-slate-900 dark:text-white">
-                    {b.trackingNumber}
-                  </strong>
-                </span>
-              )}
-              {b.paymentMethod && (
-                <span>
-                  Kanal Pembayaran:{' '}
-                  <strong className="text-slate-900 dark:text-white">
-                    {b.paymentMethod}
-                  </strong>
-                </span>
-              )}
-              {b.notes && (
-                <span>
-                  Catatan:{' '}
-                  <strong className="italic text-slate-800 dark:text-slate-200">
-                    {b.notes}
-                  </strong>
-                </span>
+                <p className="text-[11px] text-slate-400">
+                  Pesanan oleh <strong>{b.customerName}</strong>
+                  {tx.items?.[0]?.productName
+                    ? ` · ${tx.items[0].productName}`
+                    : ''}
+                </p>
               )}
             </div>
+          ) : tx.category === 'GATEWAY' ? (
+            /* B. Tampilan Khusus Biaya Payment Gateway Midtrans (Sesimple Potongan Flat Minus) */
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5 dark:border-slate-800">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Rincian Biaya Payment Gateway
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Pesanan:{' '}
+                  <strong className="font-mono text-slate-700 dark:text-slate-300">
+                    #{tx.refNumber.replace(/^(FEE|GW|REFUND)-/, '')}
+                  </strong>
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Biaya Payment Gateway (Midtrans)
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      Biaya pemrosesan transaksi pembayaran
+                    </p>
+                  </div>
+                  <span className="font-mono text-sm font-black text-rose-600 dark:text-rose-400">
+                    - {formatRupiah(tx.amount || 4000)}
+                  </span>
+                </div>
+              </div>
+
+              {b?.customerName && (
+                <p className="text-[11px] text-slate-400">
+                  Pesanan oleh <strong>{b.customerName}</strong>
+                  {tx.items?.[0]?.productName
+                    ? ` · ${tx.items[0].productName}`
+                    : ''}
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* 1. Rincian Produk & Varian */}
+              {tx.items && tx.items.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Rincian Unit Produk & Varian ({tx.items.length} Item)
+                    </span>
+                    {b && (
+                      <span className="text-[11px] text-slate-400">
+                        No. Order:{' '}
+                        <strong className="font-mono text-slate-700 dark:text-slate-300">
+                          #{tx.refNumber.replace(/^(FEE|GW|REFUND)-/, '')}
+                        </strong>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950">
+                    {tx.items.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-3 p-3"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.productName}
+                              className="h-11 w-11 shrink-0 rounded-lg border border-slate-100 object-cover dark:border-slate-800"
+                            />
+                          ) : (
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-800">
+                              <Package className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                              {item.productName}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                              {item.variantName && (
+                                <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:bg-orange-950/50 dark:text-orange-300">
+                                  Varian: {item.variantName}
+                                </span>
+                              )}
+                              <span>•</span>
+                              <span>
+                                {item.quantity} unit @{' '}
+                                {formatRupiah(item.price)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                            {formatRupiah(item.subtotal)}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            HPP:{' '}
+                            {item.costPrice > 0
+                              ? formatRupiah(item.costPrice * item.quantity)
+                              : 'Rp 0'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Rincian Finansial & Kalkulasi Beban (2 Kolom Bento) */}
+              {b && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Kolom 1: Penjualan & Modal */}
+                  <div className="space-y-2 rounded-xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-950">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Komponen Penjualan & Modal
+                    </span>
+                    <div className="space-y-1.5 pt-0.5">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Subtotal Produk
+                        </span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                          {formatRupiah(b.subtotal)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Total Modal (HPP Toko)
+                        </span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                          {b.costPrice > 0
+                            ? formatRupiah(b.costPrice)
+                            : 'Rp 0 (Bebas Modal)'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-slate-100 pt-1.5 font-bold dark:border-slate-800">
+                        <span className="text-emerald-700 dark:text-emerald-400">
+                          Estimasi Laba Kotor Toko
+                        </span>
+                        <span className="font-mono text-emerald-700 dark:text-emerald-400">
+                          + {formatRupiah(b.grossProfit)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kolom 2: Rincian Potongan, Admin & Biaya */}
+                  <div className="space-y-2 rounded-xl border border-slate-200/70 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-950">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Rincian Potongan & Biaya
+                    </span>
+                    <div className="space-y-1.5 pt-0.5">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Diskon Voucher{' '}
+                          {b.voucherCode ? `(${b.voucherCode})` : ''}
+                        </span>
+                        <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
+                          {b.discountAmount > 0
+                            ? `- ${formatRupiah(b.discountAmount)}`
+                            : 'Rp 0'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Biaya Admin Platform ({b.commissionRate || 1.5}%)
+                        </span>
+                        <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
+                          - {formatRupiah(b.commissionAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Biaya Payment Gateway
+                        </span>
+                        <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
+                          - {formatRupiah(b.gatewayFee || 4000)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-slate-100 pt-1.5 text-[11px] text-slate-500 dark:border-slate-800">
+                        <span>Ongkos Kirim ({b.courierCode || 'Kurir'})</span>
+                        <span className="font-mono">
+                          {formatRupiah(b.shippingCost)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-500">
+                        <span>Asuransi Pengiriman Wajib</span>
+                        <span className="font-mono">
+                          {formatRupiah(b.insuranceFee)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Ringkasan Penerimaan Bersih Toko (Net Settlement) */}
+              {b && (
+                <div className="flex flex-col gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3.5 dark:border-emerald-900/50 dark:bg-emerald-950/30 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                      Hak Bersih Toko: + {formatRupiah(b.netStoreAmount)}
+                    </p>
+                    <p className="text-[11px] text-emerald-700/90 dark:text-emerald-400">
+                      {tx.type === 'ESCROW'
+                        ? '🔒 Dana saat ini diamankan di Rekening Escrow Midtrans dan otomatis cair ke saldo toko setelah barang diterima pembeli.'
+                        : '✓ Dana telah selesai dan masuk ke saldo siap cair toko.'}
+                    </p>
+                  </div>
+                  <div className="shrink-0 sm:text-right">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Total Dibayar Pembeli
+                    </span>
+                    <p className="font-mono text-xs font-black text-slate-900 dark:text-white">
+                      {formatRupiah(b.totalCustomerPaid)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Detail Pembeli, Pengiriman & Pembayaran */}
+              {b && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-slate-200/60 bg-white p-3 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                  {b.customerName && (
+                    <span>
+                      Customer:{' '}
+                      <strong className="text-slate-900 dark:text-white">
+                        {b.customerName}
+                      </strong>
+                    </span>
+                  )}
+                  {b.customerPhone && (
+                    <span>
+                      Telp:{' '}
+                      <strong className="font-mono text-slate-900 dark:text-white">
+                        {b.customerPhone}
+                      </strong>
+                    </span>
+                  )}
+                  {b.courierCode && (
+                    <span>
+                      Ekspedisi:{' '}
+                      <strong className="text-slate-900 dark:text-white">
+                        {b.courierCode} {b.courierService || ''}
+                      </strong>
+                    </span>
+                  )}
+                  {b.trackingNumber && (
+                    <span>
+                      No. Resi:{' '}
+                      <strong className="font-mono text-slate-900 dark:text-white">
+                        {b.trackingNumber}
+                      </strong>
+                    </span>
+                  )}
+                  {b.paymentMethod && (
+                    <span>
+                      Kanal Pembayaran:{' '}
+                      <strong className="text-slate-900 dark:text-white">
+                        {b.paymentMethod}
+                      </strong>
+                    </span>
+                  )}
+                  {b.notes && (
+                    <span>
+                      Catatan:{' '}
+                      <strong className="italic text-slate-800 dark:text-slate-200">
+                        {b.notes}
+                      </strong>
+                    </span>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {/* 5. Detail Rekening Pencairan Saldo (Khusus WITHDRAWAL) */}
