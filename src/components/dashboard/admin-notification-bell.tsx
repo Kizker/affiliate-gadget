@@ -15,7 +15,6 @@ import {
   Store,
   RefreshCw,
   CheckCircle2,
-  X,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useAdminNotifications } from '@/context/admin-notifications-context'
@@ -26,10 +25,8 @@ export function AdminNotificationBell() {
   const isAfterSales =
     session?.user?.role === 'AFTER_SALES' ||
     Boolean(pathname?.startsWith('/dashboard/after-sales'))
-  const { counts, loading, refresh, markAsRead, markAllAsRead } =
-    useAdminNotifications()
+  const { counts, loading, refresh } = useAdminNotifications()
   const [isOpen, setIsOpen] = useState(false)
-  const [bellDismissed, setBellDismissed] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close on outside click
@@ -92,7 +89,7 @@ export function AdminNotificationBell() {
         id: 'orders',
         title: 'Pesanan Perlu Diproses',
         count: counts.orders,
-        description: `${counts.ordersNeedProcessing} dibayar, ${counts.ordersPendingPayment} menunggu bayar`,
+        description: `${counts.orders} pesanan menunggu diproses`,
         href: '/dashboard/admin/orders',
         icon: ShoppingCart,
         color:
@@ -171,50 +168,13 @@ export function AdminNotificationBell() {
     ].filter((item) => item.count > 0)
   }, [counts, isAfterSales])
 
-  // Items currently displayed in dropdown
-  const [displayedItems, setDisplayedItems] = useState<
-    typeof currentActiveItems
-  >([])
+  // Show badge on bell always if unread count > 0 (tetap ada selama ada proses aktif)
+  const showBellBadge = counts.total > 0
 
-  // Reset bellDismissed when new unread notifications arrive while closed
-  useEffect(() => {
-    if (counts.total > 0 && !isOpen) {
-      setBellDismissed(false)
-    }
-  }, [counts.total, isOpen])
-
-  // Click handler when notification bell is pressed once
+  // Click handler when notification bell is pressed
   const handleToggleBell = () => {
-    if (!isOpen) {
-      // 1. Snapshot items before clearing so user can read them in dropdown
-      setDisplayedItems(currentActiveItems)
-      // 2. Mark bell alert dismissed immediately (red badge on bell vanishes instantly)
-      setBellDismissed(true)
-      // 3. Mark all categories as read so sidebar badges also disappear instantly
-      markAllAsRead()
-      // 4. Open dropdown panel
-      setIsOpen(true)
-    } else {
-      setIsOpen(false)
-    }
+    setIsOpen(!isOpen)
   }
-
-  // Dismiss individual notification item
-  const handleDismissItem = (e: React.MouseEvent, itemId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDisplayedItems((prev) => prev.filter((i) => i.id !== itemId))
-    markAsRead(itemId)
-  }
-
-  // Clear all items from dropdown
-  const handleClearAll = () => {
-    markAllAsRead()
-    setDisplayedItems([])
-  }
-
-  // Show badge on bell only if unread count > 0 and bell hasn't been clicked
-  const showBellBadge = !bellDismissed && counts.total > 0
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -255,21 +215,13 @@ export function AdminNotificationBell() {
                   Notifikasi
                 </span>
                 <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  {displayedItems.length > 0
-                    ? `${displayedItems.length} proses`
-                    : 'Telah Dilihat'}
+                  {currentActiveItems.length > 0
+                    ? `${counts.total} proses aktif`
+                    : 'Tidak ada proses'}
                 </span>
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5">
-                {displayedItems.length > 0 && (
-                  <button
-                    onClick={handleClearAll}
-                    className="shrink-0 cursor-pointer whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                  >
-                    Tandai Dibaca
-                  </button>
-                )}
                 <button
                   onClick={() => refresh()}
                   disabled={loading}
@@ -285,8 +237,8 @@ export function AdminNotificationBell() {
 
             {/* List of Active Notifications */}
             <div className="max-h-[380px] divide-y divide-slate-100/70 overflow-y-auto py-1 dark:divide-slate-800/70">
-              {displayedItems.length > 0 ? (
-                displayedItems.map((item) => {
+              {currentActiveItems.length > 0 ? (
+                currentActiveItems.map((item) => {
                   const Icon = item.icon
                   return (
                     <div
@@ -296,10 +248,6 @@ export function AdminNotificationBell() {
                       <Link
                         href={item.href}
                         onClick={() => {
-                          markAsRead(item.id)
-                          setDisplayedItems((prev) =>
-                            prev.filter((i) => i.id !== item.id)
-                          )
                           setIsOpen(false)
                         }}
                         className="flex min-w-0 flex-1 items-start gap-3"
@@ -324,16 +272,6 @@ export function AdminNotificationBell() {
                           </p>
                         </div>
                       </Link>
-
-                      {/* Single-Click Dismiss Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleDismissItem(e, item.id)}
-                        title="Tutup notifikasi ini"
-                        className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
                     </div>
                   )
                 })
@@ -361,12 +299,6 @@ export function AdminNotificationBell() {
                     : '/dashboard/admin/orders'
                 }
                 onClick={() => {
-                  if (isAfterSales) {
-                    markAsRead('chat')
-                    markAsRead('returns')
-                  } else {
-                    markAsRead('orders')
-                  }
                   setIsOpen(false)
                 }}
                 className="flex w-full items-center justify-center whitespace-nowrap rounded-xl bg-slate-900 py-2 text-xs font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950"

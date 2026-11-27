@@ -630,7 +630,7 @@ export function Sidebar({
                       const isActive = checkIsActive(item.href)
 
                       const rawBadge = getItemBadgeCount(item.href)
-                      const dynamicBadge = isActive ? 0 : rawBadge
+                      const dynamicBadge = rawBadge
                       const hasDynamicBadge = dynamicBadge > 0
                       const isLiveItem =
                         item.isLive ||
@@ -643,10 +643,6 @@ export function Sidebar({
                           href={item.href}
                           onClick={() => {
                             closeMobile()
-                            const sectionKey = getSectionKeyFromHref(item.href)
-                            if (sectionKey) {
-                              markAsRead(sectionKey)
-                            }
                           }}
                           className={`group relative flex items-center rounded-xl text-xs font-medium transition-all duration-150 ${
                             isCollapsed

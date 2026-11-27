@@ -67,6 +67,29 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-27 (Deploy VPS Hostinger: Target Produk Hero & Kampanye, Deskripsi Dinamis Etalase, Rich Text Markdown, Input Varian Auto-Shift, Auto-Normalize No HP, & Pembersihan UI Banner):**
+  - **1. Target Produk Hero & Kampanye Toko (`src/lib/store-page-content.ts` & `src/app/gadget/[id]/gadget-detail-client.tsx`):**
+    - Saat admin memilih produk yang berada di dalam etalase multi-produk sebagai Hero atau Kampanye Promosi (misal iPhone 15 Pro di dalam etalase Samsung), tautan tombol "Beli Sekarang" dan "Beli" mengunci ID produk asli beserta varian targetnya (`/gadget/{id}?variant={variantId}`).
+    - Halaman detail produk mendeteksi parameter `variant` / `variantId` dan `product` / `productId` dari URL saat inisialisasi default item etalase dan saat fetch detail, sehingga varian dan item produk yang terbuka 100% cocok dengan pengaturan admin di dashboard.
+  - **2. Deskripsi Dinamis per Produk di Dalam Etalase (`gadget-detail-client.tsx` & `shopee-mobile-product-detail.tsx`):**
+    - Saat pembeli berpindah pilihan produk di dalam satu etalase (misal dari Samsung S26 Ultra ke iPhone 15 Pro), isi teks "Deskripsi & Jaminan Unit" langsung berganti secara reaktif mengikuti deskripsi produk yang dipilih, bukan lagi tertahan di deskripsi cover etalase.
+    - Evaluasi pemotongan teks "Lihat Selengkapnya" dan gradien pudar bawah disinkronkan dengan deskripsi produk aktif.
+  - **3. Parser Rich Text Ringan Aman (`src/components/ui/rich-text.tsx`):**
+    - Deskripsi produk kini mendukung format penulisan kaya: `**tebal**`, `*miring*`, `***tebal miring***`, `~~coret~~`, `` `kode` ``, `[tautan](url)`, list bullet `- ` / `• `, dan nomor `1. `.
+    - Dibuat aman tanpa `dangerouslySetInnerHTML` sehingga bebas dari kerentanan XSS injection.
+  - **4. Input Varian Auto-Shift / Dynamic Form (`src/components/ui/creatable-combobox.tsx` & `products/[id]/edit/page.tsx`):**
+    - Input nama varian, SKU, harga, modal, dan stok kini secara otomatis menggulirkan teks (`scrollLeft = scrollWidth`) saat pengguna mengetik melebihi lebar kotak, sehingga karakter yang sedang diketik selalu terlihat jelas tanpa tertutup border.
+    - Tata letak grid varian dirombak menjadi 2 baris seimbang (Baris 1: Identitas & Spesifikasi; Baris 2: Harga Jual, Harga Coret, Modal HPP, Stok, dan Berat) dengan ruang input lebih lega.
+    - Dropdown pilihan varian mengadopsi lebar dinamis (`w-max min-w-full`) sehingga teks pilihan panjang tidak terpotong.
+  - **5. Auto-Normalize Nomor HP Menjadi `08...` di Seluruh Input:**
+    - Semua input nomor telepon toko, kontak pendaftaran, profil mitra, dan pengaturan akun secara seragam dinormalisasi otomatis menggunakan `normalizeToLocalPhone` (mengubah format `+62 8...`, `628...`, atau `8...` menjadi `08...` yang bersih tanpa spasi dan strip).
+    - Menghilangkan duplikasi field "WhatsApp Sales" dan menggantikannya dengan satu field terpadu "Nomor Telepon Toko".
+  - **6. Pembersihan UI Banner & Keterangan Berlebih:**
+    - Menghapus box deskripsi banner Level 1 dan Level 2 di halaman Pengajuan Iklan Toko (`/dashboard/admin/ads`).
+    - Menghapus teks keterangan digit rekening, tombol Cek manual, dan banner status verifikasi di Card 4 onboarding toko (`/dashboard/admin/onboarding`).
+    - Menghapus label "(Ala Shopee)" dan teks bantuan pada modal Etalase Toko (`src/components/admin/etalase-form-modal.tsx`).
+  - **7. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100%, commit & push ke GitHub `origin/main` (commit `4013c42`), container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-25 (Implementasi Pemilihan Varian Dropdown pada Live Streaming [Setup & Pin], Penguncian Otomatis Diskon Live ke Varian Spesifik, & Deploy VPS Hostinger):**
   - **1. Pemilihan Varian Dropdown pada Persiapan Siaran (`step === 'setup'`):**
     - Saat host memilih produk yang memiliki varian (seperti Note 10 Plus 512GB vs 256GB), sistem menyajikan dropdown pemilihan varian produk secara interaktif.

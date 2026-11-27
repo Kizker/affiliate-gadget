@@ -210,8 +210,8 @@ export async function GET() {
       (w) => w.status === 'PENDING'
     ).length
 
-    // Actionable orders count: prioritize paid orders (perlu diproses) + pending payment
-    const totalOrdersActionable = ordersNeedProcessing + ordersPendingPayment
+    // Actionable orders count: murni hanya pesanan berstatus PAID (perlu diproses / packing / serah kurir)
+    const totalOrdersActionable = ordersNeedProcessing
 
     const counts = {
       orders: totalOrdersActionable,

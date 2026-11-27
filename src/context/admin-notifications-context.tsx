@@ -240,14 +240,10 @@ export function AdminNotificationsProvider({
     }
   }, [pathname, session, status, storageKey])
 
-  // Automatically mark section as read when user navigates to its route
+  // Dynamic notification active items (hilang otomatis ketika aksi selesai diproses)
   useEffect(() => {
-    if (!pathname) return
-    const activeSection = getSectionKeyFromPath(pathname)
-    if (activeSection) {
-      markAsRead(activeSection)
-    }
-  }, [pathname, markAsRead])
+    // Tidak auto-dismiss saat navigasi halaman: badge tetap mencerminkan item yang belum diproses!
+  }, [pathname])
 
   // Initial fetch and fast polling every 2.5 seconds (reduced from 15s to minimize chat delay)
   useEffect(() => {
@@ -284,60 +280,26 @@ export function AdminNotificationsProvider({
     }
   }, [fetchCounts, status])
 
-  // Calculate effective unread counts (raw minus read count, clamped to 0)
+  // Real-time actionable notifications (badge tetap menyala selama item belum diproses)
   const counts: AdminNavCounts = useMemo(() => {
     if (!mounted) {
       return defaultCounts
     }
 
-    const unreadOrders = Math.max(
-      0,
-      rawCounts.orders - (readCounts.orders || 0)
-    )
-    const unreadChat = Math.max(0, rawCounts.chat - (readCounts.chat || 0))
-    const unreadFinance = Math.max(
-      0,
-      rawCounts.finance - (readCounts.finance || 0)
-    )
-    const unreadComplaints = Math.max(
-      0,
-      rawCounts.complaints - (readCounts.complaints || 0)
-    )
-    const unreadReturns = Math.max(
-      0,
-      rawCounts.returns - (readCounts.returns || 0)
-    )
-    const unreadAds = Math.max(0, rawCounts.ads - (readCounts.ads || 0))
-    const unreadLive = Math.max(0, rawCounts.live - (readCounts.live || 0))
-    const unreadMitras = Math.max(
-      0,
-      rawCounts.mitras - (readCounts.mitras || 0)
-    )
-
-    const total =
-      unreadOrders +
-      unreadChat +
-      unreadFinance +
-      unreadComplaints +
-      unreadReturns +
-      unreadAds +
-      unreadLive +
-      unreadMitras
-
     return {
-      orders: unreadOrders,
+      orders: rawCounts.orders,
       ordersNeedProcessing: rawCounts.ordersNeedProcessing,
       ordersPendingPayment: rawCounts.ordersPendingPayment,
-      chat: unreadChat,
-      finance: unreadFinance,
-      complaints: unreadComplaints,
-      returns: unreadReturns,
-      ads: unreadAds,
-      live: unreadLive,
-      mitras: unreadMitras,
-      total,
+      chat: rawCounts.chat,
+      finance: rawCounts.finance,
+      complaints: rawCounts.complaints,
+      returns: rawCounts.returns,
+      ads: rawCounts.ads,
+      live: rawCounts.live,
+      mitras: rawCounts.mitras,
+      total: rawCounts.total,
     }
-  }, [mounted, rawCounts, readCounts])
+  }, [mounted, rawCounts])
 
   return (
     <AdminNotificationsContext.Provider

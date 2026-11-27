@@ -106,42 +106,40 @@ describe('Admin Navigation Notification Badges Suite', () => {
     expect(computeTotals(sampleSuperAdminCounts)).toBe(12)
   })
 
-  it('hides badge when item is currently active (opened by user) in Sidebar', () => {
+  it('maintains active action badge in Sidebar even when route is currently active', () => {
     const sidebarPath = path.join(
       process.cwd(),
       'src/components/dashboard/sidebar.tsx'
     )
     const content = fs.readFileSync(sidebarPath, 'utf-8')
 
-    // Verifikasi bahwa ketika isActive bernilai true, dynamicBadge diset ke 0
-    expect(content).toContain('const dynamicBadge = isActive ? 0 : rawBadge')
-    expect(content).toContain('getSectionKeyFromHref')
-    expect(content).toContain('markAsRead(sectionKey)')
+    // Verifikasi bahwa dynamicBadge tetap menampilkan rawBadge selama ada item yang belum diproses
+    expect(content).toContain('const dynamicBadge = rawBadge')
+    expect(content).toContain('const hasDynamicBadge = dynamicBadge > 0')
   })
 
-  it('supports read-tracking and auto-dismissing notifications in AdminNotificationsContext', () => {
+  it('provides real-time actionable notifications in AdminNotificationsContext', () => {
     const contextPath = path.join(
       process.cwd(),
       'src/context/admin-notifications-context.tsx'
     )
     const content = fs.readFileSync(contextPath, 'utf-8')
 
-    expect(content).toContain('markAsRead')
-    expect(content).toContain('markAllAsRead')
-    expect(content).toContain('getSectionKeyFromPath')
-    expect(content).toContain('rawCounts.orders - (readCounts.orders || 0)')
+    expect(content).toContain('rawCounts.orders')
+    expect(content).toContain('rawCounts.chat')
+    expect(content).toContain('rawCounts.returns')
+    expect(content).toContain('rawCounts.total')
   })
 
-  it('includes markAsRead and markAllAsRead controls in AdminNotificationBell', () => {
+  it('renders active notifications cleanly in AdminNotificationBell', () => {
     const bellPath = path.join(
       process.cwd(),
       'src/components/dashboard/admin-notification-bell.tsx'
     )
     const content = fs.readFileSync(bellPath, 'utf-8')
 
-    expect(content).toContain('markAsRead')
-    expect(content).toContain('markAllAsRead')
-    expect(content).toContain('Tandai Dibaca')
-    expect(content).toContain('markAsRead(item.id)')
+    expect(content).toContain('const showBellBadge = counts.total > 0')
+    expect(content).toContain('currentActiveItems')
+    expect(content).toContain('proses aktif')
   })
 })
