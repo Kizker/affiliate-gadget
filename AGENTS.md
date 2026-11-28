@@ -67,6 +67,30 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-28 (Deploy VPS Hostinger: Resolusi Status Tunggu Keputusan After Sales Superadmin, Chat Konsultasi Superadmin After Sales & Mitra, Eliminasi Tracking Pasca-Tiba, Penguncian Varian Chat Order, & Pembersihan Tombol Rincian Unit):**
+  - **1. Penanganan Status Revisi Retur Superadmin (`dashboard/admin/returns/page.tsx`):**
+    - Saat Superadmin menolak rekomendasi After Sales / mengembalikan tiket retur untuk ditinjau ulang, sistem menampilkan badge status informatif: **`[ ⏳ Menunggu Keputusan After Sales... ]`**.
+    - Tombol aksi `[ Tolak dan Kembalikan ]` dan `[ ACC Final ]` disembunyikan total untuk tiket dalam status revisi sehingga tidak ada tombol ganda yang membingungkan.
+    - Banner usulan lama digantikan dengan banner status pengembalian tiket yang jelas, dan tiket yang sedang direvisi After Sales difilter keluar dari antrean tab `Menunggu ACC` Superadmin.
+  - **2. Eliminasi Tombol Lacak Ekspedisi Pasca-Tiba (`after-sales/returns/page.tsx`):**
+    - Menghapus tombol `[ 🔍 Lacak Biteship ]` pada banner barang retur yang telah dikonfirmasi tiba di toko cabang dan mulai proses QC fisik.
+  - **3. Chat Konsultasi Bantuan Superadmin untuk After Sales & Mitra (`sidebar.tsx`, `mitra/page.tsx`, `admin/chat/page.tsx`):**
+    - Menambahkan menu **`Bantuan Superadmin`** di navigasi After Sales (`/dashboard/after-sales/chat?cs=true`) dan Mitra (`/dashboard/admin/chat?cs=true`), serta tombol aksi cepat di dashboard Mitra.
+    - Menyelaraskan izin rute, endpoint API, dan pelabelan peran (`Admin After Sales`, `Mitra Servis`).
+  - **4. Penguncian Konteks Chat Pesanan ke Varian Spesifik & Pembersihan Tombol Rincian Unit:**
+    - Memastikan konteks chat yang dikirim ke toko mengunci ID varian spesifik barang yang dipesan pembeli (bukan varian cover etalase).
+    - Menghapus tombol redundan "Rincian Unit" per barang pada daftar pesanan mobile.
+  - **5. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), seluruh unit test suites terkait lulus 100%, container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
+- **2026-11-28 (Deploy VPS Hostinger: Restorasi Tampilan Lengkap Edukasi Kebijakan Pajak [Dasar Hukum, Penjelasan, Alur Uang, Kode e-Billing, Box Kepatuhan]):**
+  - **1. Restorasi Tab Kebijakan Pajak (`/dashboard/admin/tax`):**
+    - Mengembalikan kartu-kartu kebijakan pajak pada Tab 1 ke tampilan lengkap dan terstruktur sebelumnya:
+      - Box informasi biru kepatuhan perpajakan platform.
+      - Grid 2 kolom seimbang (`grid-cols-1 lg:grid-cols-2`).
+      - Rincian edukasi per jenis pajak: dasar hukum resmi (UU HPP & PMK), penjelasan tujuan pemungutan, alur uang penampungan kas ke Kas Negara via e-Billing DJP, kode akun pajak e-Billing DJP (KAP-KJS), badge status aktif, dan toggle switch Superadmin.
+    - Tetap mempertahankan fitur utama penarikan dana kas penampungan pajak eksklusif (**`[ 💳 Tarik Dana Pajak ]`** & modal penarikan).
+  - **2. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100%, commit & push ke GitHub `origin/main` (commit `05bdb91`), container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-28 (Deploy VPS Hostinger: Eliminasi Manual NTPN & Integrasi Fitur Tarik Dana Pajak [Withdrawal Eksklusif] Serta Single-Line Level 1 Modal Iklan):**
   - **1. Penarikan Dana Pajak Eksklusif (`/dashboard/admin/tax` & `api/admin/tax/route.ts`):**
     - Menghapus total tombol manual `+ Catat Bukti Setor NTPN` dan modal NTPN yang rumit.
