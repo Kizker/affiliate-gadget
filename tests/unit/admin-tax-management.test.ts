@@ -70,7 +70,7 @@ describe('Admin Tax Management & Indonesian Tax Compliance Suite', () => {
     expect(calc.items[0].amount).toBe(50000)
   })
 
-  it('5. verifies admin tax page exists and has page guard', () => {
+  it('5. verifies admin tax page exists, has page guard, and contains exclusive tax withdrawal', () => {
     const taxPagePath = path.join(
       rootDir,
       'src',
@@ -83,8 +83,10 @@ describe('Admin Tax Management & Indonesian Tax Compliance Suite', () => {
     expect(fs.existsSync(taxPagePath)).toBe(true)
     const content = fs.readFileSync(taxPagePath, 'utf-8')
     expect(content).toContain("usePageGuard('/dashboard/admin/tax')")
-    expect(content).toContain('Transparansi Pajak Negara')
-    expect(content).toContain('Kas Penampungan Pajak')
-    expect(content).toContain('NTPN')
+    expect(content).toContain('Tarik Dana Pajak')
+    expect(content).toContain('Saldo Pajak Siap Tarik')
+    expect(content).toContain('Riwayat Penarikan Dana Pajak')
+    // Verifies removal of cumbersome manual NTPN submission button
+    expect(content).not.toContain('Catat Bukti Setor NTPN')
   })
 })

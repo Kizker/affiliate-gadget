@@ -27,6 +27,19 @@ export interface IndonesianTaxConfig {
   ebillingKapKjs: string // Kode Akun Pajak (KAP) - Kode Jenis Setoran (KJS) resmi DJP
 }
 
+export interface TaxWithdrawalRecord {
+  id: string
+  refNumber: string
+  amount: number
+  bankName: string
+  accountNumber: string
+  accountName: string
+  requestedBy: string
+  status: 'SUCCESS'
+  createdAt: string
+  notes?: string
+}
+
 export interface TaxRemittanceRecord {
   id: string
   periodLabel: string
@@ -41,6 +54,7 @@ export interface TaxRemittanceRecord {
 
 export interface TaxConfigStoreData {
   taxes: IndonesianTaxConfig[]
+  withdrawals: TaxWithdrawalRecord[]
   remittances: TaxRemittanceRecord[]
   updatedAt: string
 }
@@ -193,6 +207,9 @@ export function getTaxConfigData(): TaxConfigStoreData {
 
         memoryCache = {
           taxes: mergedTaxes,
+          withdrawals: Array.isArray(parsed.withdrawals)
+            ? parsed.withdrawals
+            : [],
           remittances: Array.isArray(parsed.remittances)
             ? parsed.remittances
             : [],
@@ -209,6 +226,7 @@ export function getTaxConfigData(): TaxConfigStoreData {
 
   memoryCache = {
     taxes: DEFAULT_INDONESIAN_TAXES,
+    withdrawals: [],
     remittances: [],
     updatedAt: new Date().toISOString(),
   }
@@ -218,6 +236,10 @@ export function getTaxConfigData(): TaxConfigStoreData {
 export function saveTaxConfigData(
   updates: Partial<{
     taxes: { id: TaxTypeId; isEnabled: boolean; rate?: number }[]
+    newWithdrawal?: Omit<
+      TaxWithdrawalRecord,
+      'id' | 'refNumber' | 'status' | 'createdAt'
+    >
     newRemittance?: Omit<TaxRemittanceRecord, 'id' | 'remittedAt'>
   }>
 ): TaxConfigStoreData {
@@ -241,6 +263,22 @@ export function saveTaxConfigData(
     })
   }
 
+  const updatedWithdrawals = [...current.withdrawals]
+  if (updates.newWithdrawal) {
+    const timestamp = Date.now()
+    const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase()
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const refNumber = `TAX-WD-${dateStr}-${randomHex}`
+
+    updatedWithdrawals.unshift({
+      ...updates.newWithdrawal,
+      id: `twd-${timestamp}`,
+      refNumber,
+      status: 'SUCCESS',
+      createdAt: new Date().toISOString(),
+    })
+  }
+
   const updatedRemittances = [...current.remittances]
   if (updates.newRemittance) {
     updatedRemittances.unshift({
@@ -252,6 +290,7 @@ export function saveTaxConfigData(
 
   const nextData: TaxConfigStoreData = {
     taxes: updatedTaxes,
+    withdrawals: updatedWithdrawals,
     remittances: updatedRemittances,
     updatedAt: new Date().toISOString(),
   }

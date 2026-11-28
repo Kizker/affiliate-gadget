@@ -168,13 +168,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const totalRemittedToDjp = configData.remittances.reduce(
-      (acc, r) => acc + (Number(r.amount) || 0),
+    const totalTaxWithdrawn = (configData.withdrawals || []).reduce(
+      (acc, w) => acc + (Number(w.amount) || 0),
       0
     )
-    const remainingTaxPoolToRemit = Math.max(
+    const availableTaxBalance = Math.max(
       0,
-      totalCollectedSettled - totalRemittedToDjp
+      totalCollectedSettled - totalTaxWithdrawn
     )
 
     return NextResponse.json({
@@ -193,11 +193,12 @@ export async function GET(req: NextRequest) {
         activeTaxCount: configData.taxes.filter((t) => t.isEnabled).length,
         totalCollectedSettled,
         totalInEscrowTax,
-        totalRemittedToDjp,
-        remainingTaxPoolToRemit,
+        totalTaxWithdrawn,
+        availableTaxBalance,
       },
       taxLedger,
-      remittances: configData.remittances,
+      withdrawals: configData.withdrawals || [],
+      remittances: configData.remittances || [],
       updatedAt: configData.updatedAt,
     })
   } catch (error) {
@@ -237,7 +238,91 @@ export async function PATCH(req: NextRequest) {
       })
     }
 
-    // 2. Catat penyetoran pajak ke Kas Negara (e-Billing DJP / NTPN)
+    // 2. Aksi Penarikan Dana Pajak (Withdrawal Eksklusif Pajak)
+    if (body.action === 'WITHDRAW_TAX') {
+      const { amount, bankName, accountNumber, accountName, notes } = body
+      const numAmount = Math.round(Number(amount))
+
+      if (!numAmount || numAmount <= 0) {
+        return NextResponse.json(
+          { error: 'Nominal penarikan dana pajak tidak valid' },
+          { status: 400 }
+        )
+      }
+
+      if (!bankName || !accountNumber || !accountName) {
+        return NextResponse.json(
+          {
+            error: 'Rincian rekening bank tujuan penarikan wajib diisi lengkap',
+          },
+          { status: 400 }
+        )
+      }
+
+      // Hitung live settled tax pool untuk validasi saldo
+      const configData = getTaxConfigData()
+      const completedOrders = await prisma.order.findMany({
+        where: { status: 'COMPLETED' },
+        select: {
+          subtotal: true,
+          discountAmount: true,
+          commissionAmount: true,
+        },
+      })
+
+      let totalSettled = 0
+      for (const order of completedOrders) {
+        const subtotalAfterDiscount = Math.max(
+          0,
+          (order.subtotal || 0) - (order.discountAmount || 0)
+        )
+        const commission =
+          order.commissionAmount || Math.round(subtotalAfterDiscount * 0.02)
+        const calc = calculateActiveTaxesForOrder({
+          subtotalAfterDiscount,
+          platformCommissionAmount: commission,
+          activeTaxes: configData.taxes,
+        })
+        totalSettled += calc.totalTaxAmount
+      }
+
+      const totalAlreadyWithdrawn = (configData.withdrawals || []).reduce(
+        (acc, w) => acc + (Number(w.amount) || 0),
+        0
+      )
+      const currentAvailable = Math.max(0, totalSettled - totalAlreadyWithdrawn)
+
+      if (numAmount > currentAvailable) {
+        return NextResponse.json(
+          {
+            error: `Saldo kas pajak tidak mencukupi. Saldo siap tarik: Rp ${currentAvailable.toLocaleString('id-ID')}`,
+          },
+          { status: 400 }
+        )
+      }
+
+      const updated = saveTaxConfigData({
+        newWithdrawal: {
+          amount: numAmount,
+          bankName: String(bankName).trim(),
+          accountNumber: String(accountNumber).trim(),
+          accountName: String(accountName).trim(),
+          requestedBy: session.user.name || 'Super Admin',
+          notes: notes
+            ? String(notes).trim()
+            : 'Pencairan Kas Penampungan Pajak',
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: 'Penarikan dana kas pajak berhasil diproses!',
+        withdrawals: updated.withdrawals,
+        newWithdrawal: updated.withdrawals[0],
+      })
+    }
+
+    // 3. Catat penyetoran pajak ke Kas Negara (e-Billing DJP / NTPN)
     if (body.action === 'RECORD_REMITTANCE') {
       const { periodLabel, ntpnNumber, billingCode, amount, taxTypes, notes } =
         body

@@ -67,6 +67,20 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-28 (Deploy VPS Hostinger: Penyederhanaan Modal Pengajuan Iklan [Kunci Level, Murni Upload, Tanggal Sederhana, Eliminasi Target Tayang] & Integrasi Modul Manajemen Pajak Negara):**
+  - **1. Penyederhanaan Modal Pengajuan Iklan (`create-ad-modal.tsx` & `admin/ads/page.tsx`):**
+    - **Penguncian Level:** Menghapus pilihan ganti level penempatan di dalam modal. Begitu tombol "Ajukan Iklan Level 1" atau "Level 2" diklik, modal terkunci langsung pada level tersebut tanpa membingungkan pengguna.
+    - **Murni Upload File:** Menghapus seluruh tab-taban sumber foto (banner toko, katalog produk, preset banner promo, input URL). Modal kini hanya menyajikan satu area dropzone upload file (Foto JPG/PNG maks 2MB atau Video MP4 maks 30MB) lengkap dengan pratinjau media.
+    - **Tanggal Sederhana:** Menghapus pilihan tombol [3, 7, 14, 30] hari dan input durasi kustom berbelit-belit. Cukup pilih Tanggal Mulai dan Tanggal Berakhir.
+    - **Eliminasi Frekuensi Tayang Level 2:** Menghapus total pilihan target kemunculan / target tayangan (`targetImpressions`) pada Level 2.
+  - **2. Integrasi Penuh Modul Manajemen Pajak Negara (`/dashboard/admin/tax`):**
+    - Membangun antarmuka `/dashboard/admin/tax` dengan 4 kartu KPI Bento (Kas Penampungan Pajak Siap Setor, Pajak Tertahan Escrow, Pajak Disetor ke Kas Negara, dan Status Kebijakan Pajak UU).
+    - Tab 1: Konfigurasi & Edukasi 6 Pajak Indonesia (PPh 22 PMSE 0,5% default aktif, PPN PMSE 11%, PPh Final UMKM 0,5%, PPh 23 Komisi 2%, PPh 21, dan Bea Meterai) lengkap dengan dasar hukum UU/PMK, kode e-Billing DJP (KAP-KJS), dan toggle aktivasi Superadmin.
+    - Tab 2: Buku Kas / Jurnal rincian pemotongan pajak per pesanan.
+    - Tab 3: Riwayat Bukti Penerimaan Negara (BPN/NTPN) dan modal pencatatan setoran 16 digit NTPN.
+    - Sinkronisasi subroute guard di `src/middleware.ts` dan `src/lib/auth-guard.ts` untuk `SUPER_ADMIN`, `STORE_ADMIN`, dan `FINANCE_ADMIN`.
+  - **3. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100% (`admin-ads-simplified-modal.test.ts` & `admin-tax-management.test.ts`), commit & push ke GitHub `origin/main` (commit `31d0812`), container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-28 (Resolusi 502 Bad Gateway Nginx VPS Hostinger via Penyesuaian Buffer Proxy):**
   - **1. Analisa Akar Masalah (Root Cause):**
     - Dari inspeksi log Nginx VPS (`/var/log/nginx/error.log`):

@@ -7,24 +7,20 @@ import { toast } from 'sonner'
 import {
   Scale,
   RefreshCw,
-  Plus,
+  Wallet,
   CheckCircle2,
-  AlertCircle,
-  FileText,
   Landmark,
   ShieldCheck,
   Building2,
-  Receipt,
-  ExternalLink,
   Loader2,
   Clock,
-  ArrowRight,
-  Info,
+  ArrowDownToLine,
   X,
+  CreditCard,
 } from 'lucide-react'
 import {
   IndonesianTaxConfig,
-  TaxRemittanceRecord,
+  TaxWithdrawalRecord,
 } from '@/lib/tax/tax-config-store'
 
 interface TaxApiResponse {
@@ -44,8 +40,8 @@ interface TaxApiResponse {
     activeTaxCount: number
     totalCollectedSettled: number
     totalInEscrowTax: number
-    totalRemittedToDjp: number
-    remainingTaxPoolToRemit: number
+    totalTaxWithdrawn: number
+    availableTaxBalance: number
   }
   taxLedger: Array<{
     id: string
@@ -66,7 +62,7 @@ interface TaxApiResponse {
     }>
     date: string
   }>
-  remittances: TaxRemittanceRecord[]
+  withdrawals: TaxWithdrawalRecord[]
   updatedAt: string
 }
 
@@ -75,20 +71,20 @@ export default function AdminTaxManagementPage() {
   const { data: session } = useSession()
 
   const [activeTab, setActiveTab] = useState<
-    'CONFIG' | 'LEDGER' | 'REMITTANCE'
+    'CONFIG' | 'LEDGER' | 'WITHDRAWALS'
   >('CONFIG')
   const [data, setData] = useState<TaxApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingTaxId, setUpdatingTaxId] = useState<string | null>(null)
 
-  // Modal Catat Setoran NTPN
-  const [showRemitModal, setShowRemitModal] = useState(false)
-  const [remitPeriod, setRemitPeriod] = useState('')
-  const [remitNtpn, setRemitNtpn] = useState('')
-  const [remitBillingCode, setRemitBillingCode] = useState('')
-  const [remitAmount, setRemitAmount] = useState('')
-  const [remitNotes, setRemitNotes] = useState('')
-  const [submittingRemit, setSubmittingRemit] = useState(false)
+  // Modal Tarik Dana Pajak (Withdrawal Eksklusif Pajak)
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawBank, setWithdrawBank] = useState('Bank Mandiri')
+  const [withdrawAccountNo, setWithdrawAccountNo] = useState('')
+  const [withdrawAccountName, setWithdrawAccountName] = useState('')
+  const [withdrawNotes, setWithdrawNotes] = useState('')
+  const [submittingWithdraw, setSubmittingWithdraw] = useState(false)
 
   const fetchTaxData = useCallback(async () => {
     try {
@@ -98,7 +94,7 @@ export default function AdminTaxManagementPage() {
       if (res.ok && json.success) {
         setData(json)
       } else {
-        toast.error(json.error || 'Gagal memuat data perpajakan')
+        toast.error(json.error || 'Gagal memuat data pajak')
       }
     } catch {
       toast.error('Gagal terhubung ke server perpajakan')
@@ -114,7 +110,7 @@ export default function AdminTaxManagementPage() {
   const handleToggleTax = async (tax: IndonesianTaxConfig) => {
     if (!data?.canManageConfig) {
       toast.error(
-        'Hanya Superadmin yang memiliki izin mengubah kebijakan perpajakan'
+        'Hanya Superadmin yang memiliki wewenang mengubah kebijakan pajak'
       )
       return
     }
@@ -154,73 +150,88 @@ export default function AdminTaxManagementPage() {
     }
   }
 
-  const handleRecordRemittance = async (e: React.FormEvent) => {
+  const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!remitNtpn.trim() || !remitAmount || Number(remitAmount) <= 0) {
-      toast.error('Nomor NTPN dan nominal setoran wajib diisi')
+    const numAmount = Number(withdrawAmount)
+
+    if (!numAmount || numAmount <= 0) {
+      toast.error('Nominal penarikan dana tidak valid')
+      return
+    }
+
+    const available = data?.summary.availableTaxBalance || 0
+    if (numAmount > available) {
+      toast.error(
+        `Nominal melebihi saldo pajak siap tarik (Rp ${available.toLocaleString('id-ID')})`
+      )
+      return
+    }
+
+    if (!withdrawAccountNo.trim() || !withdrawAccountName.trim()) {
+      toast.error('Nomor rekening dan nama pemilik rekening wajib diisi')
       return
     }
 
     try {
-      setSubmittingRemit(true)
+      setSubmittingWithdraw(true)
       const res = await fetch('/api/admin/tax', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'RECORD_REMITTANCE',
-          periodLabel: remitPeriod.trim() || 'Masa Pajak Berjalan',
-          ntpnNumber: remitNtpn.trim().toUpperCase(),
-          billingCode: remitBillingCode.trim() || '-',
-          amount: Number(remitAmount),
-          notes: remitNotes.trim(),
+          action: 'WITHDRAW_TAX',
+          amount: numAmount,
+          bankName: withdrawBank,
+          accountNumber: withdrawAccountNo.trim(),
+          accountName: withdrawAccountName.trim(),
+          notes: withdrawNotes.trim() || 'Penarikan Kas Penampungan Pajak',
         }),
       })
 
       const json = await res.json()
       if (res.ok && json.success) {
-        toast.success('Bukti setoran kas Negara (NTPN) berhasil dicatat!')
-        setShowRemitModal(false)
-        setRemitPeriod('')
-        setRemitNtpn('')
-        setRemitBillingCode('')
-        setRemitAmount('')
-        setRemitNotes('')
+        toast.success('Penarikan dana kas pajak berhasil diproses!')
+        setShowWithdrawModal(false)
+        setWithdrawAmount('')
+        setWithdrawAccountNo('')
+        setWithdrawAccountName('')
+        setWithdrawNotes('')
+        setActiveTab('WITHDRAWALS')
         fetchTaxData()
       } else {
-        toast.error(json.error || 'Gagal mencatat setoran pajak')
+        toast.error(json.error || 'Gagal memproses penarikan dana pajak')
       }
     } catch {
-      toast.error('Terjadi kesalahan saat mencatat setoran')
+      toast.error('Terjadi kesalahan koneksi saat memproses penarikan')
     } finally {
-      setSubmittingRemit(false)
+      setSubmittingWithdraw(false)
     }
   }
 
   const formatRupiah = (val: number) =>
     `Rp ${Number(val || 0).toLocaleString('id-ID')}`
 
+  const availableBalance = data?.summary.availableTaxBalance || 0
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Header Utama */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-              <Scale className="h-5 w-5" />
-            </span>
-            <div>
-              <h1 className="text-xl font-black text-slate-950 dark:text-white sm:text-2xl">
-                Manajemen &amp; Transparansi Pajak Negara
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-                Sistem kepatuhan perpajakan Indonesia (UU HPP &amp; PMK DJP) —
-                Pemotongan, Kas Penampungan, dan Penyetoran e-Billing
-              </p>
-            </div>
+      {/* Header Utama Ramping */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+            <Scale className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-xl font-black text-slate-950 dark:text-white sm:text-2xl">
+              Pajak Negara
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Kas penampungan pajak transaksi &amp; penarikan dana eksklusif
+              pajak
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchTaxData}
             disabled={loading}
@@ -235,38 +246,51 @@ export default function AdminTaxManagementPage() {
           {data?.canManageConfig && (
             <button
               onClick={() => {
-                setRemitAmount(
-                  String(data.summary.remainingTaxPoolToRemit || '')
+                setWithdrawAmount(
+                  availableBalance > 0 ? String(availableBalance) : ''
                 )
-                setShowRemitModal(true)
+                setShowWithdrawModal(true)
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
+              disabled={availableBalance <= 0}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Plus className="h-4 w-4" />
-              <span>Catat Bukti Setor NTPN</span>
+              <ArrowDownToLine className="h-4 w-4" />
+              <span>Tarik Dana Pajak</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 4 Kartu KPI Bento Atas */}
+      {/* 4 Kartu KPI Bento Bersih */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Kas Siap Setor */}
+        {/* Card 1: Saldo Pajak Siap Tarik */}
         <div className="shadow-xs rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Kas Penampungan Pajak
+              Saldo Pajak Siap Tarik
             </span>
             <span className="rounded-lg bg-orange-500/10 p-2 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
               <Landmark className="h-4 w-4" />
             </span>
           </div>
           <p className="mt-3 text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-            {formatRupiah(data?.summary.remainingTaxPoolToRemit || 0)}
+            {formatRupiah(availableBalance)}
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
-            <span>Siap disetor via e-Billing DJP</span>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[11px] text-slate-500">
+              Dari pesanan selesai
+            </span>
+            {data?.canManageConfig && availableBalance > 0 && (
+              <button
+                onClick={() => {
+                  setWithdrawAmount(String(availableBalance))
+                  setShowWithdrawModal(true)
+                }}
+                className="text-[11px] font-bold text-orange-600 hover:underline dark:text-orange-400"
+              >
+                Tarik Sekarang &rarr;
+              </button>
+            )}
           </div>
         </div>
 
@@ -283,36 +307,34 @@ export default function AdminTaxManagementPage() {
           <p className="mt-3 text-2xl font-black tracking-tight text-slate-950 dark:text-white">
             {formatRupiah(data?.summary.totalInEscrowTax || 0)}
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-            <span>Pesanan sedang diproses / dikirim</span>
-          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Pesanan sedang diproses / dikirim
+          </p>
         </div>
 
-        {/* Card 3: Telah Disetor ke Kas Negara */}
+        {/* Card 3: Total Dana Pajak Ditarik */}
         <div className="shadow-xs rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Telah Disetor ke Negara
+              Total Dana Pajak Ditarik
             </span>
             <span className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4" />
             </span>
           </div>
           <p className="mt-3 text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-            {formatRupiah(data?.summary.totalRemittedToDjp || 0)}
+            {formatRupiah(data?.summary.totalTaxWithdrawn || 0)}
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-            <span>{data?.remittances.length || 0} bukti NTPN tercatat</span>
-          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            {data?.withdrawals.length || 0} kali penarikan dana
+          </p>
         </div>
 
         {/* Card 4: Kebijakan Pajak Aktif */}
         <div className="shadow-xs rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Status Kebijakan UU
+              Kebijakan Pajak
             </span>
             <span className="rounded-lg bg-purple-500/10 p-2 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
               <ShieldCheck className="h-4 w-4" />
@@ -321,14 +343,13 @@ export default function AdminTaxManagementPage() {
           <p className="mt-3 text-2xl font-black tracking-tight text-slate-950 dark:text-white">
             {data?.summary.activeTaxCount || 0} / {data?.taxes.length || 6}
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span className="inline-block h-2 w-2 rounded-full bg-purple-500" />
-            <span>Jenis pajak diaktifkan</span>
-          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Jenis pajak aktif dikenakan
+          </p>
         </div>
       </div>
 
-      {/* Navigasi Tab */}
+      {/* Navigasi Tab Sederhana */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 dark:border-slate-800">
         <button
           onClick={() => setActiveTab('CONFIG')}
@@ -338,7 +359,7 @@ export default function AdminTaxManagementPage() {
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
           }`}
         >
-          Konfigurasi &amp; Dasar Hukum UU ({data?.taxes.length || 6})
+          Kebijakan Pajak ({data?.taxes.length || 6})
         </button>
         <button
           onClick={() => setActiveTab('LEDGER')}
@@ -348,168 +369,103 @@ export default function AdminTaxManagementPage() {
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
           }`}
         >
-          Buku Kas / Jurnal Pemotongan Pajak ({data?.taxLedger.length || 0})
+          Jurnal Pemotongan Pesanan ({data?.taxLedger.length || 0})
         </button>
         <button
-          onClick={() => setActiveTab('REMITTANCE')}
+          onClick={() => setActiveTab('WITHDRAWALS')}
           className={`rounded-2xl px-4 py-2 text-xs font-bold transition ${
-            activeTab === 'REMITTANCE'
+            activeTab === 'WITHDRAWALS'
               ? 'shadow-xs bg-slate-950 text-white dark:bg-white dark:text-slate-950'
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
           }`}
         >
-          Bukti Setor Kas Negara NTPN ({data?.remittances.length || 0})
+          Riwayat Penarikan Dana Pajak ({data?.withdrawals.length || 0})
         </button>
       </div>
 
-      {/* TAB 1: KONFIGURASI & DASAR HUKUM UU */}
+      {/* TAB 1: KEBIJAKAN PAJAK (TAMPILAN BERSIH & SIMPLE, TANPA FLUFF) */}
       {activeTab === 'CONFIG' && (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-            <div className="flex items-start gap-2">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-              <div>
-                <p className="font-bold">
-                  Informasi Kepatuhan Pajak Platform Affiliate Gadget
-                </p>
-                <p className="mt-1 text-[11px] leading-relaxed opacity-90">
-                  Seluruh pemotongan pajak dirancang transparan berdasarkan
-                  Undang-Undang Republik Indonesia. Dana potongan pajak tidak
-                  diakui sebagai laba marketplace, melainkan ditampung sementara
-                  di rekening khusus (Tax Escrow) sebelum disetorkan ke Kas
-                  Negara via sistem e-Billing Direktorat Jenderal Pajak (DJP)
-                  setiap masa pajak.
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {data?.taxes.map((tax) => {
+            const isUpdating = updatingTaxId === tax.id
+            return (
+              <div
+                key={tax.id}
+                className={`p-4.5 flex flex-col justify-between rounded-3xl border transition ${
+                  tax.isEnabled
+                    ? 'shadow-xs border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'
+                    : 'border-slate-200 bg-slate-50/70 opacity-70 dark:border-slate-800 dark:bg-slate-950/40'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-black text-white dark:bg-white dark:text-slate-900">
+                      {tax.code}
+                    </span>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {data?.taxes.map((tax) => {
-              const isUpdating = updatingTaxId === tax.id
-              return (
-                <div
-                  key={tax.id}
-                  className={`relative flex flex-col justify-between rounded-3xl border p-5 transition ${
-                    tax.isEnabled
-                      ? 'shadow-xs border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'
-                      : 'border-slate-200 bg-slate-50/80 opacity-75 dark:border-slate-800 dark:bg-slate-950/40'
-                  }`}
-                >
-                  <div>
-                    {/* Header Kartu Pajak */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-black text-white dark:bg-white dark:text-slate-900">
-                            {tax.code}
-                          </span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                              tax.isEnabled
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
-                          >
-                            {tax.isEnabled ? '● Aktif Dikenakan' : '○ Nonaktif'}
-                          </span>
-                        </div>
-                        <h3 className="mt-2 text-sm font-extrabold text-slate-900 dark:text-white">
-                          {tax.name}
-                        </h3>
-                        <p className="mt-0.5 text-xs font-bold text-orange-600 dark:text-orange-400">
-                          {tax.basisLabel}
-                        </p>
-                      </div>
-
-                      {/* Toggle Button (Superadmin Only) */}
-                      {data.canManageConfig && (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTax(tax)}
-                          disabled={isUpdating}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            tax.isEnabled
-                              ? 'bg-orange-500'
-                              : 'bg-slate-300 dark:bg-slate-700'
-                          } ${isUpdating ? 'cursor-not-allowed opacity-50' : ''}`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                              tax.isEnabled ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Rincian Edukasi Perpajakan */}
-                    <div className="mt-4 space-y-2.5 border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
-                      <div>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          ⚖️ Dasar Hukum:
-                        </span>
-                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                          {tax.legalBasis}
-                        </p>
-                      </div>
-
-                      <div>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          🎯 Tujuan &amp; Penjelasan:
-                        </span>
-                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                          {tax.purposeExplanation}
-                        </p>
-                      </div>
-
-                      <div>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          🔄 Alur Uang:
-                        </span>
-                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                          {tax.moneyFlowExplanation}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-slate-100/70 p-2.5 text-[11px] dark:bg-slate-800/50">
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          🏦 Kode e-Billing DJP:
-                        </span>
-                        <p className="mt-0.5 font-mono font-bold text-slate-900 dark:text-white">
-                          {tax.ebillingKapKjs}
-                        </p>
-                      </div>
-                    </div>
+                    {/* Toggle Switch */}
+                    {data.canManageConfig && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTax(tax)}
+                        disabled={isUpdating}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          tax.isEnabled
+                            ? 'bg-orange-500'
+                            : 'bg-slate-300 dark:bg-slate-700'
+                        } ${isUpdating ? 'opacity-50' : ''}`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            tax.isEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    )}
                   </div>
 
-                  {/* Statistik Pemotongan Real-Time */}
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
-                    <span className="text-slate-500">
-                      Terkumpul Siap Setor:
+                  <h3 className="mt-2 line-clamp-1 text-xs font-extrabold text-slate-900 dark:text-white">
+                    {tax.name}
+                  </h3>
+                  <p className="mt-0.5 text-xs font-bold text-orange-600 dark:text-orange-400">
+                    {tax.basisLabel}
+                  </p>
+
+                  <div className="mt-2.5 rounded-xl bg-slate-50 p-2 text-[10.5px] dark:bg-slate-800/50">
+                    <span className="font-semibold text-slate-400">
+                      Kode e-Billing:{' '}
                     </span>
-                    <strong className="font-mono text-sm font-black text-slate-950 dark:text-white">
-                      {formatRupiah(tax.stats.settledAmount)}
+                    <strong className="font-mono text-slate-800 dark:text-slate-200">
+                      {tax.ebillingKapKjs}
                     </strong>
                   </div>
                 </div>
-              )
-            })}
-          </div>
+
+                <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs dark:border-slate-800">
+                  <span className="text-[11px] text-slate-500">
+                    Terkumpul Siap Tarik:
+                  </span>
+                  <strong className="font-mono text-xs font-black text-slate-900 dark:text-white">
+                    {formatRupiah(tax.stats.settledAmount)}
+                  </strong>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
-      {/* TAB 2: BUKU KAS / JURNAL PEMOTONGAN PAJAK */}
+      {/* TAB 2: JURNAL PEMOTONGAN PESANAN */}
       {activeTab === 'LEDGER' && (
         <div className="shadow-xs rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h3 className="text-sm font-extrabold text-slate-950 dark:text-white">
-                Buku Jurnal Pemotongan Pajak Toko
+                Jurnal Pemotongan Pajak Pesanan
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pencatatan otomatis pemotongan pajak negara dari setiap pesanan
-                pelanggan
+                Pencatatan riil pemotongan pajak dari setiap pesanan yang telah
+                dibayar
               </p>
             </div>
             <span className="rounded-xl bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -523,7 +479,7 @@ export default function AdminTaxManagementPage() {
             </div>
           ) : !data?.taxLedger || data.taxLedger.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
-              Belum ada data pemotongan pajak pada pesanan yang selesai.
+              Belum ada riwayat pemotongan pajak pesanan.
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto">
@@ -531,11 +487,10 @@ export default function AdminTaxManagementPage() {
                 <thead>
                   <tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800">
                     <th className="pb-3">Pesanan &amp; Tanggal</th>
-                    <th className="pb-3">Toko Cabang / PT</th>
-                    <th className="pb-3">NPWP Wajib Pajak</th>
+                    <th className="pb-3">Toko / NPWP</th>
                     <th className="pb-3">Nilai Transaksi</th>
-                    <th className="pb-3">Rincian Potongan Pajak</th>
-                    <th className="pb-3 text-right">Total Pajak</th>
+                    <th className="pb-3">Rincian Pajak</th>
+                    <th className="pb-3 text-right">Potongan Pajak</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -553,8 +508,6 @@ export default function AdminTaxManagementPage() {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
                           })}
                         </p>
                       </td>
@@ -562,12 +515,9 @@ export default function AdminTaxManagementPage() {
                         <p className="font-bold text-slate-800 dark:text-slate-200">
                           {row.storeName}
                         </p>
-                        <p className="text-[10px] text-slate-400">
-                          {row.companyName}
+                        <p className="font-mono text-[10px] text-slate-400">
+                          {row.npwp}
                         </p>
-                      </td>
-                      <td className="py-3 pr-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                        {row.npwp}
                       </td>
                       <td className="py-3 pr-3 font-mono font-bold text-slate-800 dark:text-slate-200">
                         {formatRupiah(row.subtotalAfterDiscount)}
@@ -596,79 +546,80 @@ export default function AdminTaxManagementPage() {
         </div>
       )}
 
-      {/* TAB 3: RIWAYAT SETORAN KAS NEGARA (NTPN) */}
-      {activeTab === 'REMITTANCE' && (
+      {/* TAB 3: RIWAYAT PENARIKAN DANA PAJAK */}
+      {activeTab === 'WITHDRAWALS' && (
         <div className="shadow-xs rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h3 className="text-sm font-extrabold text-slate-950 dark:text-white">
-                Bukti Penerimaan Negara (BPN) &amp; NTPN
+                Riwayat Penarikan Dana Pajak
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Riwayat penyetoran kas pajak marketplace ke Kas Negara via
-                e-Billing DJP
+                Pencatatan penarikan dana eksklusif kas penampungan pajak
               </p>
             </div>
             {data?.canManageConfig && (
               <button
                 onClick={() => {
-                  setRemitAmount(
-                    String(data.summary.remainingTaxPoolToRemit || '')
+                  setWithdrawAmount(
+                    availableBalance > 0 ? String(availableBalance) : ''
                   )
-                  setShowRemitModal(true)
+                  setShowWithdrawModal(true)
                 }}
-                className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-orange-600"
+                disabled={availableBalance <= 0}
+                className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50"
               >
-                <Plus className="h-3.5 w-3.5" />
-                <span>+ Catat NTPN Baru</span>
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+                <span>Tarik Dana Pajak</span>
               </button>
             )}
           </div>
 
-          {!data?.remittances || data.remittances.length === 0 ? (
+          {!data?.withdrawals || data.withdrawals.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
-              Belum ada riwayat bukti setoran NTPN yang dicatat.
+              Belum ada riwayat penarikan dana kas pajak.
             </div>
           ) : (
             <div className="mt-4 space-y-3">
-              {data.remittances.map((remit) => (
+              {data.withdrawals.map((w) => (
                 <div
-                  key={remit.id}
+                  key={w.id}
                   className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/30 sm:flex-row sm:items-center"
                 >
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-[10px] font-black tracking-wider text-white">
-                        NTPN: {remit.ntpnNumber}
+                        {w.refNumber}
                       </span>
-                      <span className="text-[10.5px] font-bold text-slate-500">
-                        {remit.periodLabel}
+                      <span className="text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                        ● Berhasil Ditarik
                       </span>
                     </div>
                     <p className="mt-1.5 text-xs text-slate-700 dark:text-slate-300">
-                      Kode Billing:{' '}
+                      Tujuan: <strong>{w.bankName}</strong> —{' '}
                       <code className="font-mono font-bold">
-                        {remit.billingCode}
+                        {w.accountNumber}
                       </code>{' '}
-                      • Disetor oleh: <strong>{remit.remittedBy}</strong> pada{' '}
-                      {new Date(remit.remittedAt).toLocaleDateString('id-ID', {
+                      (a.n. {w.accountName})
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      Ditarik oleh <strong>{w.requestedBy}</strong> pada{' '}
+                      {new Date(w.createdAt).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
+                      {w.notes ? ` • ${w.notes}` : ''}
                     </p>
-                    {remit.notes && (
-                      <p className="mt-0.5 text-[11px] text-slate-500">
-                        {remit.notes}
-                      </p>
-                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] uppercase tracking-wider text-slate-400">
-                      Nominal Disetor
+                      Nominal Ditarik
                     </p>
                     <p className="font-mono text-base font-black text-emerald-600 dark:text-emerald-400">
-                      {formatRupiah(remit.amount)}
+                      {formatRupiah(w.amount)}
                     </p>
                   </div>
                 </div>
@@ -678,96 +629,130 @@ export default function AdminTaxManagementPage() {
         </div>
       )}
 
-      {/* MODAL CATAT BUKTI SETOR NTPN */}
-      {showRemitModal && (
+      {/* MODAL TARIK DANA PAJAK (EKSKLUSIF PAJAK) */}
+      {showWithdrawModal && (
         <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-orange-500" />
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
+                  <ArrowDownToLine className="h-4 w-4" />
+                </span>
                 <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  Catat Bukti Setoran NTPN (e-Billing DJP)
+                  Tarik Dana Kas Pajak
                 </h3>
               </div>
               <button
-                onClick={() => setShowRemitModal(false)}
+                onClick={() => setShowWithdrawModal(false)}
                 className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form
-              onSubmit={handleRecordRemittance}
-              className="mt-4 space-y-3.5"
-            >
+            <form onSubmit={handleWithdrawSubmit} className="mt-4 space-y-3.5">
+              {/* Box Info Saldo Siap Tarik */}
+              <div className="rounded-2xl border border-orange-200 bg-orange-50/70 p-3.5 dark:border-orange-900/60 dark:bg-orange-950/30">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-400">
+                  Saldo Kas Pajak Siap Tarik
+                </span>
+                <p className="mt-1 font-mono text-xl font-black text-orange-950 dark:text-orange-200">
+                  {formatRupiah(availableBalance)}
+                </p>
+              </div>
+
+              {/* Input Nominal */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Nominal Penarikan (Rp):{' '}
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setWithdrawAmount(String(availableBalance))}
+                    className="text-[10.5px] font-bold text-orange-600 hover:underline dark:text-orange-400"
+                  >
+                    Tarik Semua
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  required
+                  min="1000"
+                  max={availableBalance}
+                  placeholder="Masukkan nominal penarikan..."
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+
+              {/* Bank Tujuan */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Masa Pajak / Periode:
+                  Bank Tujuan: <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={withdrawBank}
+                  onChange={(e) => setWithdrawBank(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                >
+                  <option value="Bank Mandiri">
+                    Bank Mandiri (Rekening Penampung Pajak)
+                  </option>
+                  <option value="BCA">BCA</option>
+                  <option value="BNI">BNI</option>
+                  <option value="BRI">BRI</option>
+                  <option value="Bank BSI">Bank Syariah Indonesia (BSI)</option>
+                  <option value="Kas Negara DJP">
+                    Kas Negara / e-Billing DJP
+                  </option>
+                </select>
+              </div>
+
+              {/* Nomor Rekening */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nomor Rekening Tujuan:{' '}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Masa Pajak November 2026"
-                  value={remitPeriod}
-                  onChange={(e) => setRemitPeriod(e.target.value)}
+                  placeholder="Nomor rekening bank..."
+                  value={withdrawAccountNo}
+                  onChange={(e) => setWithdrawAccountNo(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+
+              {/* Nama Pemilik Rekening */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nama Pemilik Rekening:{' '}
+                  <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nama sesuai buku tabungan..."
+                  value={withdrawAccountName}
+                  onChange={(e) => setWithdrawAccountName(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                 />
               </div>
 
+              {/* Catatan */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Nomor Transaksi Penerimaan Negara (NTPN):{' '}
-                  <span className="text-rose-500">*</span>
+                  Catatan (Opsional):
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="16 Digit NTPN Resmi dari Bank / Kantor Pos"
-                  value={remitNtpn}
-                  onChange={(e) => setRemitNtpn(e.target.value.toUpperCase())}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs uppercase text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Kode Billing (ID Billing DJP):
-                </label>
-                <input
-                  type="text"
-                  placeholder="Kode e-Billing 15 Digit"
-                  value={remitBillingCode}
-                  onChange={(e) => setRemitBillingCode(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Nominal Setoran Pajak (Rp):{' '}
-                  <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  placeholder="Nominal yang disetorkan ke Kas Negara"
-                  value={remitAmount}
-                  onChange={(e) => setRemitAmount(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Catatan / Bukti Bayar:
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Catatan transfer bank / bukti penerimaan negara..."
-                  value={remitNotes}
-                  onChange={(e) => setRemitNotes(e.target.value)}
+                  placeholder="Keterangan penarikan dana pajak..."
+                  value={withdrawNotes}
+                  onChange={(e) => setWithdrawNotes(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-orange-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                 />
               </div>
@@ -775,23 +760,23 @@ export default function AdminTaxManagementPage() {
               <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowRemitModal(false)}
+                  onClick={() => setShowWithdrawModal(false)}
                   className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingRemit}
+                  disabled={submittingWithdraw || availableBalance <= 0}
                   className="shadow-xs inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50"
                 >
-                  {submittingRemit ? (
+                  {submittingWithdraw ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Menyimpan...</span>
+                      <span>Memproses...</span>
                     </>
                   ) : (
-                    <span>Simpan Bukti NTPN</span>
+                    <span>Konfirmasi Tarik Dana</span>
                   )}
                 </button>
               </div>
