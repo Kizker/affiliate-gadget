@@ -67,6 +67,18 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-28 (Deploy VPS Hostinger: Eliminasi Manual NTPN & Integrasi Fitur Tarik Dana Pajak [Withdrawal Eksklusif] Serta Single-Line Level 1 Modal Iklan):**
+  - **1. Penarikan Dana Pajak Eksklusif (`/dashboard/admin/tax` & `api/admin/tax/route.ts`):**
+    - Menghapus total tombol manual `+ Catat Bukti Setor NTPN` dan modal NTPN yang rumit.
+    - Menambahkan tombol utama **`[ 💳 Tarik Dana Pajak ]`** di header dan kartu saldo siap tarik.
+    - Menghadirkan modal penarikan dana pajak eksklusif: input nominal, tombol opsi cepat `[ Tarik Semua ]`, pilihan bank tujuan, nomor rekening, dan nama pemilik rekening.
+    - Mencatat penarikan kas pajak ke dalam entitas terpisah `TaxWithdrawalRecord` dan memvalidasi kecukupan saldo kas pajak di backend (`action: 'WITHDRAW_TAX'`).
+    - Menghapus seluruh teks ramai di kartu pajak (dasar hukum panjang, tujuan & penjelasan, alur uang) dan menghilangkan box informasi kepatuhan biru sehingga antarmuka bersih dan profesional.
+  - **2. Single-Line Badge Level 1 Modal Iklan (`create-ad-modal.tsx`):**
+    - Mencegah pembengkakan dan pemecahan teks menjadi 2 baris pada kartu Level 1 modal iklan (`shrink-0 whitespace-nowrap`, teks ringkas `Hero Carousel (Slider Atas)` & `Slider banner paling atas beranda`).
+    - Tampilan Level 1 kini 100% simetris, ramping, dan 1 baris bersih persis seperti Level 2.
+  - **3. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100%, commit & push ke GitHub `origin/main` (commit `18792b1`), container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-28 (Deploy VPS Hostinger: Penyederhanaan Modal Pengajuan Iklan [Kunci Level, Murni Upload, Tanggal Sederhana, Eliminasi Target Tayang] & Integrasi Modul Manajemen Pajak Negara):**
   - **1. Penyederhanaan Modal Pengajuan Iklan (`create-ad-modal.tsx` & `admin/ads/page.tsx`):**
     - **Penguncian Level:** Menghapus pilihan ganti level penempatan di dalam modal. Begitu tombol "Ajukan Iklan Level 1" atau "Level 2" diklik, modal terkunci langsung pada level tersebut tanpa membingungkan pengguna.

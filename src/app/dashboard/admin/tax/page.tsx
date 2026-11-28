@@ -17,6 +17,7 @@ import {
   ArrowDownToLine,
   X,
   CreditCard,
+  Info,
 } from 'lucide-react'
 import {
   IndonesianTaxConfig,
@@ -383,75 +384,140 @@ export default function AdminTaxManagementPage() {
         </button>
       </div>
 
-      {/* TAB 1: KEBIJAKAN PAJAK (TAMPILAN BERSIH & SIMPLE, TANPA FLUFF) */}
+      {/* TAB 1: KONFIGURASI & DASAR HUKUM UU */}
       {activeTab === 'CONFIG' && (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          {data?.taxes.map((tax) => {
-            const isUpdating = updatingTaxId === tax.id
-            return (
-              <div
-                key={tax.id}
-                className={`p-4.5 flex flex-col justify-between rounded-3xl border transition ${
-                  tax.isEnabled
-                    ? 'shadow-xs border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'
-                    : 'border-slate-200 bg-slate-50/70 opacity-70 dark:border-slate-800 dark:bg-slate-950/40'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-black text-white dark:bg-white dark:text-slate-900">
-                      {tax.code}
-                    </span>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+              <div>
+                <p className="font-bold">
+                  Informasi Kepatuhan Pajak Platform Affiliate Gadget
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed opacity-90">
+                  Seluruh pemotongan pajak dirancang transparan berdasarkan
+                  Undang-Undang Republik Indonesia. Dana potongan pajak tidak
+                  diakui sebagai laba marketplace, melainkan ditampung sementara
+                  di rekening khusus (Tax Escrow) sebelum disetorkan ke Kas
+                  Negara via sistem e-Billing Direktorat Jenderal Pajak (DJP)
+                  setiap masa pajak.
+                </p>
+              </div>
+            </div>
+          </div>
 
-                    {/* Toggle Switch */}
-                    {data.canManageConfig && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleTax(tax)}
-                        disabled={isUpdating}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          tax.isEnabled
-                            ? 'bg-orange-500'
-                            : 'bg-slate-300 dark:bg-slate-700'
-                        } ${isUpdating ? 'opacity-50' : ''}`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                            tax.isEnabled ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    )}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {data?.taxes.map((tax) => {
+              const isUpdating = updatingTaxId === tax.id
+              return (
+                <div
+                  key={tax.id}
+                  className={`relative flex flex-col justify-between rounded-3xl border p-5 transition ${
+                    tax.isEnabled
+                      ? 'shadow-xs border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'
+                      : 'border-slate-200 bg-slate-50/80 opacity-75 dark:border-slate-800 dark:bg-slate-950/40'
+                  }`}
+                >
+                  <div>
+                    {/* Header Kartu Pajak */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-black text-white dark:bg-white dark:text-slate-900">
+                            {tax.code}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              tax.isEnabled
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            }`}
+                          >
+                            {tax.isEnabled ? '● Aktif Dikenakan' : '○ Nonaktif'}
+                          </span>
+                        </div>
+                        <h3 className="mt-2 text-sm font-extrabold text-slate-900 dark:text-white">
+                          {tax.name}
+                        </h3>
+                        <p className="mt-0.5 text-xs font-bold text-orange-600 dark:text-orange-400">
+                          {tax.basisLabel}
+                        </p>
+                      </div>
+
+                      {/* Toggle Button (Superadmin Only) */}
+                      {data.canManageConfig && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTax(tax)}
+                          disabled={isUpdating}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            tax.isEnabled
+                              ? 'bg-orange-500'
+                              : 'bg-slate-300 dark:bg-slate-700'
+                          } ${isUpdating ? 'cursor-not-allowed opacity-50' : ''}`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                              tax.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Rincian Edukasi Perpajakan */}
+                    <div className="mt-4 space-y-2.5 border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+                      <div>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                          ⚖️ Dasar Hukum:
+                        </span>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                          {tax.legalBasis}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                          🎯 Tujuan &amp; Penjelasan:
+                        </span>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                          {tax.purposeExplanation}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                          🔄 Alur Uang:
+                        </span>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                          {tax.moneyFlowExplanation}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-100/70 p-2.5 text-[11px] dark:bg-slate-800/50">
+                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                          🏦 Kode e-Billing DJP:
+                        </span>
+                        <p className="mt-0.5 font-mono font-bold text-slate-900 dark:text-white">
+                          {tax.ebillingKapKjs}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  <h3 className="mt-2 line-clamp-1 text-xs font-extrabold text-slate-900 dark:text-white">
-                    {tax.name}
-                  </h3>
-                  <p className="mt-0.5 text-xs font-bold text-orange-600 dark:text-orange-400">
-                    {tax.basisLabel}
-                  </p>
-
-                  <div className="mt-2.5 rounded-xl bg-slate-50 p-2 text-[10.5px] dark:bg-slate-800/50">
-                    <span className="font-semibold text-slate-400">
-                      Kode e-Billing:{' '}
+                  {/* Statistik Pemotongan Real-Time */}
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+                    <span className="text-slate-500">
+                      Terkumpul Siap Setor:
                     </span>
-                    <strong className="font-mono text-slate-800 dark:text-slate-200">
-                      {tax.ebillingKapKjs}
+                    <strong className="font-mono text-sm font-black text-slate-950 dark:text-white">
+                      {formatRupiah(tax.stats.settledAmount)}
                     </strong>
                   </div>
                 </div>
-
-                <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs dark:border-slate-800">
-                  <span className="text-[11px] text-slate-500">
-                    Terkumpul Siap Tarik:
-                  </span>
-                  <strong className="font-mono text-xs font-black text-slate-900 dark:text-white">
-                    {formatRupiah(tax.stats.settledAmount)}
-                  </strong>
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       )}
 
