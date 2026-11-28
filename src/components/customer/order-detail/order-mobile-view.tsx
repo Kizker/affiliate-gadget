@@ -742,7 +742,7 @@ export function OrderMobileView({
                           {latestReturnRequest.returnCourier || 'JNE'}
                         </strong>{' '}
                         terdekat atau cetak air waybill. Ongkos kirim tercover
-                        otomatis oleh escrow garansi (Gratis / Cashless).
+                        otomatis oleh proteksi garansi (Gratis / Cashless).
                       </div>
                     </div>
                   </div>

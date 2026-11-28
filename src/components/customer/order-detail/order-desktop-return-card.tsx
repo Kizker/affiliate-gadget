@@ -92,7 +92,7 @@ export function OrderDesktopReturnCard({
               {isRepair
                 ? 'Servis & Perbaikan Unit (Garansi)'
                 : isRefund
-                  ? 'Pengembalian Dana (Refund Midtrans)'
+                  ? 'Pengembalian Dana (Refund)'
                   : 'Penggantian Unit Baru'}
             </h3>
             <p className="text-[11px] text-slate-400">
@@ -573,9 +573,9 @@ export function OrderDesktopReturnCard({
                     </strong>{' '}
                     terdekat (atau cetak label air waybill untuk ditempelkan
                     pada paket). Ongkos kirim pengembalian otomatis
-                    dipotong/dicover dari dana escrow proteksi transaksi
-                    garansi, Anda <strong>TIDAK PERLU</strong> membayar biaya
-                    kirim secara tunai di counter.
+                    dipotong/dicover dari proteksi transaksi garansi, Anda{' '}
+                    <strong>TIDAK PERLU</strong> membayar biaya kirim secara
+                    tunai di counter.
                   </p>
                 </div>
               </div>
@@ -663,14 +663,14 @@ export function OrderDesktopReturnCard({
             <div className="space-y-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 p-3.5 text-xs text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
               <div className="flex items-center gap-2 font-bold text-emerald-950 dark:text-emerald-100">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span>Pengembalian Dana Selesai (Midtrans Escrow)</span>
+                <span>Pengembalian Dana Selesai</span>
               </div>
               <p className="text-[11px] leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
-                Dana tertahan sebesar{' '}
+                Dana sebesar{' '}
                 <strong className="font-semibold text-emerald-950 dark:text-emerald-100">
                   {formatPrice(latestReturnRequest.refundAmount || order.total)}
                 </strong>{' '}
-                telah dikembalikan via Midtrans ke rekening tujuan (
+                telah dikembalikan ke rekening tujuan (
                 {latestReturnRequest.bankName
                   ? `${latestReturnRequest.bankName} - ${latestReturnRequest.bankAccountNumber}`
                   : 'rekening terdaftar'}
@@ -679,10 +679,10 @@ export function OrderDesktopReturnCard({
               {latestReturnRequest.storeResponse && (
                 <p className="text-[10.5px] italic text-emerald-700/80 dark:text-emerald-400/80">
                   &ldquo;
-                  {latestReturnRequest.storeResponse.replace(
-                    /\[REFUND_DANA\]\s*/g,
-                    ''
-                  )}
+                  {latestReturnRequest.storeResponse
+                    .replace(/\[REFUND_DANA\]\s*/g, '')
+                    .replace(/dana escrow/gi, 'dana')
+                    .replace(/escrow/gi, '')}
                   &rdquo;
                 </p>
               )}

@@ -870,7 +870,7 @@ export async function PUT(
               status: 'COMPLETED',
               type: 'REFUND',
               refundAmount,
-              storeResponse: `${adminNote} Dana escrow sebesar Rp ${Math.round(refundAmount).toLocaleString('id-ID')} telah otomatis dicairkan kembali ke rekening tujuan pembeli.`,
+              storeResponse: `${adminNote} Dana sebesar Rp ${Math.round(refundAmount).toLocaleString('id-ID')} telah otomatis dicairkan kembali ke rekening tujuan pembeli.`,
               resolvedAt: new Date(),
             },
             include: {

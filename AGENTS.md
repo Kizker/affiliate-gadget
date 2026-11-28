@@ -67,6 +67,17 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-28 (Deploy VPS Hostinger: Resolusi Status Aksi Terakhir Refund vs Retur & Pencegahan Total Ajukan Pengembalian untuk Barang Terefund):**
+  - **1. Prioritas Status Aksi Terakhir (`Refund Selesai`):**
+    - Memperbaiki peng-hardcode-an label `'Retur Selesai'` pada kartu produk (`order-desktop-items-card.tsx`, `order-mobile-view.tsx`, `orders-client.tsx`, dan `order-date-utils.ts`).
+    - Bila tiket penanganan terakhir bertipe `REFUND` (misal setelah tukar unit diterima tapi unit masih bermasalah lalu diajukan refund dan disetujui), sistem secara cerdas menampilkan aksi terakhir: **`[ 🔄 Refund Selesai ]`** (bukan _Retur Selesai_), **`• Refund Selesai: {tanggal}`** pada baris identitas order, dan **`● Refund Selesai`** pada Riwayat Waktu Transaksi.
+    - `findReturnForOrderItem` pada `order-return-utils.ts` kini mengurutkan tiket secara kronologis (`createdAt` desc) untuk memastikan tiket aksi terbaru selalu diutamakan.
+  - **2. Pencegahan Total Ajukan Pengembalian untuk Barang Terefund:**
+    - Pada `order-return-utils.ts` (`getRemainingReturnableQuantityForItem` dan `isOrderItemReturnEligible`) serta backend `POST /api/returns`:
+    - Jika suatu barang/item telah disetujui atau diselesaikan pengembalian dananya (`type: 'REFUND'` dan status `COMPLETED` / `APPROVED` / aktif), maka sisa kuantitas yang dapat diretur diset secara tegas menjadi **0**.
+    - Tombol **`[ 🔄 Ajukan Pengembalian ]`** di samping item yang telah terefund otomatis **disembunyikan total (tidak dapat diajukan lagi)**, dan backend menolak percobaan pengajuan ulang dengan pesan penolakan yang jelas.
+  - **3. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suite `tests/unit/latest-action-refund-over-return-status.test.ts` dan seluruh test suites terkait lulus 100%, commit & push ke GitHub `origin/main` (commit `591c4e4`), container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-28 (Deploy VPS Hostinger: Resolusi Status Tunggu Keputusan After Sales Superadmin, Chat Konsultasi Superadmin After Sales & Mitra, Eliminasi Tracking Pasca-Tiba, Penguncian Varian Chat Order, & Pembersihan Tombol Rincian Unit):**
   - **1. Penanganan Status Revisi Retur Superadmin (`dashboard/admin/returns/page.tsx`):**
     - Saat Superadmin menolak rekomendasi After Sales / mengembalikan tiket retur untuk ditinjau ulang, sistem menampilkan badge status informatif: **`[ ⏳ Menunggu Keputusan After Sales... ]`**.
