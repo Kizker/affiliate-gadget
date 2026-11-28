@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/db'
 
-// POST - Create or get a direct chat room between a customer and a mitra
+// POST - Create or get direct chat room with a service partner (Mitra Servis)
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
@@ -10,22 +10,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     const { mitraId, serviceContext } = body
 
     if (!mitraId || typeof mitraId !== 'string') {
       return NextResponse.json(
-        { error: 'mitraId is required' },
+        { error: 'Parameter mitraId wajib disertakan.' },
         { status: 400 }
       )
     }
 
-    // Find the mitra and its owner user
-    const mitra = await prisma.mitra.findFirst({
+    // 1. Resolve Mitra Servis & Account User
+    let mitra = await prisma.mitra.findFirst({
       where: {
-        id: mitraId,
-        isApproved: true,
-        isActive: true,
+        OR: [{ id: mitraId }, { userId: mitraId }],
       },
       include: {
         user: {
@@ -35,143 +33,136 @@ export async function POST(req: NextRequest) {
             email: true,
             image: true,
             role: true,
-          },
-        },
-        images: {
-          where: { isBanner: true },
-          take: 1,
-        },
-        schedules: {
-          select: {
-            day: true,
-            openTime: true,
-            closeTime: true,
-            isClosed: true,
+            isActive: true,
           },
         },
       },
     })
 
-    if (!mitra || !mitra.user) {
-      return NextResponse.json({ error: 'Mitra not found' }, { status: 404 })
+    if (!mitra) {
+      // Fallback: check if mitraId is User ID with role MITRA
+      const mitraUser = await prisma.user.findFirst({
+        where: { id: mitraId, role: 'MITRA' },
+        include: { mitra: true },
+      })
+      if (mitraUser && mitraUser.mitra) {
+        mitra = {
+          ...mitraUser.mitra,
+          user: {
+            id: mitraUser.id,
+            name: mitraUser.name,
+            email: mitraUser.email,
+            image: mitraUser.image,
+            role: mitraUser.role,
+            isActive: mitraUser.isActive,
+          },
+        }
+      }
     }
 
-    const mitraUser = mitra.user
-    const mitraBanner = mitra.banner || mitra.images[0]?.url || null
+    if (!mitra || !mitra.user) {
+      return NextResponse.json(
+        { error: 'Mitra servis tidak ditemukan atau akun belum aktif.' },
+        { status: 404 }
+      )
+    }
 
-    // Find existing room: customer <-> this mitra user (storeId = null, orderId = null)
+    const partnerUserId = mitra.user.id
+
+    // 2. Find or Create Unified Chat Room between this customer & this Mitra Servis
     let room = await prisma.adminChatRoom.findFirst({
       where: {
         customerId: session.user.id,
-        claimedById: mitraUser.id,
+        claimedById: partnerUserId,
         storeId: null,
-        orderId: null,
-      } as any,
+      },
+      orderBy: { lastMessageAt: 'desc' },
+      include: {
+        claimedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          take: 60,
+          include: {
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
     })
 
     const isNew = !room
 
     if (!room) {
-      // Create new direct room between customer and mitra
       room = await prisma.adminChatRoom.create({
         data: {
           customerId: session.user.id,
+          claimedById: partnerUserId,
           storeId: null,
-          claimedById: mitraUser.id,
           claimedAt: new Date(),
           lastMessageAt: new Date(),
-        } as any,
-      })
-
-      // Increment mitra inquiry counter
-      await prisma.mitra
-        .update({
-          where: { id: mitra.id },
-          data: { totalInquiries: { increment: 1 } },
-        })
-        .catch(() => {})
-    }
-
-    if (!room) {
-      return NextResponse.json(
-        { error: 'Failed to create chat room' },
-        { status: 500 }
-      )
-    }
-
-    // Auto-send greeting serviceContext message if provided and room is new
-    let messages: any[] = []
-
-    if (isNew && serviceContext && typeof serviceContext === 'string') {
-      const greeting = await prisma.adminChatMessage.create({
-        data: {
-          roomId: room.id,
-          senderId: session.user.id,
-          content: serviceContext,
-          messageType: 'text',
         },
         include: {
-          sender: {
-            select: { id: true, name: true, image: true, role: true },
+          claimedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+            },
+          },
+          messages: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              sender: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                  role: true,
+                },
+              },
+            },
           },
         },
-      })
-
-      // Update lastMessageAt
-      await prisma.adminChatRoom.update({
-        where: { id: room.id },
-        data: { lastMessageAt: new Date() },
-      })
-
-      messages = [greeting]
-    } else {
-      // Fetch existing messages
-      messages = await prisma.adminChatMessage.findMany({
-        where: { roomId: room.id },
-        select: {
-          id: true,
-          content: true,
-          messageType: true,
-          mediaUrl: true,
-          mediaType: true,
-          isRead: true,
-          createdAt: true,
-          sender: {
-            select: { id: true, name: true, image: true, role: true },
-          },
-        },
-        orderBy: { createdAt: 'asc' },
       })
     }
 
-    // Return mitra data shaped like a "store" so the chat page UI is compatible
     return NextResponse.json({
+      success: true,
       roomId: room.id,
+      isNew,
       store: {
         id: mitra.id,
         name: mitra.businessName,
-        companyName: mitra.businessName,
-        phone: mitra.phone,
+        companyName: `Mitra Servis: ${mitra.city}`,
+        phone: mitra.phone || mitra.whatsapp || '-',
         city: mitra.city,
-        logo: mitraBanner,
+        logo: mitra.banner || null,
         isActive: mitra.isActive,
-        schedules: mitra.schedules || [],
+        isMitra: true,
       },
-      claimedBy: {
-        id: mitraUser.id,
-        name: mitraUser.name,
-        email: mitraUser.email,
-        image: mitraUser.image,
-      },
-      orderId: null,
-      order: null,
-      isNew,
-      messages,
+      claimedBy: room.claimedBy,
+      messages: room.messages || [],
     })
   } catch (error) {
-    console.error('Error opening mitra chat room:', error)
+    console.error('[POST /api/customer/chat/mitra-room Error]:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Terjadi kendala saat menghubungkan ke chat mitra servis.' },
       { status: 500 }
     )
   }

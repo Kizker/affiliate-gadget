@@ -2,7 +2,14 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { RotateCcw, Package, ZoomIn, ExternalLink } from 'lucide-react'
+import {
+  RotateCcw,
+  Package,
+  ZoomIn,
+  ExternalLink,
+  Wrench,
+  MapPin,
+} from 'lucide-react'
 import { ChatVideoPlayer } from '@/components/chat/chat-video-player'
 import {
   Message,
@@ -94,16 +101,29 @@ export function ChatMessageBubble({
       (parsedContent.productPrice !== undefined ||
         parsedContent.price !== undefined))
 
+  const isService =
+    !isOrderOrReturn &&
+    !isProduct &&
+    (msg.messageType === 'service_reference' ||
+      msg.messageType === 'service' ||
+      parsedContent?.type === 'service_reference' ||
+      (parsedContent !== null &&
+        parsedContent.mitraName !== undefined &&
+        (parsedContent.serviceContext !== undefined ||
+          parsedContent.mitraId !== undefined)))
+
   const senderAvatar = msg.sender.image || null
   const senderName =
     msg.sender.name ||
     (msg.sender.role === 'AFTER_SALES'
       ? 'Admin After Sales'
-      : msg.sender.role === 'ADMIN' ||
-          msg.sender.role === 'SUPER_ADMIN' ||
-          msg.sender.role === 'STORE_ADMIN'
-        ? 'Admin Toko'
-        : 'CS Toko')
+      : msg.sender.role === 'MITRA'
+        ? 'Mitra Servis'
+        : msg.sender.role === 'ADMIN' ||
+            msg.sender.role === 'SUPER_ADMIN' ||
+            msg.sender.role === 'STORE_ADMIN'
+          ? 'Admin Toko'
+          : 'CS Toko')
 
   return (
     <div
@@ -518,6 +538,104 @@ export function ChatMessageBubble({
                       className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                     >
                       <span>Lihat Unit</span>
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )
+          } catch {
+            return (
+              <div className="shadow-2xs max-w-[80%] rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-900 sm:max-w-[70%]">
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
+            )
+          }
+        })()
+      ) : isService ? (
+        /* Standalone Luxury Service Reference Card */
+        (() => {
+          try {
+            const s: Record<string, unknown> =
+              parsedContent ?? JSON.parse(msg.content)
+            const mitraId = (s.mitraId as string) || ''
+            const mitraName = (s.mitraName as string) || 'Bengkel Mitra Servis'
+            const mitraCity = (s.mitraCity as string) || ''
+            const rawImage = s.mitraImage || null
+            const note = typeof s.note === 'string' ? s.note.trim() : ''
+
+            return (
+              <div className="shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px]">
+                {/* Header Card */}
+                <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    <Wrench className="h-2.5 w-2.5" />
+                    <span>Konsultasi Servis</span>
+                  </span>
+                  <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <span>{formattedTime}</span>
+                    {isMe &&
+                      renderWhatsAppTick(msg.isRead, isStoreOnline, 'small')}
+                  </div>
+                </div>
+
+                {/* Main Mitra Snippet */}
+                <div className="flex items-center gap-2.5">
+                  {rawImage ? (
+                    <img
+                      src={rawImage as string}
+                      alt={mitraName}
+                      width={44}
+                      height={44}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover dark:border-slate-800 dark:bg-slate-800"
+                    />
+                  ) : (
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200/60 bg-emerald-50 text-emerald-600 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-400">
+                      <Wrench className="h-5 w-5" />
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                      {mitraName}
+                    </p>
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                      {mitraCity && (
+                        <span className="inline-flex items-center gap-0.5">
+                          <MapPin className="h-2.5 w-2.5 text-slate-400" />
+                          <span>{mitraCity}</span>
+                        </span>
+                      )}
+                      <span>•</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        Booking &amp; Estimasi Servis
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Note / Caption */}
+                {note && (
+                  <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+                    <p className="whitespace-pre-wrap break-words leading-relaxed">
+                      {note}
+                    </p>
+                  </div>
+                )}
+
+                {/* Footer Link */}
+                <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
+                  <span className="text-[9.5px] text-slate-400">
+                    {isMe ? 'Konsultasi Anda' : 'Mitra Servis'}
+                  </span>
+                  {mitraId && (
+                    <a
+                      href={`/rekomendasi/${mitraId}`}
+                      className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[9.5px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    >
+                      <span>Lihat Bengkel</span>
                       <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   )}

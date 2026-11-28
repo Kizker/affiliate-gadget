@@ -407,6 +407,17 @@ const Header = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <Link href="/dashboard/admin/chat">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-orange-500 bg-orange-500 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-orange-600"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>Chat Konsultasi Pelanggan</span>
+          </motion.button>
+        </Link>
+
         <Link href="/dashboard/admin/chat?cs=true">
           <motion.button
             whileHover={{ scale: 1.02 }}

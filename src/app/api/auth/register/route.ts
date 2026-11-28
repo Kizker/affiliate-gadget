@@ -152,8 +152,26 @@ export async function POST(req: NextRequest) {
           role === 'STORE_ADMIN'
             ? 'PENDING'
             : role === 'MITRA'
-              ? 'NEEDS_STORE_DATA'
+              ? 'PENDING'
               : null,
+        mitra:
+          role === 'MITRA'
+            ? {
+                create: {
+                  businessName: sanitizedName || 'Bengkel Mitra Servis',
+                  address: 'Alamat workshop belum diatur',
+                  city: 'Jakarta',
+                  province: 'DKI Jakarta',
+                  phone: formattedPhone || '-',
+                  whatsapp: formattedPhone || null,
+                  email: normalizedEmail,
+                  rating: 5.0,
+                  totalReview: 0,
+                  isApproved: false,
+                  isActive: false,
+                },
+              }
+            : undefined,
       },
       select: {
         id: true,

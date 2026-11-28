@@ -137,6 +137,7 @@ export interface ActiveServiceContext {
   mitraName: string
   mitraCity?: string
   mitraImage?: string
+  serviceContext?: string
 }
 
 export interface ActiveProductContext {
@@ -167,8 +168,11 @@ export interface ActiveOrderContext {
 export const NON_MEDIA_TYPES = [
   'product_reference',
   'product',
+  'order_reference',
+  'return_reference',
   'order',
   'rental',
+  'service_reference',
   'service',
   'text',
 ]
@@ -362,6 +366,21 @@ export const formatMessagePreview = (message?: {
   }
 
   if (message.messageType === 'rental') return '🔄 Rekomendasi Sewa'
+  if (
+    message.messageType === 'service_reference' ||
+    (trimmed.startsWith('{') &&
+      (trimmed.includes('"serviceContext"') ||
+        trimmed.includes('"type":"service_reference"') ||
+        trimmed.includes('"mitraName"')))
+  ) {
+    try {
+      const s = JSON.parse(trimmed)
+      const name = s.mitraName || 'Mitra Servis'
+      return `🔧 Konsultasi Servis: ${name}`
+    } catch {
+      return '🔧 Konsultasi Servis'
+    }
+  }
   if (message.messageType === 'service') return '🔧 Rekomendasi Servis'
   return message.content
 }

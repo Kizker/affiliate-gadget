@@ -90,10 +90,20 @@ export function ChatHeader({
             ) : activeOrderContext?.orderNumber ? (
               `Pesanan #${activeOrderContext.orderNumber}`
             ) : selectedRoom.claimedBy?.name ? (
-              <span className="font-semibold text-blue-600 dark:text-blue-400">
+              <span
+                className={`font-semibold ${
+                  (selectedRoom.claimedBy as any)?.role === 'MITRA' ||
+                  (selectedRoom.store as any)?.isMitra
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-blue-600 dark:text-blue-400'
+                }`}
+              >
                 {(selectedRoom.claimedBy as any)?.role === 'SUPER_ADMIN'
                   ? `CS Superadmin: ${selectedRoom.claimedBy.name}`
-                  : `Admin Toko: ${selectedRoom.claimedBy.name}`}
+                  : (selectedRoom.claimedBy as any)?.role === 'MITRA' ||
+                      (selectedRoom.store as any)?.isMitra
+                    ? `Mitra Servis: ${selectedRoom.claimedBy.name || selectedRoom.store?.name}`
+                    : `Admin Toko: ${selectedRoom.claimedBy.name}`}
               </span>
             ) : (
               selectedRoom.store?.companyName || 'Customer Support & Sales Toko'

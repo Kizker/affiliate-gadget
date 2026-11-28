@@ -67,6 +67,27 @@ Agent utama bertindak sebagai **Orchestrator** dan wajib memilih atau mendelegas
 ### 3. Server Status
 
 - **Status:** Active
+- **2026-11-28 (Deploy VPS Hostinger: Integrasi Chat Mitra Servis, Kartu Konteks Konsultasi Servis, Isolasi Pendaftaran Mitra, Anti-Overflow Komen Live, & Penguncian Grid Studio Desktop):**
+  - **1. Integrasi Lengkap Chat Mitra Servis (`api/customer/chat/mitra-room`, `sidebar.tsx`, `mitra/page.tsx`, `chat-header.tsx`):**
+    - Membangun endpoint `POST /api/customer/chat/mitra-room` untuk menangani pembuatan room chat langsung antara customer dengan Mitra Servis (`claimedById: partnerUserId`, `storeId: null`).
+    - Menyematkan menu **`Pesan Konsultasi`** pada navigasi sidebar Mitra Servis (`mitraNavSections`) dan tombol aksi cepat **`[ 💬 Chat Konsultasi Pelanggan ]`** di dashboard Mitra.
+    - Menyelaraskan sub-header chat customer agar menampilkan identitas resmi: **`Mitra Servis: [Nama Mitra / Bengkel]`** beraksen hijau emerald (bukan lagi _Admin Toko_).
+  - **2. Kartu Konteks Konsultasi Servis (`service_reference`):**
+    - Menghubungkan pengiriman pesan pada `customer/chat/page.tsx` saat banner konsultasi servis aktif, sehingga menekan Enter atau tombol `[ Tanya Servis ]` otomatis mengirimkan kartu terstruktur `service_reference` (nama bengkel, kota, foto workshop, dan pesan caption customer).
+    - Merender kartu `service_reference` dengan layout bento hijau emerald di sisi Customer (`chat-message-bubble.tsx`) dan sisi Mitra/Admin (`admin/chat/page.tsx`).
+  - **3. Isolasi Role Pendaftaran & Persetujuan Mitra Servis (`register/page.tsx`, `register/route.ts`, `mitras/approve/route.ts`):**
+    - Mengeliminasi bug fatal di mana Superadmin yang meng-approve pendaftar di `/api/admin/mitras/approve` sebelumnya memaksakan `role: 'STORE_ADMIN'`. Sekarang role tetap terkunci sebagai **`MITRA`** dan profil `Mitra` otomatis diaktifkan.
+    - Menyesuaikan tombol registrasi publik untuk Mitra Servis menjadi **`[ Daftar Mitra Servis Sekarang → ]`** (bukan _Lanjut ke Informasi Toko_).
+  - **4. Anti-Overflow Komen Panjang Live Streaming Mobile (`live-stream-viewer.tsx`, `live-stream-broadcaster.tsx`):**
+    - Menerapkan `break-all [overflow-wrap:anywhere] min-w-0 max-w-[82%] sm:max-w-[85%]` pada bubble komentar live stream sehingga teks kata panjang tanpa spasi otomatis membuat baris baru (_new line_) dan tidak pernah tembus keluar layar.
+  - **5. Penguncian Tinggi Grid Studio Live Desktop & Auto-Scroll Bawah (`live-chat-panel.tsx`, `live-stream-broadcaster.tsx`):**
+    - Menerapkan batasan `lg:max-h-[calc(100vh-140px)]`, `min-h-0`, dan `overflow-hidden` pada grid studio desktop dan kolom chat, mencegah layar studio kamera melar memanjang ke bawah saat jumlah chat banyak.
+    - Mengaktifkan fungsi `scrollToBottom` otomatis ke pesan paling baru setiap kali pesan masuk.
+  - **6. Eliminasi Tombol Lacak Pasca-Tiba/Selesai & Penyelarasan Tombol "Chat Toko":**
+    - Menyembunyikan tombol `[ 🔍 Lacak Resi Pembeli (Biteship) ]` pada modal pesanan admin saat paket retur sudah tiba di cabang atau pesanan sudah selesai.
+    - Menyeragamkan label tombol pada seluruh kartu daftar pesanan dan detail menjadi **`[ 💬 Chat Toko ]`**.
+  - **7. Health Verification & Live Deployment:**
+    - TypeScript 0 error (`pnpm tsc --noEmit` pass), unit test suites terkait lulus 100%, commit & push ke GitHub `origin/main`, container `affiliate-gadget-app` dan `affiliate-gadget-ws` di Hostinger VPS berhasil dibangun ulang dan aktif melayani (HTTP 200 OK di `https://affiliategadget.id`).
 - **2026-11-28 (Deploy VPS Hostinger: Resolusi Status Aksi Terakhir Refund vs Retur & Pencegahan Total Ajukan Pengembalian untuk Barang Terefund):**
   - **1. Prioritas Status Aksi Terakhir (`Refund Selesai`):**
     - Memperbaiki peng-hardcode-an label `'Retur Selesai'` pada kartu produk (`order-desktop-items-card.tsx`, `order-mobile-view.tsx`, `orders-client.tsx`, dan `order-date-utils.ts`).

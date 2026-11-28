@@ -831,10 +831,9 @@ export default function SuperAdminReturnsPage() {
                             ? 'Resi Pengganti Terbit'
                             : 'Refund Selesai'}
                         </span>
-                        {(item.returnTrackingNumber ||
-                          item.order.trackingNumber) && (
-                          <>
-                            {item.type === 'REPLACEMENT' && (
+                        {item.type === 'REPLACEMENT' &&
+                          item.order.trackingNumber && (
+                            <>
                               <button
                                 type="button"
                                 onClick={() => handleViewThermalLabel(item)}
@@ -844,24 +843,21 @@ export default function SuperAdminReturnsPage() {
                                 <Printer className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                                 <span>Cetak Air Waybill</span>
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveTrackingQuery(
-                                  item.returnTrackingNumber ||
-                                    item.order.trackingNumber ||
-                                    ''
-                                )
-                                setResiModalOpen(true)
-                              }}
-                              className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                            >
-                              <Search className="h-3.5 w-3.5" />
-                              <span>Lacak Biteship</span>
-                            </button>
-                          </>
-                        )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTrackingQuery(
+                                    item.order.trackingNumber || ''
+                                  )
+                                  setResiModalOpen(true)
+                                }}
+                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                              >
+                                <Search className="h-3.5 w-3.5" />
+                                <span>Lacak Unit Pengganti</span>
+                              </button>
+                            </>
+                          )}
                       </div>
                     )}
 

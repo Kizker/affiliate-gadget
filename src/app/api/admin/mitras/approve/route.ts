@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!app) {
-      // If no StoreApplication yet, activate the Store Admin account so they can fill out their store profile
+      // If no StoreApplication yet, activate the account so they can fill out their profile
       const targetUser = await prisma.user.findUnique({
         where: { id: cleanAppId },
       })
@@ -53,18 +53,55 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      const isMitraService = targetUser.role === 'MITRA'
+      const targetRole = isMitraService ? 'MITRA' : 'STORE_ADMIN'
+
       const activatedUser = await prisma.user.update({
         where: { id: targetUser.id },
         data: {
-          role: 'STORE_ADMIN',
+          role: targetRole,
           isActive: true,
           mitraStatus: 'APPROVED',
         },
       })
 
+      if (isMitraService) {
+        const existingMitraProfile = await prisma.mitra.findUnique({
+          where: { userId: targetUser.id },
+        })
+        if (existingMitraProfile) {
+          await prisma.mitra.update({
+            where: { id: existingMitraProfile.id },
+            data: { isApproved: true, isActive: true },
+          })
+        } else {
+          await prisma.mitra.create({
+            data: {
+              userId: targetUser.id,
+              businessName: targetUser.name || 'Bengkel Mitra Servis',
+              address: 'Alamat workshop belum diatur',
+              city: 'Jakarta',
+              province: 'DKI Jakarta',
+              phone: targetUser.phone || '-',
+              whatsapp: targetUser.phone || null,
+              email: targetUser.email || null,
+              rating: 5.0,
+              totalReview: 0,
+              isApproved: true,
+              isActive: true,
+            },
+          })
+        }
+      }
+
+      const roleLabel = isMitraService ? 'Mitra Servis' : 'Admin Toko'
+      const successMessage = isMitraService
+        ? `Akun Mitra Servis "${activatedUser.name || activatedUser.email}" berhasil diaktifkan! Mitra kini dapat login dan mengelola bengkel servis.`
+        : `Akun Admin Toko "${activatedUser.name || activatedUser.email}" berhasil diaktifkan! Admin Toko kini dapat mengisi nama toko dan profil cabangnya.`
+
       return NextResponse.json({
         success: true,
-        message: `Akun Admin Toko "${activatedUser.name || activatedUser.email}" berhasil diaktifkan! Admin Toko kini dapat mengisi nama toko dan profil cabangnya.`,
+        message: successMessage,
         user: {
           id: activatedUser.id,
           name: activatedUser.name,

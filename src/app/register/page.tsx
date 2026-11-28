@@ -562,13 +562,22 @@ export default function RegisterPage() {
                     </button>
                   </div>
 
-                  {(formData.role === 'STORE_ADMIN' ||
-                    formData.role === 'MITRA') && (
+                  {formData.role === 'STORE_ADMIN' && (
                     <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-slate-500 duration-200 animate-in fade-in dark:text-slate-400">
                       <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
                       <span>
                         Akun menunggu persetujuan Superadmin sebelum pengisian
                         data toko
+                      </span>
+                    </div>
+                  )}
+
+                  {formData.role === 'MITRA' && (
+                    <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-slate-500 duration-200 animate-in fade-in dark:text-slate-400">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>
+                        Akun menunggu persetujuan Superadmin untuk aktivasi
+                        mitra bengkel servis
                       </span>
                     </div>
                   )}
@@ -943,9 +952,11 @@ export default function RegisterPage() {
                       ) : (
                         <>
                           <span>
-                            {formData.role === 'MITRA'
+                            {formData.role === 'STORE_ADMIN'
                               ? 'Lanjut ke Informasi Toko'
-                              : 'Daftar Akun Sekarang'}
+                              : formData.role === 'MITRA'
+                                ? 'Daftar Mitra Servis Sekarang'
+                                : 'Daftar Akun Sekarang'}
                           </span>
                           <ArrowRight className="h-3.5 w-3.5" />
                         </>

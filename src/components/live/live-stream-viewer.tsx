@@ -461,12 +461,12 @@ export function LiveStreamViewer({
               {messages.slice(-25).map((msg) => (
                 <div
                   key={msg.id}
-                  className="rounded-xl border border-white/5 bg-white/5 p-1.5 text-xs text-white"
+                  className="min-w-0 rounded-xl border border-white/5 bg-white/5 p-1.5 text-xs text-white [overflow-wrap:anywhere] [word-break:break-word]"
                 >
                   <span className="font-bold text-orange-400">
                     {msg.userName}:{' '}
                   </span>
-                  <span className="break-words leading-tight text-white/90">
+                  <span className="break-words leading-tight text-white/90 [overflow-wrap:anywhere] [word-break:break-word]">
                     {msg.message}
                   </span>
                 </div>
@@ -600,7 +600,7 @@ export function LiveStreamViewer({
           {/* Floating Comments Stream */}
           <div
             ref={mobileChatScrollRef}
-            className="pointer-events-auto flex max-h-[46dvh] flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="pointer-events-auto flex max-h-[46dvh] w-full min-w-0 max-w-full flex-col gap-1.5 overflow-y-auto pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage:
                 messages.length > 3
@@ -633,12 +633,12 @@ export function LiveStreamViewer({
               return (
                 <div
                   key={msg.id}
-                  className="flex max-w-[90%] items-start gap-1.5 self-start rounded-2xl border border-white/10 bg-black/50 px-3 py-1.5 text-xs text-white shadow-sm backdrop-blur-md"
+                  className="flex min-w-0 max-w-[82%] items-start gap-1.5 self-start break-all rounded-2xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white shadow-sm backdrop-blur-md [overflow-wrap:anywhere] sm:max-w-[85%]"
                 >
                   <span className="shrink-0 font-bold text-orange-400">
                     {msg.userName}:
                   </span>
-                  <span className="break-words leading-snug text-white/95">
+                  <span className="min-w-0 flex-1 break-all leading-snug text-white/95 [overflow-wrap:anywhere]">
                     {msg.message}
                   </span>
                 </div>
@@ -1034,12 +1034,12 @@ export function LiveStreamViewer({
                       {messages.slice(-30).map((msg) => (
                         <div
                           key={msg.id}
-                          className="rounded-xl border border-white/5 bg-white/5 p-2 text-xs text-white backdrop-blur-sm"
+                          className="min-w-0 rounded-xl border border-white/5 bg-white/5 p-2 text-xs text-white backdrop-blur-sm [overflow-wrap:anywhere] [word-break:break-word]"
                         >
                           <span className="font-bold text-orange-400">
                             {msg.userName}:{' '}
                           </span>
-                          <span className="break-words text-white/95">
+                          <span className="break-words text-white/95 [overflow-wrap:anywhere] [word-break:break-word]">
                             {msg.message}
                           </span>
                         </div>

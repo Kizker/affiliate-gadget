@@ -875,7 +875,7 @@ function LiveKitStudioControls({
           {/* Floating Comments Stream (Overlay di atas video, menempel di bawah / di atas barang sematan) */}
           <div
             ref={mobileChatScrollRef}
-            className="pointer-events-auto flex max-h-[46dvh] flex-col gap-1.5 overflow-y-auto pr-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="pointer-events-auto flex max-h-[46dvh] w-full min-w-0 max-w-full flex-col gap-1.5 overflow-y-auto pr-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage:
                 messages.length > 3
@@ -908,7 +908,7 @@ function LiveKitStudioControls({
               return (
                 <div
                   key={msg.id}
-                  className="flex max-w-[90%] items-start gap-1.5 self-start rounded-2xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white shadow-sm backdrop-blur-md"
+                  className="flex min-w-0 max-w-[82%] items-start gap-1.5 self-start break-all rounded-2xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white shadow-sm backdrop-blur-md [overflow-wrap:anywhere] sm:max-w-[85%]"
                 >
                   <span className="shrink-0 font-bold text-orange-500">
                     {msg.userName === 'Host Toko' ? (
@@ -918,7 +918,7 @@ function LiveKitStudioControls({
                     ) : null}
                     {msg.userName}:
                   </span>
-                  <span className="break-words leading-snug text-white/95">
+                  <span className="min-w-0 flex-1 break-all leading-snug text-white/95 [overflow-wrap:anywhere]">
                     {msg.message}
                   </span>
                 </div>
@@ -1459,9 +1459,9 @@ function LiveKitStudioControls({
   return (
     <div className="flex flex-col gap-6">
       {/* SECTION ATAS: STUDIO SIARAN (KAMERA DI KIRI + LIVE CHAT PENUH DI KANAN) */}
-      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-140px)] lg:min-h-[620px] lg:grid-cols-3 lg:gap-6">
+      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-140px)] lg:max-h-[calc(100vh-140px)] lg:min-h-[580px] lg:grid-cols-3 lg:gap-6">
         {/* Kolom Kiri & Tengah: Kamera Live View & Kontrol */}
-        <div className="relative flex h-[54vh] max-h-[580px] min-h-[380px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 sm:h-[62vh] lg:col-span-2 lg:h-full lg:max-h-none">
+        <div className="relative flex h-[54vh] max-h-[580px] min-h-[380px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 shadow-md dark:border-slate-800 sm:h-[62vh] lg:col-span-2 lg:h-full lg:max-h-none lg:min-h-0 lg:overflow-hidden">
           {/* Top Status Bar Floating Overlay */}
           <div className="pointer-events-auto absolute left-2.5 right-2.5 top-2.5 z-20 flex items-center justify-between gap-1.5 sm:left-4 sm:right-4 sm:top-4 sm:gap-2">
             <LiveStreamStatusBar
@@ -1655,7 +1655,7 @@ function LiveKitStudioControls({
 
         {/* Kolom Kanan: Live Chat Panel Penuh (Dari Atas Sampai Bawah di Samping Kamera) */}
         <div
-          className={`h-[480px] sm:h-[520px] lg:col-span-1 lg:h-full ${
+          className={`h-[480px] sm:h-[520px] lg:col-span-1 lg:h-full lg:max-h-full lg:min-h-0 lg:overflow-hidden ${
             mobileTab === 'chat' ? 'block' : 'hidden lg:block'
           }`}
         >

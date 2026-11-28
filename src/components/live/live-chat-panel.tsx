@@ -45,6 +45,15 @@ export function LiveChatPanel({
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const isAutoScrollRef = useRef(true)
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({
+        top: chatScrollRef.current.scrollHeight,
+        behavior,
+      })
+    }
+  }, [])
+
   // Initialize guest name from localStorage if viewer is not logged in
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -58,12 +67,10 @@ export function LiveChatPanel({
     }
   }, [])
 
-  // Auto-scroll to bottom on new message if user was already at the bottom
+  // Otomatis scroll ke chat yang paling baru atau paling bawah saat ada pesan baru
   useEffect(() => {
-    if (isAutoScrollRef.current && chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
-    }
-  }, [messages])
+    scrollToBottom('smooth')
+  }, [messages.length, scrollToBottom])
 
   const handleScroll = () => {
     if (!chatScrollRef.current) return
@@ -92,6 +99,7 @@ export function LiveChatPanel({
 
     onSendMessage(trimmed, effectiveUserName)
     setInputText('')
+    setTimeout(() => scrollToBottom('smooth'), 50)
   }
 
   const triggerLikeAnimation = () => {
@@ -110,10 +118,10 @@ export function LiveChatPanel({
 
   return (
     <div
-      className={`relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 ${className}`}
+      className={`relative flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 ${className}`}
     >
       {/* Panel Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/40">
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/40">
         <div className="flex items-center gap-2">
           <MessageSquare className="h-4 w-4 text-slate-500 dark:text-slate-400" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -133,7 +141,7 @@ export function LiveChatPanel({
 
       {/* Guest Name Notification / Edit Bar (Only for non-logged in viewers) */}
       {!isBroadcaster && !currentUserName && (
-        <div className="flex items-center justify-between border-b border-slate-100 bg-orange-50/60 px-3.5 py-1.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-orange-950/20 dark:text-slate-300">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-orange-50/60 px-3.5 py-1.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-orange-950/20 dark:text-slate-300">
           {isEditingName ? (
             <form
               onSubmit={handleSaveName}
@@ -183,7 +191,7 @@ export function LiveChatPanel({
       <div
         ref={chatScrollRef}
         onScroll={handleScroll}
-        className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 flex-1 space-y-2 overflow-y-auto p-4 text-xs"
+        className="scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 max-h-full min-h-0 flex-1 space-y-2 overflow-y-auto p-4 text-xs"
       >
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center py-8 text-center text-slate-400">
@@ -222,7 +230,7 @@ export function LiveChatPanel({
             return (
               <div
                 key={msg.id || index}
-                className="group flex flex-col items-start gap-0.5 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
+                className="group flex min-w-0 max-w-full flex-col items-start gap-0.5 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/5"
               >
                 <div className="flex flex-wrap items-center gap-1.5">
                   {isHost ? (
@@ -244,7 +252,7 @@ export function LiveChatPanel({
                       : ''}
                   </span>
                 </div>
-                <p className="word-break select-text break-words text-[12px] leading-relaxed text-slate-800 dark:text-slate-200">
+                <p className="min-w-0 max-w-full select-text break-words text-[12px] leading-relaxed text-slate-800 [overflow-wrap:anywhere] [word-break:break-word] dark:text-slate-200">
                   {msg.message}
                 </p>
               </div>
@@ -267,7 +275,7 @@ export function LiveChatPanel({
       </div>
 
       {/* Input Area */}
-      <div className="relative z-10 border-t border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+      <div className="relative z-10 shrink-0 border-t border-slate-100 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/60">
         <form onSubmit={handleSend} className="flex items-center gap-2">
           <input
             type="text"

@@ -982,9 +982,7 @@ export function OrderMobileView({
               className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
             >
               <MessageCircle className="h-3.5 w-3.5 text-slate-500" />
-              <span>
-                {isCompleted ? 'Chat Admin After Sales' : 'Chat Toko Cabang'}
-              </span>
+              <span>Chat Toko</span>
             </Link>
           </>
         )}

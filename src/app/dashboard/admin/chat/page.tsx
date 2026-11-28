@@ -1562,6 +1562,18 @@ function AdminChatContent() {
         return '📷 Lampiran Foto'
       case 'video':
         return '🎥 Lampiran Video'
+      case 'service_reference':
+      case 'service': {
+        const trimmed = message.content?.trim() || ''
+        if (trimmed.startsWith('{')) {
+          try {
+            const s = JSON.parse(trimmed)
+            const name = s.mitraName || s.name
+            if (name) return `🔧 Konsultasi Servis: ${name}`
+          } catch {}
+        }
+        return '🔧 Konsultasi Servis'
+      }
       case 'product_reference':
       case 'product': {
         const trimmed = message.content?.trim() || ''
@@ -1647,6 +1659,16 @@ function AdminChatContent() {
             contentTrimmed.includes('"productName"')) &&
           (contentTrimmed.includes('"price"') ||
             contentTrimmed.includes('"productPrice"'))))
+
+    const isService =
+      !isOrder &&
+      !isProduct &&
+      (message.messageType === 'service_reference' ||
+        message.messageType === 'service' ||
+        (contentTrimmed.startsWith('{') &&
+          (contentTrimmed.includes('"serviceContext"') ||
+            contentTrimmed.includes('"service_reference"') ||
+            contentTrimmed.includes('"mitraName"'))))
 
     if (isOrder) {
       try {
@@ -1936,6 +1958,93 @@ function AdminChatContent() {
         )
       } catch {
         return <p className="text-xs text-slate-400">Rekomendasi Produk</p>
+      }
+    }
+
+    if (isService) {
+      try {
+        const s = JSON.parse(message.content)
+        const mitraId = s.mitraId || ''
+        const mitraName = s.mitraName || 'Bengkel Mitra Servis'
+        const mitraCity = s.mitraCity || ''
+        const rawImage = s.mitraImage || null
+        const note = typeof s.note === 'string' ? s.note.trim() : ''
+
+        return (
+          <div
+            className={`shadow-xs max-w-[85%] space-y-2 rounded-2xl border border-slate-200/90 bg-white p-2.5 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-[320px] ${
+              isAdmin ? 'ml-auto' : 'mr-auto'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 pb-1.5 dark:border-slate-800">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <Wrench className="h-2.5 w-2.5" />
+                <span>Konsultasi Servis</span>
+              </span>
+              <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                <span>{formattedTime}</span>
+                {isAdmin &&
+                  renderAdminWhatsAppTick(
+                    message.isRead,
+                    isCustomerOnline,
+                    'light'
+                  )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              {rawImage ? (
+                <img
+                  src={rawImage}
+                  alt={mitraName}
+                  className="h-11 w-11 shrink-0 rounded-xl border border-slate-100 bg-slate-50 object-cover dark:border-slate-800 dark:bg-slate-800"
+                />
+              ) : (
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200/60 bg-emerald-50 text-emerald-600 dark:border-emerald-900/40 dark:bg-emerald-950/40">
+                  <Wrench className="h-5 w-5" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                  {mitraName}
+                </p>
+                <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  {mitraCity && <span>{mitraCity} • </span>}
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    Booking &amp; Estimasi Servis
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {note && (
+              <div className="mt-1.5 rounded-xl border border-slate-100 bg-slate-50/90 p-2 text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200">
+                <p className="whitespace-pre-wrap break-words leading-relaxed">
+                  {note}
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 text-[10px] font-semibold dark:border-slate-800">
+              <span className="text-slate-400">
+                {isAdmin ? 'Mitra Servis' : 'Konsultasi Pelanggan'}
+              </span>
+              {mitraId && (
+                <a
+                  href={`/rekomendasi/${mitraId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shadow-2xs inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+                >
+                  <span>Detail</span>
+                  <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              )}
+            </div>
+          </div>
+        )
+      } catch {
+        return <p className="text-xs text-slate-400">Konsultasi Servis</p>
       }
     }
 
@@ -2577,7 +2686,16 @@ function AdminChatContent() {
                             contentTrimmed.includes('"productName"')) &&
                           (contentTrimmed.includes('"price"') ||
                             contentTrimmed.includes('"productPrice"'))))
-                    const isCardMessage = isOrder || isProduct
+                    const isService =
+                      !isOrder &&
+                      !isProduct &&
+                      (message.messageType === 'service_reference' ||
+                        message.messageType === 'service' ||
+                        (contentTrimmed.startsWith('{') &&
+                          (contentTrimmed.includes('"serviceContext"') ||
+                            contentTrimmed.includes('"service_reference"') ||
+                            contentTrimmed.includes('"mitraName"'))))
+                    const isCardMessage = isOrder || isProduct || isService
 
                     return (
                       <React.Fragment key={message.id}>

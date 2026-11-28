@@ -125,6 +125,7 @@ export interface OrderDetailModalData {
     reasonLabel?: string | null
     returnTrackingNumber?: string | null
     returnCourier?: string | null
+    packageReceivedAt?: string | null
     storeResponse?: string | null
     bankName?: string | null
     bankAccountNumber?: string | null
@@ -488,18 +489,26 @@ export function AdminOrderDetailModal({
                           Resi Kirim Balik: {returnReq.returnCourier || 'JNE'} —{' '}
                           {returnReq.returnTrackingNumber}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCheckResiQuery(
-                              returnReq.returnTrackingNumber || ''
-                            )
-                            setShowCheckResiModal(true)
-                          }}
-                          className="rounded bg-blue-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-blue-700"
-                        >
-                          Lacak Resi
-                        </button>
+                        {!(
+                          returnReq.packageReceivedAt ||
+                          returnReq.status === 'COMPLETED' ||
+                          returnReq.storeResponse?.includes(
+                            '[Paket Fisik Tiba di Cabang]'
+                          )
+                        ) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCheckResiQuery(
+                                returnReq.returnTrackingNumber || ''
+                              )
+                              setShowCheckResiModal(true)
+                            }}
+                            className="rounded bg-blue-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-blue-700"
+                          >
+                            Lacak Resi
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

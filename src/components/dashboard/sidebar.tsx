@@ -234,6 +234,16 @@ const mitraNavSections: NavSection[] = [
     ],
   },
   {
+    title: 'Operasional',
+    items: [
+      {
+        icon: MessageSquare,
+        label: 'Pesan Konsultasi',
+        href: '/dashboard/admin/chat',
+      },
+    ],
+  },
+  {
     title: 'Layanan & Bantuan',
     items: [
       {

@@ -1113,6 +1113,8 @@ function CustomerChatContent() {
     const currentProductContext = !activeOrderContext
       ? activeProductContext
       : null
+    const currentServiceContext =
+      !activeOrderContext && !activeProductContext ? activeServiceContext : null
 
     if (currentOrderContext) {
       setActiveOrderContext(null)
@@ -1151,7 +1153,8 @@ function CustomerChatContent() {
       | 'text'
       | 'order_reference'
       | 'return_reference'
-      | 'product_reference' = 'text'
+      | 'product_reference'
+      | 'service_reference' = 'text'
     let contentToSend = rawContent
 
     if (currentOrderContext) {
@@ -1187,6 +1190,17 @@ function CustomerChatContent() {
         productPrice: currentProductContext.productPrice,
         productImage: currentProductContext.productImage,
         variantName: currentProductContext.variantName,
+        note: rawContent,
+      })
+    } else if (currentServiceContext) {
+      messageType = 'service_reference'
+      contentToSend = JSON.stringify({
+        type: 'service_reference',
+        mitraId: currentServiceContext.mitraId,
+        mitraName: currentServiceContext.mitraName,
+        mitraCity: currentServiceContext.mitraCity,
+        mitraImage: currentServiceContext.mitraImage,
+        serviceContext: currentServiceContext.serviceContext,
         note: rawContent,
       })
     }
