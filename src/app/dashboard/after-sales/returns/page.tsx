@@ -1005,21 +1005,6 @@ export default function AfterSalesReturnsPage() {
                                       })
                                     : 'Dikonfirmasi Tiba'}
                               </span>
-                              {item.returnTrackingNumber && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveTrackingQuery(
-                                      item.returnTrackingNumber || ''
-                                    )
-                                    setResiModalOpen(true)
-                                  }}
-                                  className="shadow-2xs inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-[10.5px] font-semibold text-indigo-800 hover:bg-indigo-200 dark:bg-slate-800 dark:text-indigo-300"
-                                >
-                                  <Search className="h-3 w-3" />
-                                  <span>Lacak Biteship</span>
-                                </button>
-                              )}
                             </div>
                           </div>
                           {(item.qcNotes ||

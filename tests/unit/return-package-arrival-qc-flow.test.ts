@@ -104,4 +104,12 @@ describe('End-to-End: Konfirmasi Barang Retur Tiba di Cabang & Alur QC Fisik', (
     expect(customerMobileContent).toContain('Sedang QC')
     expect(customerMobileContent).toContain('Catatan Teknisi:')
   })
+
+  it('6. Meja Kerja After Sales: Menghapus tombol Lacak Biteship saat paket fisik sudah diterima dan mulai QC', () => {
+    const arrivedSection = afterSalesContent
+      .split('Paket Fisik Telah Diterima di Cabang')[1]
+      ?.split('Catatan QC Awal')[0]
+    expect(arrivedSection).toBeDefined()
+    expect(arrivedSection).not.toContain('Lacak Biteship')
+  })
 })
