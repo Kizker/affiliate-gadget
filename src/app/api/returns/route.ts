@@ -429,6 +429,24 @@ export async function POST(request: NextRequest) {
       )
 
       if (remainingQty <= 0) {
+        const isRefunded = existingReturns.some(
+          (r) =>
+            r.type === 'REFUND' &&
+            ['COMPLETED', 'APPROVED', 'IN_REVIEW', 'PENDING'].includes(
+              r.status
+            ) &&
+            doesReturnMatchOrderItem(r, targetOrderItem, order.items.length)
+        )
+        if (isRefunded) {
+          return NextResponse.json(
+            {
+              error:
+                'Produk ini sudah diajukan/diselesaikan pengembalian dananya (Refund) dan tidak dapat diajukan pengembalian lagi.',
+            },
+            { status: 400 }
+          )
+        }
+
         const isRejected = existingReturns.some(
           (r) =>
             r.status === 'REJECTED' &&

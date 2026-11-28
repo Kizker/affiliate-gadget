@@ -265,15 +265,29 @@ export function OrderMobileView({
                           <span className="inline-flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
                             <RotateCcw className="h-3 w-3 text-purple-600" />
                             <span>
-                              {itemSpecificReturn.status === 'PENDING'
-                                ? 'Menunggu Verifikasi'
-                                : itemSpecificReturn.status === 'IN_REVIEW'
-                                  ? 'Sedang Ditinjau'
-                                  : itemSpecificReturn.status === 'COMPLETED'
-                                    ? 'Retur Selesai'
-                                    : itemSpecificReturn.status === 'REJECTED'
-                                      ? 'Retur Ditolak'
-                                      : 'Retur Disetujui'}
+                              {(() => {
+                                const isRefund =
+                                  itemSpecificReturn.type === 'REFUND'
+                                const actionText = isRefund
+                                  ? 'Refund'
+                                  : itemSpecificReturn.type === 'REPLACEMENT'
+                                    ? 'Tukar Unit'
+                                    : 'Retur'
+
+                                if (itemSpecificReturn.status === 'PENDING') {
+                                  return `Menunggu Verifikasi ${actionText}`
+                                }
+                                if (itemSpecificReturn.status === 'IN_REVIEW') {
+                                  return `${actionText} Sedang Ditinjau`
+                                }
+                                if (itemSpecificReturn.status === 'COMPLETED') {
+                                  return `${actionText} Selesai`
+                                }
+                                if (itemSpecificReturn.status === 'REJECTED') {
+                                  return `${actionText} Ditolak`
+                                }
+                                return `${actionText} Disetujui`
+                              })()}
                             </span>
                           </span>
                           {(itemSpecificReturn.reasonLabel ||

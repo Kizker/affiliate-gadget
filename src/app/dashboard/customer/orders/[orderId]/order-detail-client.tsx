@@ -393,11 +393,24 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
 
   const getDetailStatus = () => {
     if (latestReturnRequest) {
+      const isRefund = latestReturnRequest.type === 'REFUND'
+      const actionName = isRefund
+        ? 'Refund'
+        : latestReturnRequest.type === 'REPLACEMENT'
+          ? 'Tukar Unit'
+          : 'Retur'
+
       if (latestReturnRequest.status === 'PENDING') {
-        return statusConfig.RETURN_PENDING
+        return {
+          ...statusConfig.RETURN_PENDING,
+          label: `Menunggu Verifikasi ${actionName}`,
+        }
       }
       if (latestReturnRequest.status === 'APPROVED') {
-        return statusConfig.RETURN_APPROVED
+        return {
+          ...statusConfig.RETURN_APPROVED,
+          label: `${actionName} Disetujui`,
+        }
       }
       if (latestReturnRequest.status === 'IN_REVIEW') {
         const isArrived = Boolean(
@@ -408,13 +421,24 @@ export default function OrderDetailClient({ order }: OrderDetailProps) {
         )
         return isArrived
           ? statusConfig.RETURN_IN_QC
-          : statusConfig.RETURN_IN_TRANSIT
+          : isRefund
+            ? {
+                ...statusConfig.RETURN_IN_TRANSIT,
+                label: 'Paket Refund Menuju Toko',
+              }
+            : statusConfig.RETURN_IN_TRANSIT
       }
       if (latestReturnRequest.status === 'REJECTED') {
-        return statusConfig.RETURN_REJECTED
+        return {
+          ...statusConfig.RETURN_REJECTED,
+          label: `Pengajuan ${actionName} Ditolak`,
+        }
       }
       if (latestReturnRequest.status === 'COMPLETED') {
-        return statusConfig.RETURN_COMPLETED
+        return {
+          ...statusConfig.RETURN_COMPLETED,
+          label: `${actionName} Selesai`,
+        }
       }
     }
     return getNormalStatus()

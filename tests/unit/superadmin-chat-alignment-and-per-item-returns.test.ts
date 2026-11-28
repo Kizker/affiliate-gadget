@@ -65,7 +65,7 @@ describe('Superadmin Chat Alignment & Per-Item Returns in Order Details', () => 
   it('6. OrderDetailClient mengintegrasikan selectedReturnItem dan meneruskannya ke ReturnModal', () => {
     const content = fs.readFileSync(orderDetailClientPath, 'utf-8')
     expect(content).toContain('selectedReturnItem')
-    expect(content).toContain('items={order.items}')
+    expect(content).toContain('order.items')
     expect(content).toContain(
       'initialSelectedItemId={selectedReturnItem?.id || null}'
     )

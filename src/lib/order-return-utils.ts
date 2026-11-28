@@ -229,14 +229,24 @@ export function doesReturnMatchOrderItem(
  * Finds the active/latest ReturnRequest targeting a specific OrderItem.
  */
 export function findReturnForOrderItem<
-  T extends { status: string; description?: string | null },
+  T extends {
+    status: string
+    description?: string | null
+    createdAt?: string | Date | null
+  },
 >(
   returnRequests: T[] | null | undefined,
   item: MatchableOrderItem,
   totalOrderItemsCount: number = 1
 ): T | undefined {
   if (!returnRequests || returnRequests.length === 0) return undefined
-  return returnRequests.find((r) =>
+  // Selalu urutkan dari yang terbaru (descending) agar aksi terakhir yang disetujui/diajukan diprioritaskan
+  const sorted = [...returnRequests].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return timeB - timeA
+  })
+  return sorted.find((r) =>
     doesReturnMatchOrderItem(r, item, totalOrderItemsCount)
   )
 }
@@ -363,6 +373,17 @@ export function getRemainingReturnableQuantityForItem(
     return totalQty
   }
 
+  // Jika produk ini sudah memiliki pengajuan refund yang disetujui / selesai atau sedang diproses,
+  // maka barang tersebut tidak bisa diajukan pengembalian lagi!
+  const hasRefundOnThisItem = matchingReturns.some(
+    (r) =>
+      r.type === 'REFUND' &&
+      ['COMPLETED', 'APPROVED', 'IN_REVIEW', 'PENDING'].includes(r.status)
+  )
+  if (hasRefundOnThisItem) {
+    return 0
+  }
+
   let nonReturnableQty = 0
 
   for (const ret of matchingReturns) {
@@ -417,6 +438,17 @@ export function isOrderItemReturnEligible(
   if (!isReceived) return false
   if (order.status === 'COMPLETED' && order.completedAt) return false
   if (isWarrantyExpired(order)) return false
+
+  // Jika item ini sudah pernah terefund atau sedang diproses refund, tidak bisa diajukan pengembalian lagi
+  const matchingReturns = order.returnRequests?.filter((r) =>
+    doesReturnMatchOrderItem(r, item, totalOrderItemsCount)
+  )
+  const isRefundedOrInRefund = matchingReturns?.some(
+    (r) =>
+      r.type === 'REFUND' &&
+      ['COMPLETED', 'APPROVED', 'IN_REVIEW', 'PENDING'].includes(r.status)
+  )
+  if (isRefundedOrInRefund) return false
 
   const remainingQty = getRemainingReturnableQuantityForItem(
     item,

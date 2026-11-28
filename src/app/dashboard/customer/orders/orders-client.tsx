@@ -876,19 +876,43 @@ export default function OrdersClient({
                                         <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-[10.5px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
                                           <RotateCcw className="h-3 w-3 text-purple-600" />
                                           <span>
-                                            {firstItemReturn.status ===
-                                            'PENDING'
-                                              ? 'Menunggu Verifikasi Retur'
-                                              : firstItemReturn.status ===
-                                                  'IN_REVIEW'
-                                                ? 'Retur Sedang Ditinjau'
-                                                : firstItemReturn.status ===
-                                                    'COMPLETED'
-                                                  ? 'Retur Selesai'
-                                                  : firstItemReturn.status ===
-                                                      'REJECTED'
-                                                    ? 'Retur Ditolak'
-                                                    : 'Retur Disetujui'}
+                                            {(() => {
+                                              const isRefund =
+                                                firstItemReturn.type ===
+                                                'REFUND'
+                                              const actionText = isRefund
+                                                ? 'Refund'
+                                                : firstItemReturn.type ===
+                                                    'REPLACEMENT'
+                                                  ? 'Tukar Unit'
+                                                  : 'Retur'
+
+                                              if (
+                                                firstItemReturn.status ===
+                                                'PENDING'
+                                              ) {
+                                                return `Menunggu Verifikasi ${actionText}`
+                                              }
+                                              if (
+                                                firstItemReturn.status ===
+                                                'IN_REVIEW'
+                                              ) {
+                                                return `${actionText} Sedang Ditinjau`
+                                              }
+                                              if (
+                                                firstItemReturn.status ===
+                                                'COMPLETED'
+                                              ) {
+                                                return `${actionText} Selesai`
+                                              }
+                                              if (
+                                                firstItemReturn.status ===
+                                                'REJECTED'
+                                              ) {
+                                                return `${actionText} Ditolak`
+                                              }
+                                              return `${actionText} Disetujui`
+                                            })()}
                                           </span>
                                         </span>
                                       )}
@@ -1134,19 +1158,43 @@ export default function OrdersClient({
                                           <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-3 py-1.5 text-[10.5px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
                                             <RotateCcw className="h-3 w-3 text-purple-600" />
                                             <span>
-                                              {extraItemReturn.status ===
-                                              'PENDING'
-                                                ? 'Menunggu Verifikasi Retur'
-                                                : extraItemReturn.status ===
-                                                    'IN_REVIEW'
-                                                  ? 'Retur Sedang Ditinjau'
-                                                  : extraItemReturn.status ===
-                                                      'COMPLETED'
-                                                    ? 'Retur Selesai'
-                                                    : extraItemReturn.status ===
-                                                        'REJECTED'
-                                                      ? 'Retur Ditolak'
-                                                      : 'Retur Disetujui'}
+                                              {(() => {
+                                                const isRefund =
+                                                  extraItemReturn.type ===
+                                                  'REFUND'
+                                                const actionText = isRefund
+                                                  ? 'Refund'
+                                                  : extraItemReturn.type ===
+                                                      'REPLACEMENT'
+                                                    ? 'Tukar Unit'
+                                                    : 'Retur'
+
+                                                if (
+                                                  extraItemReturn.status ===
+                                                  'PENDING'
+                                                ) {
+                                                  return `Menunggu Verifikasi ${actionText}`
+                                                }
+                                                if (
+                                                  extraItemReturn.status ===
+                                                  'IN_REVIEW'
+                                                ) {
+                                                  return `${actionText} Sedang Ditinjau`
+                                                }
+                                                if (
+                                                  extraItemReturn.status ===
+                                                  'COMPLETED'
+                                                ) {
+                                                  return `${actionText} Selesai`
+                                                }
+                                                if (
+                                                  extraItemReturn.status ===
+                                                  'REJECTED'
+                                                ) {
+                                                  return `${actionText} Ditolak`
+                                                }
+                                                return `${actionText} Disetujui`
+                                              })()}
                                             </span>
                                           </span>
                                         )}
@@ -1289,15 +1337,26 @@ export default function OrdersClient({
                               >
                                 <RotateCcw className="h-3 w-3" />
                                 <span>
-                                  {order.returnRequests[0].status === 'APPROVED'
-                                    ? 'Retur Disetujui'
-                                    : order.returnRequests[0].status ===
-                                        'COMPLETED'
-                                      ? 'Retur Selesai'
-                                      : order.returnRequests[0].status ===
-                                          'REJECTED'
-                                        ? 'Retur Ditolak'
-                                        : 'Pengajuan Retur Diproses'}
+                                  {(() => {
+                                    const latestRet = order.returnRequests[0]
+                                    const isRefund = latestRet.type === 'REFUND'
+                                    const actionText = isRefund
+                                      ? 'Refund'
+                                      : latestRet.type === 'REPLACEMENT'
+                                        ? 'Tukar Unit'
+                                        : 'Retur'
+
+                                    if (latestRet.status === 'APPROVED') {
+                                      return `${actionText} Disetujui`
+                                    }
+                                    if (latestRet.status === 'COMPLETED') {
+                                      return `${actionText} Selesai`
+                                    }
+                                    if (latestRet.status === 'REJECTED') {
+                                      return `${actionText} Ditolak`
+                                    }
+                                    return `Pengajuan ${actionText} Diproses`
+                                  })()}
                                 </span>
                               </span>
                             )}

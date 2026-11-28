@@ -98,13 +98,13 @@ describe('30-Day Warranty Expiration & Return Eligibility', () => {
       expect(isReturnEligible(orderWithApprovedReturn)).toBe(false)
     })
 
-    it('mengembalikan true jika return request sebelumnya REJECTED dan garansi masih aktif', () => {
+    it('mengembalikan false jika return request sebelumnya REJECTED (aturan bisnis: unit ditolak tidak boleh diretur kembali)', () => {
       const orderWithRejectedReturn: OrderWarrantyInfo = {
         status: 'COMPLETED',
         warrantyExpiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
         returnRequests: [{ status: 'REJECTED' }],
       }
-      expect(isReturnEligible(orderWithRejectedReturn)).toBe(true)
+      expect(isReturnEligible(orderWithRejectedReturn)).toBe(false)
     })
   })
 

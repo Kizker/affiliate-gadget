@@ -151,18 +151,40 @@ export function OrderDesktopItemsCard({
                                 <span className="inline-flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-[11px] font-bold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
                                   <RotateCcw className="h-3.5 w-3.5 text-purple-600" />
                                   <span>
-                                    {itemSpecificReturn.status === 'PENDING'
-                                      ? 'Menunggu Verifikasi Retur'
-                                      : itemSpecificReturn.status ===
-                                          'IN_REVIEW'
-                                        ? 'Retur Sedang Ditinjau'
-                                        : itemSpecificReturn.status ===
-                                            'COMPLETED'
-                                          ? 'Retur Selesai'
-                                          : itemSpecificReturn.status ===
-                                              'REJECTED'
-                                            ? 'Retur Ditolak'
-                                            : 'Retur Disetujui'}
+                                    {(() => {
+                                      const isRefund =
+                                        itemSpecificReturn.type === 'REFUND'
+                                      const actionText = isRefund
+                                        ? 'Refund'
+                                        : itemSpecificReturn.type ===
+                                            'REPLACEMENT'
+                                          ? 'Tukar Unit'
+                                          : 'Retur'
+
+                                      if (
+                                        itemSpecificReturn.status === 'PENDING'
+                                      ) {
+                                        return `Menunggu Verifikasi ${actionText}`
+                                      }
+                                      if (
+                                        itemSpecificReturn.status ===
+                                        'IN_REVIEW'
+                                      ) {
+                                        return `${actionText} Sedang Ditinjau`
+                                      }
+                                      if (
+                                        itemSpecificReturn.status ===
+                                        'COMPLETED'
+                                      ) {
+                                        return `${actionText} Selesai`
+                                      }
+                                      if (
+                                        itemSpecificReturn.status === 'REJECTED'
+                                      ) {
+                                        return `${actionText} Ditolak`
+                                      }
+                                      return `${actionText} Disetujui`
+                                    })()}
                                   </span>
                                 </span>
                                 {(itemSpecificReturn.reasonLabel ||

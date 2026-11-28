@@ -90,6 +90,7 @@ export function getOrderContextualTimestamp(order: {
     createdAt?: string | null
     resolvedAt?: string | null
     status?: string
+    type?: string | null
   }>
 }): OrderTimestampInfo {
   // 1. Status Retur / Pengembalian (Prioritas utama sebelum Completed)
@@ -107,9 +108,18 @@ export function getOrderContextualTimestamp(order: {
 
     const d = new Date(rawDate)
     const isDone = latestReturn?.status === 'COMPLETED'
+    const isRefund = latestReturn?.type === 'REFUND'
+    const actionName = isRefund
+      ? 'Refund'
+      : latestReturn?.type === 'REPLACEMENT'
+        ? 'Tukar Unit'
+        : 'Retur'
+
     return {
-      label: isDone ? 'Retur Selesai' : 'Diajukan Retur',
-      fullLabel: isDone ? 'Waktu Retur Selesai' : 'Waktu Pengajuan Retur',
+      label: isDone ? `${actionName} Selesai` : `Diajukan ${actionName}`,
+      fullLabel: isDone
+        ? `Waktu ${actionName} Selesai`
+        : `Waktu Pengajuan ${actionName}`,
       rawDate,
       date: d,
       shortDate: formatOrderShortDate(d),
@@ -357,6 +367,7 @@ export function sortOrdersByLatestProcess<
       createdAt?: string | null
       resolvedAt?: string | null
       status?: string
+      type?: string | null
     }>
   },
 >(orders: T[]): T[] {
