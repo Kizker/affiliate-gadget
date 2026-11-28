@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (session.user.role !== 'CUSTOMER') {
       return NextResponse.json(
         {
-          error: 'Only customers can checkout',
+          error: 'Silahkan login menggunakan akun customer',
           code: CHECKOUT_ERROR_CODES.FORBIDDEN_ROLE,
         },
         { status: 403 }

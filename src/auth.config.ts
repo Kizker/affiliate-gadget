@@ -56,6 +56,12 @@ export const authConfig = {
         token.isTechnician = (user as any).isTechnician || false
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.mitraStatus = (user as any).mitraStatus || null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.storeId = (user as any).storeId || null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.storeSlug = (user as any).storeSlug || null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.isActive = (user as any).isActive !== false
       }
       if (!token.role) {
         token.role = 'CUSTOMER'
@@ -77,6 +83,14 @@ export const authConfig = {
         ;(session.user as any).isTechnician = token.isTechnician as boolean
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session.user as any).mitraStatus = token.mitraStatus as string | null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(session.user as any).storeId =
+          (token.storeId as string | null) || null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(session.user as any).storeSlug =
+          (token.storeSlug as string | null) || null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(session.user as any).isActive = token.isActive !== false
       }
       return session
     },

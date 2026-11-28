@@ -35,6 +35,7 @@ import {
   Radio,
   Headphones,
   QrCode,
+  Scale,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 import { useAdminNotifications } from '@/context/admin-notifications-context'
@@ -86,6 +87,11 @@ const superAdminNavSections: NavSection[] = [
         icon: Wallet,
         label: 'Keuangan & Laporan',
         href: '/dashboard/admin/finance',
+      },
+      {
+        icon: Scale,
+        label: 'Pajak',
+        href: '/dashboard/admin/tax',
       },
       { icon: Radio, label: 'Siaran Langsung', href: '/dashboard/admin/live' },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
@@ -242,6 +248,11 @@ const storeAdminNavSections: NavSection[] = [
         icon: Wallet,
         label: 'Keuangan & Laporan',
         href: '/dashboard/admin/finance',
+      },
+      {
+        icon: Scale,
+        label: 'Pajak',
+        href: '/dashboard/admin/tax',
       },
       { icon: MessageSquare, label: 'Pesan', href: '/dashboard/admin/chat' },
       {
@@ -410,7 +421,7 @@ export function Sidebar({
     ? activeSlug
       ? `/toko/${activeSlug}`
       : '/toko'
-    : '/'
+    : '/?preview=1'
 
   // Determine sections based on user role
   const navSections = useMemo(() => {

@@ -112,6 +112,20 @@ function LoginForm() {
     await new Promise((resolve) => setTimeout(resolve, 600))
 
     const currentRole = roleOverride || detectedRole
+    const isStaffOrPartnerRole =
+      currentRole &&
+      [
+        'SUPER_ADMIN',
+        'ADMIN',
+        'STORE_ADMIN',
+        'STORE_SALES',
+        'FINANCE_ADMIN',
+        'CONTENT_EDITOR',
+        'AFTER_SALES',
+        'TECHNICIAN',
+        'MITRA',
+      ].includes(currentRole)
+
     let defaultDest = '/'
     if (currentRole === 'AFTER_SALES') {
       defaultDest = '/dashboard/after-sales'
@@ -133,12 +147,12 @@ function LoginForm() {
       defaultDest = '/dashboard/mitra'
     }
 
-    let redirectUrl =
-      currentRole === 'AFTER_SALES'
-        ? '/dashboard/after-sales'
-        : redirectParam && redirectParam.startsWith('/')
-          ? redirectParam
-          : defaultDest
+    // Admin Toko, Superadmin, Mitra, Teknisi, & After Sales wajib selalu default masuk ke dashboardnya masing-masing
+    let redirectUrl = isStaffOrPartnerRole
+      ? defaultDest
+      : redirectParam && redirectParam.startsWith('/')
+        ? redirectParam
+        : defaultDest
     let retries = 3
 
     while (retries > 0) {
@@ -402,7 +416,7 @@ function LoginForm() {
     setError('')
     try {
       await signIn('google', {
-        callbackUrl: redirectParam || '/api/auth/redirect',
+        callbackUrl: '/api/auth/redirect',
       })
     } catch (err) {
       console.error('Google Sign-In Error:', err)

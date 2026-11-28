@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation'
 export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   // Finance & Laporan — SUPER_ADMIN, STORE_ADMIN (toko sendiri), FINANCE_ADMIN
   '/dashboard/admin/finance': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
+  '/dashboard/admin/tax': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
   '/dashboard/admin/reports': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
 
   // Manajemen Pengguna — SUPER_ADMIN only

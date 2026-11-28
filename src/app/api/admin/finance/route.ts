@@ -22,6 +22,10 @@ import {
   ESCROW_STATUSES,
 } from '@/lib/finance-constants'
 import { resolveOrderItemCostPrice } from '@/lib/order-return-utils'
+import {
+  getTaxConfigData,
+  calculateActiveTaxesForOrder,
+} from '@/lib/tax/tax-config-store'
 
 export async function GET(request: NextRequest) {
   try {
@@ -327,6 +331,7 @@ export async function GET(request: NextRequest) {
       breakdown?: any
     }
 
+    const taxConfig = getTaxConfigData()
     const mutations: MutationItem[] = []
 
     orders.forEach((order) => {
@@ -334,9 +339,19 @@ export async function GET(request: NextRequest) {
       const orderSubtotal = order.subtotal || 0
       const commission = order.commissionAmount || 0
       const discount = order.discountAmount || 0
+      const subtotalAfterDiscount = Math.max(0, orderSubtotal - discount)
 
-      // Hak bersih toko = subtotal - diskon - komisi platform
-      const netStoreAmount = Math.max(0, orderSubtotal - discount - commission)
+      const activeTaxCalc = calculateActiveTaxesForOrder({
+        subtotalAfterDiscount,
+        platformCommissionAmount: commission,
+        activeTaxes: taxConfig.taxes,
+      })
+
+      // Hak bersih toko = subtotal - diskon - komisi platform - pajak aktif
+      const netStoreAmount = Math.max(
+        0,
+        orderSubtotal - discount - commission - activeTaxCalc.totalTaxAmount
+      )
 
       // Total unit
       const unitsCount = order.items.reduce(
@@ -391,6 +406,8 @@ export async function GET(request: NextRequest) {
         commissionAmount: commission,
         commissionRate: order.commissionRate || 1.5,
         gatewayFee,
+        taxAmount: activeTaxCalc.totalTaxAmount,
+        taxItems: activeTaxCalc.items,
         shippingCost: order.shippingCost || 0,
         insuranceFee: order.insuranceFee || 0,
         totalCustomerPaid: orderTotal,
@@ -645,6 +662,30 @@ export async function GET(request: NextRequest) {
             items: itemsDetail,
             breakdown: financialBreakdown,
           })
+
+          // 4. Potongan Pajak Aktif (misal PPh Pasal 22 E-Commerce 0.5% -> Masuk ke Kas Penampungan Pajak Platform)
+          activeTaxCalc.items.forEach((taxItem) => {
+            mutations.push({
+              id: `tax-${taxItem.id}-${order.id}`,
+              refNumber: `TAX-${order.orderNumber.replace(/^(ORD|SPR)-/, '')}`,
+              title: `Pemungutan ${taxItem.shortName}`,
+              subtitle: `Masuk Kas Penampungan Pajak Platform (#${order.orderNumber})`,
+              type: 'EXPENSE',
+              category: 'PPH23',
+              categoryLabel: 'Pajak Negara',
+              amount: taxItem.amount,
+              date: formattedDate,
+              rawDate: effectiveDate,
+              status: 'SETTLED',
+              statusLabel: 'Terpotong',
+              orderStatus: order.status,
+              items: itemsDetail,
+              breakdown: {
+                ...financialBreakdown,
+                taxItem,
+              },
+            })
+          })
         }
       } else if (
         ESCROW_STATUSES.includes(order.status as any) ||
@@ -754,7 +795,7 @@ export async function GET(request: NextRequest) {
       availableBalance = Math.max(0, allTimeCommission - allTimeWithdrawn)
     } else {
       // Untuk Toko Cabang:
-      // Saldo siap cair adalah hak bersih toko dikurangi penarikan dan gateway fee flat Rp 4.000 per transaksi
+      // Saldo siap cair adalah hak bersih toko dikurangi penarikan, gateway fee flat Rp 4.000 per transaksi, dan pajak aktif
       const storeWithdrawals = (
         await getStoreWithdrawals(targetStoreId)
       ).filter(
@@ -764,11 +805,21 @@ export async function GET(request: NextRequest) {
           w.status === 'SUCCESS'
       )
       allTimeWithdrawn = storeWithdrawals.reduce((sum, w) => sum + w.amount, 0)
-      const allTimeNetRevenue = Math.max(
+      const allTimeSubAfterDisc = Math.max(
         0,
         (allTimeCompletedAgg._sum.subtotal || 0) -
-          (allTimeCompletedAgg._sum.discountAmount || 0) -
-          (allTimeCompletedAgg._sum.commissionAmount || 0)
+          (allTimeCompletedAgg._sum.discountAmount || 0)
+      )
+      const allTimeComm = allTimeCompletedAgg._sum.commissionAmount || 0
+      const allTimeTaxCalc = calculateActiveTaxesForOrder({
+        subtotalAfterDiscount: allTimeSubAfterDisc,
+        platformCommissionAmount: allTimeComm,
+        activeTaxes: taxConfig.taxes,
+      })
+
+      const allTimeNetRevenue = Math.max(
+        0,
+        allTimeSubAfterDisc - allTimeComm - allTimeTaxCalc.totalTaxAmount
       )
       const allTimeGatewayFees =
         allTimeCompletedOrdersCount * GATEWAY_FEE_PER_TRANSACTION

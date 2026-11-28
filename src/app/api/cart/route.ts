@@ -187,6 +187,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (session.user.role && session.user.role !== 'CUSTOMER') {
+      return NextResponse.json(
+        { error: 'Silahkan login menggunakan akun customer' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const {
       type,

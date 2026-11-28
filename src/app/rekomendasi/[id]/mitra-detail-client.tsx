@@ -125,6 +125,14 @@ export default function MitraDetailClient({
   const handleBookingChat = useCallback(
     (e?: React.MouseEvent, serviceName?: string) => {
       if (e) e.preventDefault()
+      if (
+        status === 'authenticated' &&
+        session?.user?.role &&
+        session.user.role !== 'CUSTOMER'
+      ) {
+        toast.error('Silahkan login menggunakan akun customer')
+        return
+      }
       trackInquiry()
       const url = getChatUrl(serviceName)
       if (status === 'unauthenticated') {
@@ -133,7 +141,7 @@ export default function MitraDetailClient({
       }
       router.push(url)
     },
-    [trackInquiry, getChatUrl, status, router]
+    [trackInquiry, getChatUrl, status, session?.user?.role, router]
   )
 
   // Share handler

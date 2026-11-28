@@ -298,6 +298,14 @@ export function MobileCatalogView({
   const toggleWishlist = (item: any, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (
+      status === 'authenticated' &&
+      session?.user?.role &&
+      session.user.role !== 'CUSTOMER'
+    ) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
     const badge = getConditionBadge(item)
     const wasAdded = toggleItem({
       id: item.id,

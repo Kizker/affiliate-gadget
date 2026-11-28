@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-is-mobile'
 import { Navbar, Footer, MobileBottomNav } from '@/components/layouts'
 import { MobileTopNav } from '@/components/layouts/mobile-top-nav'
 import { MitraData, MitraService } from '@/lib/mitra-service-data'
+import { toast } from 'sonner'
 
 export type { MitraData, MitraService }
 
@@ -220,8 +221,18 @@ export function IntegratedServiceView({
     return `/dashboard/customer/chat?mitraId=${mitra.id}&mitraName=${encodeURIComponent(mitra.businessName)}&mitraCity=${encodeURIComponent(mitra.city)}&mitraImage=${encodeURIComponent(mitra.banner || '')}&serviceContext=${encodeURIComponent(greeting)}`
   }
 
-  const handleBookingChat = (e: React.MouseEvent, mitra: MitraData) => {
+  const handleBookingChat = async (e: React.MouseEvent, mitra: MitraData) => {
     e.preventDefault()
+    try {
+      const res = await fetch('/api/auth/session', { cache: 'no-store' })
+      if (res.ok) {
+        const sess = await res.json()
+        if (sess?.user?.role && sess.user.role !== 'CUSTOMER') {
+          toast.error('Silahkan login menggunakan akun customer')
+          return
+        }
+      }
+    } catch {}
     const url = getChatUrl(mitra)
     router.push(url)
   }

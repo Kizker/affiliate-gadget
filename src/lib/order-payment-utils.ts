@@ -11,6 +11,27 @@
  * - Estimasi Total Penghasilan bersih yang masuk ke saldo dompet toko
  */
 
+export interface ActiveTaxInputItem {
+  id: string
+  code: string
+  name: string
+  shortName: string
+  rate: number
+  isFlatAmount?: boolean
+  minTransactionThreshold?: number
+  isEnabled: boolean
+  ebillingKapKjs?: string
+}
+
+export interface OrderTaxLine {
+  id: string
+  shortName: string
+  rate: number
+  isFlatAmount?: boolean
+  amount: number
+  ebillingKapKjs?: string
+}
+
 export interface OrderFinancialSummary {
   subtotal: number
   discountAmount: number
@@ -21,6 +42,8 @@ export interface OrderFinancialSummary {
   serviceFeeLabel: string
   pph22Amount: number
   pph22Rate: number
+  totalTaxAmount: number
+  taxLines: OrderTaxLine[]
   shippingCost: number
   insuranceFee: number
   insuranceRate: number
@@ -46,6 +69,7 @@ export interface FinancialCalculationInput {
   } | null
   paymentMethod?: string | null
   notes?: string | null
+  activeTaxes?: ActiveTaxInputItem[] | null
 }
 
 /**
@@ -103,9 +127,61 @@ export function calculateOrderFinancials(
     serviceFeeLabel = 'Transfer Manual Direct (Rp 0)'
   }
 
-  // 3. Pajak (PPh Pasal 22 e-commerce: 0.5% dari subtotal barang)
-  const pph22Rate = 0.5
-  const pph22Amount = Math.round((subtotalAfterDiscount * pph22Rate) / 100)
+  // 3. Pajak (Mengikuti daftar pajak yang sedang AKTIF di halaman Pajak)
+  let pph22Rate = 0.5
+  let pph22Amount = 0
+  let totalTaxAmount = 0
+  const taxLines: OrderTaxLine[] = []
+
+  if (Array.isArray(order.activeTaxes)) {
+    for (const tax of order.activeTaxes) {
+      if (!tax.isEnabled) continue
+      let amt = 0
+      if (tax.id === 'PPH22_ECOMMERCE') {
+        pph22Rate = tax.rate
+        amt = Math.round((subtotalAfterDiscount * tax.rate) / 100)
+        pph22Amount = amt
+      } else if (
+        tax.id === 'PPN_PMSE' ||
+        tax.id === 'PPH_FINAL_UMKM' ||
+        tax.id === 'PPH21_MITRA'
+      ) {
+        amt = Math.round((subtotalAfterDiscount * tax.rate) / 100)
+      } else if (tax.id === 'PPH23_KOMISI') {
+        amt = Math.round((platformFee * tax.rate) / 100)
+      } else if (tax.id === 'BEA_MATERAI') {
+        const threshold = tax.minTransactionThreshold || 5000000
+        if (subtotalAfterDiscount >= threshold) {
+          amt = Math.round(tax.rate)
+        }
+      }
+
+      if (amt > 0) {
+        taxLines.push({
+          id: tax.id,
+          shortName: tax.shortName,
+          rate: tax.rate,
+          isFlatAmount: tax.isFlatAmount,
+          amount: amt,
+          ebillingKapKjs: tax.ebillingKapKjs,
+        })
+        totalTaxAmount += amt
+      }
+    }
+  } else {
+    // Fallback default: PPh Pasal 22 e-commerce 0.5%
+    pph22Amount = Math.round((subtotalAfterDiscount * pph22Rate) / 100)
+    totalTaxAmount = pph22Amount
+    if (pph22Amount > 0) {
+      taxLines.push({
+        id: 'PPH22_ECOMMERCE',
+        shortName: `PPh 22 (${pph22Rate}%)`,
+        rate: pph22Rate,
+        amount: pph22Amount,
+        ebillingKapKjs: 'KAP 411122 - KJS 910',
+      })
+    }
+  }
 
   // 4. Logistik Kurir (Pass-Through)
   const shippingCost = Math.max(0, Math.round(order.shippingCost ?? 0))
@@ -122,12 +198,12 @@ export function calculateOrderFinancials(
   )
 
   // 6. Estimasi Total Penghasilan Bersih Toko
-  // Subtotal produk dikurangi potongan komisi platform, biaya layanan, dan pajak
+  // Subtotal produk dikurangi potongan komisi platform, biaya layanan, dan total pajak aktif
   let estimatedNetIncome = 0
   if (!isCancelledOrReturned) {
     estimatedNetIncome = Math.max(
       0,
-      subtotalAfterDiscount - platformFee - serviceFee - pph22Amount
+      subtotalAfterDiscount - platformFee - serviceFee - totalTaxAmount
     )
   }
 
@@ -141,6 +217,8 @@ export function calculateOrderFinancials(
     serviceFeeLabel,
     pph22Amount,
     pph22Rate,
+    totalTaxAmount,
+    taxLines,
     shippingCost,
     insuranceFee,
     insuranceRate,

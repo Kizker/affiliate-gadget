@@ -21,6 +21,7 @@ import {
   Heart,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSession } from 'next-auth/react'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 import { StorePublicProfile } from '@/types/store-public'
 import { resolveStorePageContent } from '@/lib/store-page-content'
@@ -88,6 +89,12 @@ export default function StoreDetailClient({
   initialStore,
   initialIsMobile,
 }: StoreDetailClientProps) {
+  const { data: session, status } = useSession()
+  const isNonCustomerRole = Boolean(
+    status === 'authenticated' &&
+    session?.user?.role &&
+    session.user.role !== 'CUSTOMER'
+  )
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const isMobile = useIsMobile(768, initialIsMobile)
   const [mounted, setMounted] = useState(false)
@@ -104,9 +111,20 @@ export default function StoreDetailClient({
     setMounted(true)
   }, [])
 
+  const handleChatClick = (e: React.MouseEvent) => {
+    if (isNonCustomerRole) {
+      e.preventDefault()
+      toast.error('Silahkan login menggunakan akun customer')
+    }
+  }
+
   const toggleWishlist = (item: any, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (isNonCustomerRole) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
     const imageUrl =
       (item.images && item.images[0]) ||
       'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80'
@@ -277,6 +295,7 @@ export default function StoreDetailClient({
 
               <Link
                 href={`/dashboard/customer/chat?storeId=${store.id}`}
+                onClick={handleChatClick}
                 aria-label={`Chat konsultasi langsung dengan gerai ${store.name}`}
                 className="shadow-xs rounded-full border border-neutral-300 bg-white px-7 py-3.5 text-xs font-bold text-neutral-900 transition hover:border-black hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-white"
               >
@@ -858,6 +877,7 @@ export default function StoreDetailClient({
                 </div>
                 <Link
                   href={`/dashboard/customer/chat?storeId=${store.id}`}
+                  onClick={handleChatClick}
                   aria-label={`Chat petugas toko ${store.name}`}
                   className="text-xs font-bold text-blue-600 underline underline-offset-4 dark:text-sky-400"
                 >
@@ -945,6 +965,7 @@ export default function StoreDetailClient({
                   <div className="flex items-center gap-2 pt-2">
                     <Link
                       href={`/dashboard/customer/chat?storeId=${store.id}`}
+                      onClick={handleChatClick}
                       aria-label={`Buka chat toko dengan ${store.name}`}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-black underline underline-offset-4 dark:text-white"
                     >
@@ -988,6 +1009,7 @@ export default function StoreDetailClient({
             <div className="mt-2">
               <Link
                 href={`/dashboard/customer/chat?storeId=${store.id}`}
+                onClick={handleChatClick}
                 aria-label={`Mulai chat konsultasi langsung dengan gerai ${store.name}`}
                 className="text-[11px] font-bold text-sky-600 hover:underline dark:text-sky-400"
               >
@@ -999,6 +1021,7 @@ export default function StoreDetailClient({
           {/* Avatar Specialist Button */}
           <Link
             href={`/dashboard/customer/chat?storeId=${store.id}`}
+            onClick={handleChatClick}
             aria-label={`Chat langsung dengan pakar toko ${store.name}`}
             className="group relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-white p-0.5 shadow-2xl transition hover:scale-105 dark:bg-neutral-900"
             title="Chat dengan Pakar Toko"

@@ -97,6 +97,14 @@ function GadgetKatalogContent() {
   const toggleWishlist = (item: any, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (
+      status === 'authenticated' &&
+      session?.user?.role &&
+      session.user.role !== 'CUSTOMER'
+    ) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
     const rawImg =
       (item.images && item.images[0]) ||
       item.image ||

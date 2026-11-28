@@ -21,6 +21,7 @@ const ADMIN_STAFF_ROLES = [
  */
 const ADMIN_SUBROUTE_ACCESS: Record<string, string[]> = {
   '/dashboard/admin/finance': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
+  '/dashboard/admin/tax': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
   '/dashboard/admin/reports': ['SUPER_ADMIN', 'STORE_ADMIN', 'FINANCE_ADMIN'],
   '/dashboard/admin/users': ['SUPER_ADMIN'],
   '/dashboard/admin/technicians': ['SUPER_ADMIN'],
@@ -209,9 +210,28 @@ export default auth((req) => {
         return NextResponse.next()
       }
 
-      // Redirect dari halaman publik root (/), login, register, cart, checkout, atau generic dashboard
-      if (isAuthRoute || isDashboardGenericRoute) {
+      // Redirect dari login, register, cart, checkout, atau generic dashboard
+      if (isAuthRoute || isDashboardGenericRoute || isCartOrCheckout) {
         return NextResponse.redirect(getSafeRedirectUrl(destinationCms, req))
+      }
+
+      // Default entry point ('/'): Jika Admin Toko, Superadmin, atau Mitra membuka domain utama langsung,
+      // arahkan otomatis ke dashboardnya masing-masing (kecuali sengaja mengklik ?preview=1 / dari navigasi internal)
+      if (isRootPublicRoute) {
+        const isPreview = req.nextUrl.searchParams.get('preview') === '1'
+        const referer = req.headers.get('referer') || ''
+        const host =
+          req.headers.get('x-forwarded-host') || req.headers.get('host') || ''
+        const isFromInternalPublic =
+          referer &&
+          host &&
+          referer.includes(host) &&
+          !referer.includes('/login') &&
+          !referer.includes('/register')
+
+        if (!isPreview && !isFromInternalPublic) {
+          return NextResponse.redirect(getSafeRedirectUrl(destinationCms, req))
+        }
       }
 
       // Khusus role AFTER_SALES: default selalu menuju ke dashboardnya (/dashboard/after-sales),

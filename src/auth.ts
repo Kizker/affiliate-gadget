@@ -269,6 +269,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               role: true,
               storeId: true,
               mitraStatus: true,
+              isActive: true,
               store: { select: { slug: true } },
             },
           })
@@ -277,6 +278,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.storeId = dbUser.storeId || null
             token.storeSlug = dbUser.store?.slug || null
             token.mitraStatus = dbUser.mitraStatus || null
+            token.isActive = dbUser.isActive !== false
           }
         } catch {
           // ignore error to avoid blocking jwt

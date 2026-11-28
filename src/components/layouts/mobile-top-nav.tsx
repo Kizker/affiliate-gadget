@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { MessageSquare, ShoppingBag, ArrowLeft, Search, X } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart-store'
+import { toast } from 'sonner'
 
 interface MobileTopNavProps {
   chatHref?: string
@@ -41,7 +42,7 @@ export function MobileTopNav({
 }: MobileTopNavProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { status } = useSession()
+  const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [localSearch, setLocalSearch] = useState('')
@@ -261,6 +262,12 @@ export function MobileTopNav({
         <Link
           href="/cart"
           prefetch={false}
+          onClick={(e) => {
+            if (session?.user?.role && session.user.role !== 'CUSTOMER') {
+              e.preventDefault()
+              toast.error('Silahkan login menggunakan akun customer')
+            }
+          }}
           className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition-all active:scale-95 ${
             isCartActive
               ? 'shadow-xs border-orange-500 bg-orange-50 text-orange-600 ring-2 ring-orange-500/20 dark:border-orange-500 dark:bg-orange-950/40 dark:text-orange-400'

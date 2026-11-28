@@ -58,12 +58,12 @@ function AdminLayoutInner({
     }
   }, [storeSlug, isStoreAdmin, activeSlug, hasStore])
 
-  // Superadmin -> Beranda website ('/'), Admin Toko -> Halaman Toko Cabang ('/toko/[slug]')
+  // Superadmin -> Beranda website ('/?preview=1'), Admin Toko -> Halaman Toko Cabang ('/toko/[slug]')
   const publicHref = isStoreAdmin
     ? activeSlug
       ? `/toko/${activeSlug}`
       : '/toko'
-    : '/'
+    : '/?preview=1'
 
   // If store admin is in onboarding state, render clean distraction-free layout without locked sidebar
   if (isOnboardingPage || needsStoreOnboarding) {

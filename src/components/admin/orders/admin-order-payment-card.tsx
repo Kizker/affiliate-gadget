@@ -60,7 +60,23 @@ interface AdminOrderPaymentCardProps {
   }
 }
 export function AdminOrderPaymentCard({ order }: AdminOrderPaymentCardProps) {
-  const fin = calculateOrderFinancials(order)
+  const [liveTaxes, setLiveTaxes] = useState<any[] | null>(null)
+
+  React.useEffect(() => {
+    fetch('/api/admin/tax')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data?.taxes)) {
+          setLiveTaxes(data.taxes)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const fin = calculateOrderFinancials({
+    ...order,
+    activeTaxes: liveTaxes || order.activeTaxes,
+  })
   const items = order.items || []
 
   const groupedItems = React.useMemo(() => {
@@ -459,69 +475,78 @@ export function AdminOrderPaymentCard({ order }: AdminOrderPaymentCardProps) {
           )}
         </div>
 
-        {/* Pos 5: Pajak (PPh 22) */}
-        <div>
-          <div
-            onClick={() => toggleSection('tax')}
-            className="flex cursor-pointer items-center justify-between rounded-lg px-1 py-1 transition hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
-          >
-            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-              <span className="font-medium">Pajak</span>
-              <button
-                type="button"
-                onClick={(e) => toggleHelp('tax', e)}
-                title="Penjelasan Pajak E-Commerce"
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                -Rp{fin.pph22Amount.toLocaleString('id-ID')}
-              </span>
-              <span className="text-slate-400">
-                {openSections.tax ? (
-                  <ChevronUp className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                )}
-              </span>
-            </div>
-          </div>
-          {openSections.tax && (
-            <div className="ml-4 mt-1 space-y-1 rounded-lg border-l-2 border-slate-300 bg-slate-50/60 p-2.5 text-[11px] dark:border-slate-700 dark:bg-slate-800/30">
-              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                <div className="flex items-center gap-1">
-                  <span>PPh 22 ({fin.pph22Rate}%)</span>
-                  <button
-                    type="button"
-                    onClick={(e) => toggleHelp('pph22', e)}
-                    title="Bantuan PPh 22"
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                  >
-                    <HelpCircle className="h-3 w-3" />
-                  </button>
-                </div>
+        {/* Pos 5: Pajak (Dinamis mengikuti pajak yang diaktifkan di halaman Pajak) */}
+        {fin.taxLines.length > 0 && (
+          <div>
+            <div
+              onClick={() => toggleSection('tax')}
+              className="flex cursor-pointer items-center justify-between rounded-lg px-1 py-1 transition hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
+            >
+              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                <span className="font-medium">Pajak</span>
+                <button
+                  type="button"
+                  onClick={(e) => toggleHelp('tax', e)}
+                  title="Penjelasan Pajak E-Commerce"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                  -Rp{fin.pph22Amount.toLocaleString('id-ID')}
+                  -Rp{fin.totalTaxAmount.toLocaleString('id-ID')}
+                </span>
+                <span className="text-slate-400">
+                  {openSections.tax ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
                 </span>
               </div>
-              {activeHelp === 'pph22' && (
-                <p className="mt-1 text-[10.5px] text-blue-600 dark:text-blue-400">
-                  Pemungutan PPh Pasal 22 e-commerce (0.5% dari subtotal produk)
-                  sesuai regulasi Kementerian Keuangan PMK & UU HPP.
-                </p>
-              )}
             </div>
-          )}
-          {activeHelp === 'tax' && (
-            <div className="mt-1 rounded-lg border border-blue-200 bg-blue-50/80 p-2 text-[11px] text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
-              Kewajiban pemotongan pajak penghasilan atas transaksi perdagangan
-              melalui sistem elektronik (e-commerce) di Indonesia.
-            </div>
-          )}
-        </div>
+            {openSections.tax && (
+              <div className="ml-4 mt-1 space-y-1.5 rounded-lg border-l-2 border-slate-300 bg-slate-50/60 p-2.5 text-[11px] dark:border-slate-700 dark:bg-slate-800/30">
+                {fin.taxLines.map((tl) => (
+                  <div
+                    key={tl.id}
+                    className="flex items-center justify-between text-slate-600 dark:text-slate-400"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>{tl.shortName}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => toggleHelp('pph22', e)}
+                        title={`Bantuan ${tl.shortName}`}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      >
+                        <HelpCircle className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                      -Rp{tl.amount.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                ))}
+                {activeHelp === 'pph22' && (
+                  <p className="mt-1 text-[10.5px] text-blue-600 dark:text-blue-400">
+                    Pemungutan pajak e-commerce otomatis dialirkan ke Kas
+                    Penampungan Pajak Platform untuk disetorkan ke Kas Negara
+                    via e-Billing DJP sesuai regulasi UU HPP.
+                  </p>
+                )}
+              </div>
+            )}
+            {activeHelp === 'tax' && (
+              <div className="mt-1 rounded-lg border border-blue-200 bg-blue-50/80 p-2 text-[11px] text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                Kewajiban pemotongan pajak penghasilan atas transaksi
+                perdagangan melalui sistem elektronik (e-commerce) di Indonesia.
+                Dapat dikelola pada menu Operasional &rarr; Pajak.
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Pos Diskon Voucher (Jika ada) */}
         {fin.discountAmount > 0 && (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { RichText } from '@/components/ui/rich-text'
 import { useRouter } from 'next/navigation'
 import {
@@ -97,6 +98,12 @@ const getConditionBadge = (item: any) => {
 }
 
 function ProductCatalogMiniCard({ item }: { item: any }) {
+  const { data: session, status } = useSession()
+  const isNonCustomerRole = Boolean(
+    status === 'authenticated' &&
+    session?.user?.role &&
+    session.user.role !== 'CUSTOMER'
+  )
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const isWishlisted = isInWishlist(item.id)
   const strikePrice =
@@ -114,6 +121,10 @@ function ProductCatalogMiniCard({ item }: { item: any }) {
   const handleToggleWishlist = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (isNonCustomerRole) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
     const wasAdded = toggleItem({
       id: item.id,
       name: item.name,
@@ -228,6 +239,12 @@ export function ShopeeMobileProductDetail({
   isAddedToCart,
 }: ShopeeMobileProductDetailProps) {
   const router = useRouter()
+  const { data: session, status } = useSession()
+  const isNonCustomerRole = Boolean(
+    status === 'authenticated' &&
+    session?.user?.role &&
+    session.user.role !== 'CUSTOMER'
+  )
   const { items } = useCartStore()
   const totalCartCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
@@ -238,6 +255,10 @@ export function ShopeeMobileProductDetail({
 
   const handleToggleWishlist = () => {
     if (!product?.id) return
+    if (isNonCustomerRole) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
     const priceToUse = selectedVariant ? selectedVariant.price : product.price
     const wasAdded = toggleItem({
       id: product.id,
@@ -645,6 +666,12 @@ export function ShopeeMobileProductDetail({
             <Link
               href="/cart"
               prefetch={false}
+              onClick={(e) => {
+                if (isNonCustomerRole) {
+                  e.preventDefault()
+                  toast.error('Silahkan login menggunakan akun customer')
+                }
+              }}
               className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all ${
                 isScrolled
                   ? 'bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-white'

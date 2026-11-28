@@ -90,7 +90,11 @@ export default function GadgetDetailClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const dealToken = searchParams?.get('dealToken')
-  const { status } = useSession()
+  const { data: session, status } = useSession()
+  const userRole = session?.user?.role
+  const isNonCustomerRole = Boolean(
+    status === 'authenticated' && userRole && userRole !== 'CUSTOMER'
+  )
   const id = ((params?.id as string) || initialProduct?.id) as string
 
   // Compute default selected etalase item, variant and image from initialProduct
@@ -239,6 +243,10 @@ export default function GadgetDetailClient({
 
   const handleToggleWishlist = () => {
     if (!product?.id) return
+    if (isNonCustomerRole) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
     const priceToUse = selectedVariant ? selectedVariant.price : product.price
     const wasAdded = toggleItem({
       id: product.id,
@@ -452,6 +460,11 @@ export default function GadgetDetailClient({
   const handleAddToCart = () => {
     if (!product || !activeUnit) return
 
+    if (isNonCustomerRole) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
+
     if (status === 'unauthenticated') {
       toast.error(
         'Silakan masuk terlebih dahulu untuk menambahkan produk ke keranjang.'
@@ -510,6 +523,11 @@ export default function GadgetDetailClient({
 
   const handleBuyNow = () => {
     if (!product || !activeUnit) return
+
+    if (isNonCustomerRole) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
 
     const isDealVariantMatched =
       !activeDeal?.variantId || activeDeal.variantId === selectedVariant?.id
@@ -812,6 +830,11 @@ export default function GadgetDetailClient({
 
   const handleChatStore = () => {
     if (!product?.store?.id) return
+
+    if (isNonCustomerRole) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
 
     const storeId = product.store.id
     const productId = activeUnit?.id || product.id

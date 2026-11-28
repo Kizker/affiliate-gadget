@@ -120,8 +120,8 @@ export default function AdsManagementPage() {
     storeId: '',
     priority: 0,
     startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
     durationDays: 7,
-    targetImpressions: 1000,
     selectedPhotoLabel: '',
   })
 
@@ -672,20 +672,24 @@ export default function AdsManagementPage() {
   const handleOpenCreateModal = () => {
     const initType: AdTargetType = currentStore ? 'STORE' : 'ALL_CATALOG'
     const initUrl = computeTargetUrl(initType, currentStore, '', '')
+    const today = new Date().toISOString().split('T')[0]
+    const defaultEnd = new Date(Date.now() + 7 * 86400000)
+      .toISOString()
+      .split('T')[0]
     setFormData({
       title: '',
       subtitle: '',
       placement: levelFilter === 'LEVEL_1' ? 'HOMEPAGE_HERO' : 'PROMOTED_LIST',
-      imageUrl: storeBanner || '',
+      imageUrl: '',
       targetType: initType,
       targetUrl: initUrl,
       productId: '',
       storeId: currentStore?.id || '',
       priority: 0,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: today,
+      endDate: defaultEnd,
       durationDays: 7,
-      targetImpressions: 1000,
-      selectedPhotoLabel: storeBanner ? 'Banner Profil Toko' : '',
+      selectedPhotoLabel: '',
     })
     setShowCreateModal(true)
   }
@@ -737,11 +741,8 @@ export default function AdsManagementPage() {
           storeId: formData.storeId || currentStore?.id || undefined,
           priority: formData.priority,
           startDate: formData.startDate,
+          endDate: formData.endDate,
           durationDays: formData.durationDays,
-          targetImpressions:
-            formData.placement === 'PROMOTED_LIST'
-              ? formData.targetImpressions
-              : undefined,
         }),
       })
 
@@ -754,6 +755,10 @@ export default function AdsManagementPage() {
         )
         setShowCreateModal(false)
         const initType: AdTargetType = currentStore ? 'STORE' : 'ALL_CATALOG'
+        const today = new Date().toISOString().split('T')[0]
+        const defaultEnd = new Date(Date.now() + 7 * 86400000)
+          .toISOString()
+          .split('T')[0]
         setFormData({
           title: '',
           subtitle: '',
@@ -764,9 +769,9 @@ export default function AdsManagementPage() {
           productId: '',
           storeId: currentStore?.id || '',
           priority: 0,
-          startDate: new Date().toISOString().split('T')[0],
+          startDate: today,
+          endDate: defaultEnd,
           durationDays: 7,
-          targetImpressions: 1000,
           selectedPhotoLabel: '',
         })
         fetchAds()
@@ -809,7 +814,10 @@ export default function AdsManagementPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
             >
               <Plus className="h-4 w-4" />
-              <span>Ajukan Iklan Baru</span>
+              <span>
+                Ajukan Iklan Baru{' '}
+                {levelFilter === 'LEVEL_1' ? 'Level 1' : 'Level 2'}
+              </span>
             </button>
           )}
         </div>

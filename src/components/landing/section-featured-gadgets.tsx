@@ -15,6 +15,7 @@ import {
   Heart,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSession } from 'next-auth/react'
 import { useWishlistSafe } from '@/lib/store/wishlist-store'
 
 const MAX_TOP_PHONES = 4
@@ -27,6 +28,7 @@ const FALLBACK_GADGET_IMAGES = [
 ]
 
 export function SectionFeaturedGadgets() {
+  const { data: session, status } = useSession()
   const { isInWishlist, toggleItem } = useWishlistSafe()
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [products, setProducts] = useState<any[]>([])
@@ -35,6 +37,14 @@ export function SectionFeaturedGadgets() {
   const toggleWishlist = (product: any, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (
+      status === 'authenticated' &&
+      session?.user?.role &&
+      session.user.role !== 'CUSTOMER'
+    ) {
+      toast.error('Silahkan login menggunakan akun customer')
+      return
+    }
     const rawImg =
       Array.isArray(product.images) && product.images.length > 0
         ? product.images[0]
