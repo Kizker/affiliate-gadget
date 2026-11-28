@@ -1210,6 +1210,10 @@ function CustomerChatContent() {
     try {
       let res
       if (selectedRoom.type !== 'technician') {
+        const isCsRoom =
+          Boolean((selectedRoom.store as any)?.isCs) ||
+          selectedRoom.storeId === 'superadmin' ||
+          selectedRoom.storeId === 'cs'
         res = await fetch('/api/customer/chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1219,7 +1223,8 @@ function CustomerChatContent() {
             messageType,
             orderId:
               selectedRoom.orderId || activeOrderContext?.orderId || undefined,
-            storeId: selectedRoom.storeId || undefined,
+            storeId: isCsRoom ? undefined : selectedRoom.storeId || undefined,
+            isCs: isCsRoom,
           }),
         })
       } else {
