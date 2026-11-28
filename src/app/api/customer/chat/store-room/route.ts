@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
     const {
       orderId,
       orderNumber,
+      orderItemId,
+      variantId,
       returnId,
       returnReason,
       returnStatus,
@@ -299,16 +301,43 @@ export async function POST(req: NextRequest) {
     const isReturnInquiry = hasActiveReturnClaim
     const isOrderInquiry = Boolean(orderId || effectiveOrderNumber)
 
-    const firstItem = resolvedOrder?.items?.[0]
-    const firstProduct = firstItem?.product
+    // Cari item yang sesuai dengan orderItemId, variantId, variantName, atau productName
+    const targetItem =
+      resolvedOrder?.items?.find(
+        (it: any) =>
+          (orderItemId && it.id === orderItemId) ||
+          (variantId && it.variantId === variantId) ||
+          (variantName &&
+            (it.variantName === variantName ||
+              it.variantName
+                ?.toLowerCase()
+                .includes(variantName.toLowerCase()))) ||
+          (productName &&
+            (it.variantName
+              ?.toLowerCase()
+              .includes(productName.toLowerCase()) ||
+              productName
+                .toLowerCase()
+                .includes((it.variantName || '').toLowerCase()) ||
+              it.product?.name === productName))
+      ) || resolvedOrder?.items?.[0]
+
+    const targetProduct = targetItem?.product
+
+    // Prioritas nama varian spesifik sesuai arahan user ("agar konteks sesuai dengan variannya. Bukan produk atau etalasenya")
+    const effectiveVariantName = variantName || targetItem?.variantName || null
     const refProductName =
-      firstProduct?.name || resolvedProductName || 'Produk Gadget'
-    const refProductPrice = firstItem?.price || resolvedProductPrice || 0
+      effectiveVariantName ||
+      resolvedProductName ||
+      targetProduct?.name ||
+      'Unit Smartphone Original'
+    const refProductPrice =
+      targetItem?.price || resolvedProductPrice || resolvedOrder?.total || 0
     const refProductImage =
-      (Array.isArray(firstProduct?.images) && firstProduct.images[0]) ||
       resolvedProductImage ||
+      (Array.isArray(targetProduct?.images) && targetProduct.images[0]) ||
       null
-    const refBrand = firstProduct?.brand || resolvedBrand || null
+    const refBrand = targetProduct?.brand || resolvedBrand || null
     const refMessageType = isReturnInquiry
       ? 'return_reference'
       : 'order_reference'
@@ -318,12 +347,12 @@ export async function POST(req: NextRequest) {
           type: refMessageType,
           orderId: resolvedOrder?.id || orderId,
           orderNumber: effectiveOrderNumber,
-          productId: firstProduct?.id || productId || dbProduct?.id || null,
+          productId: targetProduct?.id || productId || dbProduct?.id || null,
           productName: refProductName,
-          productPrice: resolvedOrder?.total || refProductPrice,
+          productPrice: refProductPrice,
           productImage: refProductImage,
           brand: refBrand,
-          variantName: variantName || null,
+          variantName: effectiveVariantName,
           orderTotal: resolvedOrder?.total || null,
           ...(isReturnInquiry
             ? {
@@ -596,7 +625,7 @@ export async function POST(req: NextRequest) {
     })
 
     const isGroupAfterSalesActive = Boolean(
-      effectiveIsReturnInquiry && assignedAdmin?.role === 'AFTER_SALES'
+      isAfterSalesRoute && assignedAdmin?.role === 'AFTER_SALES'
     )
 
     return NextResponse.json({

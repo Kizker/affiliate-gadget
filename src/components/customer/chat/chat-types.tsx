@@ -153,6 +153,7 @@ export interface ActiveOrderContext {
   status?: string
   total?: number
   productName?: string
+  variantName?: string | null
   productImage?: string
   productPrice?: number
   returnRequest?: {

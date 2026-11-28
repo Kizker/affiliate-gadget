@@ -673,13 +673,23 @@ export function MobileOrdersView({
                             if (latestReturn.type)
                               chatParams.set('returnType', latestReturn.type)
                           }
-                          if (firstProduct?.name)
-                            chatParams.set('productName', firstProduct.name)
-                          if (firstProduct?.images?.[0])
-                            chatParams.set(
-                              'productImage',
-                              firstProduct.images[0]
-                            )
+                          if (firstItem?.id)
+                            chatParams.set('orderItemId', firstItem.id)
+                          if (firstItem?.variantId)
+                            chatParams.set('variantId', firstItem.variantId)
+
+                          const effectiveContextName =
+                            firstItem?.variantName ||
+                            firstProduct?.name ||
+                            'Unit Smartphone Original'
+                          chatParams.set('productName', effectiveContextName)
+                          if (firstItem?.variantName)
+                            chatParams.set('variantName', firstItem.variantName)
+
+                          const prodImg =
+                            (firstItem as any)?.image ||
+                            firstProduct?.images?.[0]
+                          if (prodImg) chatParams.set('productImage', prodImg)
                           if (firstItem?.price)
                             chatParams.set(
                               'productPrice',

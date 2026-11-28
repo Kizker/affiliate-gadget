@@ -47,6 +47,8 @@ function CustomerChatContent() {
   const { keyboardInset } = useKeyboardInset(true)
 
   const paramOrderId = searchParams.get('orderId')
+  const paramOrderItemId = searchParams.get('orderItemId')
+  const paramVariantId = searchParams.get('variantId')
   const paramRoomId = searchParams.get('roomId') || searchParams.get('room')
   const paramOrderNumber = searchParams.get('orderNumber')
   const paramStoreId = searchParams.get('storeId')
@@ -801,12 +803,16 @@ function CustomerChatContent() {
 
     if (!isAlreadySent) {
       if (paramOrderId) {
+        const effectiveName =
+          resolvedVariantName || resolvedProductName || 'Unit Gadget'
+
         setActiveOrderContext({
           orderId: paramOrderId,
           orderNumber: resolvedOrderNumber,
-          productName: resolvedProductName,
+          productName: effectiveName,
           productImage: resolvedProductImage,
           productPrice: resolvedProductPrice,
+          variantName: resolvedVariantName,
           returnRequest: resolvedReturnReason
             ? {
                 reason: resolvedReturnReason,
@@ -864,6 +870,8 @@ function CustomerChatContent() {
           : JSON.stringify({
               isCs: isCsParam,
               orderId: paramOrderId || undefined,
+              orderItemId: paramOrderItemId || undefined,
+              variantId: paramVariantId || undefined,
               orderNumber: resolvedOrderNumber || undefined,
               returnId: paramReturnId || undefined,
               returnReason: resolvedReturnReason || undefined,
@@ -930,17 +938,60 @@ function CustomerChatContent() {
           setLoading(false)
 
           if (paramOrderId && data.order) {
-            const firstItem = data.order.items?.[0]
-            const prod = firstItem?.product
+            // Cari item yang sesuai dengan orderItemId, variantId, variantName, atau productName
+            const targetItem =
+              data.order.items?.find(
+                (it: any) =>
+                  (paramOrderItemId && it.id === paramOrderItemId) ||
+                  (paramVariantId && it.variantId === paramVariantId) ||
+                  (resolvedVariantName &&
+                    (it.variantName === resolvedVariantName ||
+                      it.variantName
+                        ?.toLowerCase()
+                        .includes(resolvedVariantName.toLowerCase()))) ||
+                  (resolvedProductName &&
+                    (it.variantName
+                      ?.toLowerCase()
+                      .includes(resolvedProductName.toLowerCase()) ||
+                      resolvedProductName
+                        .toLowerCase()
+                        .includes((it.variantName || '').toLowerCase()) ||
+                      it.product?.name === resolvedProductName))
+              ) || data.order.items?.[0]
+
+            const prod = targetItem?.product
             const ret = data.order.returnRequests?.[0]
+
+            // Prioritas mutlak nama varian sesuai arahan user ("agar konteks sesuai dengan variannya. Bukan produk atau etalasenya")
+            const effectiveName =
+              resolvedVariantName ||
+              targetItem?.variantName ||
+              resolvedProductName ||
+              prod?.name ||
+              'Unit Gadget'
+
+            const effectiveImage =
+              resolvedProductImage ||
+              prod?.images?.[0] ||
+              targetItem?.product?.images?.[0]
+
+            const effectivePrice =
+              (targetItem?.price && targetItem?.quantity
+                ? targetItem.price * targetItem.quantity
+                : targetItem?.price) ||
+              resolvedProductPrice ||
+              data.order.total
+
             setActiveOrderContext({
               orderId: data.order.id,
               orderNumber: data.order.orderNumber || resolvedOrderNumber,
               status: data.order.status,
-              total: data.order.total,
-              productName: prod?.name || resolvedProductName,
-              productImage: prod?.images?.[0] || resolvedProductImage,
-              productPrice: firstItem?.price || resolvedProductPrice,
+              total: effectivePrice,
+              productName: effectiveName,
+              productImage: effectiveImage,
+              productPrice: effectivePrice,
+              variantName:
+                resolvedVariantName || targetItem?.variantName || null,
               returnRequest: ret
                 ? {
                     id: ret.id,

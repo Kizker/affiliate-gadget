@@ -295,6 +295,10 @@ function AdminChatContent() {
   const searchParams = useSearchParams()
   const paramRoomId = searchParams?.get('roomId')
   const paramOrderId = searchParams?.get('orderId')
+  const paramOrderItemId = searchParams?.get('orderItemId')
+  const paramVariantId = searchParams?.get('variantId')
+  const paramVariantName = searchParams?.get('variantName')
+  const paramProductName = searchParams?.get('productName')
   const paramCs = searchParams?.get('cs') === 'true'
   const paramReturnId = searchParams?.get('returnId')
   const paramReturnReason = searchParams?.get('returnReason')
@@ -1019,8 +1023,27 @@ function AdminChatContent() {
         (selectedRoom.order.id === paramOrderId ||
           selectedRoom.order.orderNumber === paramOrderId)
       ) {
-        const firstItem = selectedRoom.order.items?.[0]
-        const firstProduct = (firstItem as any)?.product
+        const targetItem =
+          selectedRoom.order.items?.find(
+            (it: any) =>
+              (paramOrderItemId && it.id === paramOrderItemId) ||
+              (paramVariantId && it.variantId === paramVariantId) ||
+              (paramVariantName &&
+                (it.variantName === paramVariantName ||
+                  it.variantName
+                    ?.toLowerCase()
+                    .includes(paramVariantName.toLowerCase()))) ||
+              (paramProductName &&
+                (it.variantName
+                  ?.toLowerCase()
+                  .includes(paramProductName.toLowerCase()) ||
+                  paramProductName
+                    .toLowerCase()
+                    .includes((it.variantName || '').toLowerCase()) ||
+                  it.product?.name === paramProductName))
+          ) || selectedRoom.order.items?.[0]
+
+        const targetProduct = (targetItem as any)?.product
         const retReq =
           (selectedRoom.order as any)?.returnRequests?.[0] ||
           (paramReturnId
@@ -1031,15 +1054,30 @@ function AdminChatContent() {
                 type: paramReturnType,
               }
             : null)
+
+        const effectiveName =
+          paramVariantName ||
+          (targetItem as any)?.variantName ||
+          paramProductName ||
+          targetProduct?.name ||
+          (targetItem as any)?.name ||
+          'Unit Gadget'
+
+        const effectivePrice =
+          (targetItem as any)?.price || selectedRoom.order.total || 0
+
         setActiveOrderContext({
           orderId: selectedRoom.order.id,
           orderNumber: selectedRoom.order.orderNumber,
           status: selectedRoom.order.status,
-          total: selectedRoom.order.total,
-          productName:
-            firstProduct?.name || (firstItem as any)?.name || 'Unit Gadget',
-          productImage: firstProduct?.images?.[0] || null,
-          productPrice: (firstItem as any)?.price || 0,
+          total: effectivePrice,
+          productName: effectiveName,
+          productImage:
+            (targetItem as any)?.image ||
+            (targetItem as any)?.variant?.image ||
+            targetProduct?.images?.[0] ||
+            null,
+          productPrice: effectivePrice,
           returnRequest: retReq
             ? {
                 id: retReq.id,
@@ -1092,8 +1130,27 @@ function AdminChatContent() {
             (o: any) => o.id === paramOrderId || o.orderNumber === paramOrderId
           )
           if (found) {
-            const firstItem = found.items?.[0]
-            const firstProduct = (firstItem as any)?.product
+            const targetItem =
+              found.items?.find(
+                (it: any) =>
+                  (paramOrderItemId && it.id === paramOrderItemId) ||
+                  (paramVariantId && it.variantId === paramVariantId) ||
+                  (paramVariantName &&
+                    (it.variantName === paramVariantName ||
+                      it.variantName
+                        ?.toLowerCase()
+                        .includes(paramVariantName.toLowerCase()))) ||
+                  (paramProductName &&
+                    (it.variantName
+                      ?.toLowerCase()
+                      .includes(paramProductName.toLowerCase()) ||
+                      paramProductName
+                        .toLowerCase()
+                        .includes((it.variantName || '').toLowerCase()) ||
+                      it.product?.name === paramProductName))
+              ) || found.items?.[0]
+
+            const targetProduct = (targetItem as any)?.product
             const retReq =
               found.returnRequests?.[0] ||
               (paramReturnId
@@ -1104,15 +1161,30 @@ function AdminChatContent() {
                     type: paramReturnType,
                   }
                 : null)
+
+            const effectiveName =
+              paramVariantName ||
+              targetItem?.variantName ||
+              paramProductName ||
+              targetProduct?.name ||
+              (targetItem as any)?.name ||
+              'Unit Gadget'
+
+            const effectivePrice =
+              (targetItem as any)?.price || found.total || 0
+
             setActiveOrderContext({
               orderId: found.id,
               orderNumber: found.orderNumber,
               status: found.status,
-              total: found.total,
-              productName:
-                firstProduct?.name || (firstItem as any)?.name || 'Unit Gadget',
-              productImage: firstProduct?.images?.[0] || null,
-              productPrice: (firstItem as any)?.price || 0,
+              total: effectivePrice,
+              productName: effectiveName,
+              productImage:
+                (targetItem as any)?.image ||
+                (targetItem as any)?.variant?.image ||
+                targetProduct?.images?.[0] ||
+                null,
+              productPrice: effectivePrice,
               returnRequest: retReq
                 ? {
                     id: retReq.id,

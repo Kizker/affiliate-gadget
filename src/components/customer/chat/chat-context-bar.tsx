@@ -62,7 +62,9 @@ export function ChatOrderContextBar({
         {activeOrderContext.returnRequest ? (
           <div className="min-w-0">
             <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
-              {activeOrderContext.productName || 'Unit Gadget'}
+              {activeOrderContext.variantName ||
+                activeOrderContext.productName ||
+                'Unit Gadget'}
             </p>
             <p className="truncate text-[11px] font-medium text-purple-700 dark:text-purple-300">
               {(activeOrderContext.returnRequest.reason || 'Kendala Unit')
@@ -84,7 +86,8 @@ export function ChatOrderContextBar({
             </div>
             {activeOrderContext.productName && (
               <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
-                {activeOrderContext.productName}
+                {activeOrderContext.variantName ||
+                  activeOrderContext.productName}
               </p>
             )}
             {activeOrderContext.total ? (

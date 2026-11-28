@@ -803,6 +803,13 @@ export default function OrdersClient({
                                       'orderNumber',
                                       order.orderNumber
                                     )
+                                  if (firstItem?.id)
+                                    chatParams.set('orderItemId', firstItem.id)
+                                  if (firstItem?.variantId)
+                                    chatParams.set(
+                                      'variantId',
+                                      firstItem.variantId
+                                    )
                                   if (
                                     firstItemReturn &&
                                     firstItemReturn.status !== 'COMPLETED' &&
@@ -828,20 +835,31 @@ export default function OrdersClient({
                                         firstItemReturn.type
                                       )
                                   }
-                                  if (prod?.name)
-                                    chatParams.set('productName', prod.name)
-                                  const prodImg = (prod as any)?.images?.[0]
+
+                                  // Prioritas nama varian spesifik agar konteks sesuai unit barang yang diklik
+                                  const effectiveContextName =
+                                    firstItem?.variantName ||
+                                    prod?.name ||
+                                    'Unit Smartphone Original'
+                                  chatParams.set(
+                                    'productName',
+                                    effectiveContextName
+                                  )
+                                  if (firstItem?.variantName)
+                                    chatParams.set(
+                                      'variantName',
+                                      firstItem.variantName
+                                    )
+
+                                  const prodImg =
+                                    (firstItem as any)?.image ||
+                                    (prod as any)?.images?.[0]
                                   if (prodImg)
                                     chatParams.set('productImage', prodImg)
                                   if (firstItem?.price)
                                     chatParams.set(
                                       'productPrice',
                                       String(firstItem.price)
-                                    )
-                                  if (firstItem?.variantName)
-                                    chatParams.set(
-                                      'variantName',
-                                      firstItem.variantName
                                     )
 
                                   const isAfterSales =
@@ -1049,6 +1067,16 @@ export default function OrdersClient({
                                         'orderNumber',
                                         order.orderNumber
                                       )
+                                    if (extraItem.id)
+                                      chatParams.set(
+                                        'orderItemId',
+                                        extraItem.id
+                                      )
+                                    if (extraItem.variantId)
+                                      chatParams.set(
+                                        'variantId',
+                                        extraItem.variantId
+                                      )
                                     if (extraItemReturn) {
                                       chatParams.set(
                                         'returnId',
@@ -1070,10 +1098,25 @@ export default function OrdersClient({
                                           extraItemReturn.type
                                         )
                                     }
-                                    if (prod?.name)
-                                      chatParams.set('productName', prod.name)
-                                    const extraProdImg = (prod as any)
-                                      ?.images?.[0]
+
+                                    // Prioritas nama varian spesifik agar konteks sesuai unit barang yang diklik
+                                    const effectiveContextName =
+                                      extraItem.variantName ||
+                                      prod?.name ||
+                                      'Unit Smartphone Original'
+                                    chatParams.set(
+                                      'productName',
+                                      effectiveContextName
+                                    )
+                                    if (extraItem.variantName)
+                                      chatParams.set(
+                                        'variantName',
+                                        extraItem.variantName
+                                      )
+
+                                    const extraProdImg =
+                                      (extraItem as any)?.image ||
+                                      (prod as any)?.images?.[0]
                                     if (extraProdImg)
                                       chatParams.set(
                                         'productImage',
@@ -1083,11 +1126,6 @@ export default function OrdersClient({
                                       chatParams.set(
                                         'productPrice',
                                         String(extraItem.price)
-                                      )
-                                    if (extraItem.variantName)
-                                      chatParams.set(
-                                        'variantName',
-                                        extraItem.variantName
                                       )
 
                                     const isAfterSales =
@@ -1331,18 +1369,36 @@ export default function OrdersClient({
                                         latestReturn.type
                                       )
                                   }
-                                  if (firstProduct?.name)
+                                  if (firstItem?.id)
+                                    chatParams.set('orderItemId', firstItem.id)
+                                  if (firstItem?.variantId)
                                     chatParams.set(
-                                      'productName',
-                                      firstProduct.name
+                                      'variantId',
+                                      firstItem.variantId
                                     )
-                                  if (firstProduct?.images?.[0])
+
+                                  // Prioritas nama varian spesifik agar konteks sesuai unit barang
+                                  const effectiveContextName =
+                                    firstItem?.variantName ||
+                                    firstProduct?.name ||
+                                    'Unit Smartphone Original'
+                                  chatParams.set(
+                                    'productName',
+                                    effectiveContextName
+                                  )
+                                  if (firstItem?.variantName)
                                     chatParams.set(
-                                      'productImage',
-                                      firstProduct.images[0]
+                                      'variantName',
+                                      firstItem.variantName
                                     )
+
+                                  const prodImg =
+                                    (firstItem as any)?.image ||
+                                    firstProduct?.images?.[0]
+                                  if (prodImg)
+                                    chatParams.set('productImage', prodImg)
                                   const effectiveChatPrice =
-                                    order.total || firstItem?.price
+                                    firstItem?.price || order.total
                                   if (effectiveChatPrice)
                                     chatParams.set(
                                       'productPrice',

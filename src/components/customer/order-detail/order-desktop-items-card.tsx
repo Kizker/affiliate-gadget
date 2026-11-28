@@ -219,20 +219,34 @@ export function OrderDesktopItemsCard({
                                   'orderNumber',
                                   order.orderNumber
                                 )
-                              if (prod?.name)
-                                itemChatParams.set('productName', prod.name)
-                              const prodImg = (prod as any)?.images?.[0]
+                              if (item.id)
+                                itemChatParams.set('orderItemId', item.id)
+                              if (item.variantId)
+                                itemChatParams.set('variantId', item.variantId)
+
+                              const effectiveContextName =
+                                item.variantName ||
+                                prod?.name ||
+                                'Unit Smartphone Original'
+                              itemChatParams.set(
+                                'productName',
+                                effectiveContextName
+                              )
+                              if (item.variantName)
+                                itemChatParams.set(
+                                  'variantName',
+                                  item.variantName
+                                )
+
+                              const prodImg =
+                                (item as any)?.image ||
+                                (prod as any)?.images?.[0]
                               if (prodImg)
                                 itemChatParams.set('productImage', prodImg)
                               if (item.price)
                                 itemChatParams.set(
                                   'productPrice',
                                   String(item.price)
-                                )
-                              if (item.variantName)
-                                itemChatParams.set(
-                                  'variantName',
-                                  item.variantName
                                 )
                               if (isCompleted)
                                 itemChatParams.set('type', 'after_sales')

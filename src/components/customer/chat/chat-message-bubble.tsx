@@ -202,6 +202,7 @@ export function ChatMessageBubble({
               ''
 
             const prodName =
+              (p.variantName as string) ||
               (p.productName as string) ||
               (p.name as string) ||
               (returnTextMatch && returnTextMatch[2]) ||
@@ -211,18 +212,18 @@ export function ChatMessageBubble({
               'Produk Pesanan'
 
             const rawPrice =
-              p.orderTotal !== undefined && Number(p.orderTotal) > 0
-                ? p.orderTotal
-                : p.total !== undefined && Number(p.total) > 0
-                  ? p.total
-                  : selectedRoom?.order?.total !== undefined &&
-                      Number(selectedRoom.order.total) > 0
-                    ? selectedRoom.order.total
-                    : activeOrderContext?.total !== undefined &&
-                        Number(activeOrderContext.total) > 0
-                      ? activeOrderContext.total
-                      : p.productPrice !== undefined
-                        ? p.productPrice
+              p.productPrice !== undefined && Number(p.productPrice) > 0
+                ? p.productPrice
+                : p.orderTotal !== undefined && Number(p.orderTotal) > 0
+                  ? p.orderTotal
+                  : p.total !== undefined && Number(p.total) > 0
+                    ? p.total
+                    : selectedRoom?.order?.total !== undefined &&
+                        Number(selectedRoom.order.total) > 0
+                      ? selectedRoom.order.total
+                      : activeOrderContext?.total !== undefined &&
+                          Number(activeOrderContext.total) > 0
+                        ? activeOrderContext.total
                         : p.price !== undefined
                           ? p.price
                           : selectedRoom?.order?.items?.[0]?.price || 0
