@@ -170,47 +170,46 @@ export function CreateAdModal({
 
           {/* STATUS TINGKAT PENEMPATAN IKLAN (TERKUNCI SESUAI TAB DI AWAL) */}
           {isLevel1 ? (
-            <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/70 p-3.5 dark:border-blue-900/60 dark:bg-blue-950/30">
-              <div className="flex items-center gap-2.5">
-                <span className="rounded-lg bg-blue-600 px-2 py-0.5 text-[10px] font-extrabold text-white">
+            <div className="flex items-center justify-between gap-2.5 rounded-2xl border border-blue-200 bg-blue-50/70 p-3.5 dark:border-blue-900/60 dark:bg-blue-950/30">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <span className="shrink-0 whitespace-nowrap rounded-lg bg-blue-600 px-2 py-0.5 text-[10px] font-extrabold text-white">
                   LEVEL 1 • CAROUSEL
                 </span>
-                <div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">
-                    Mobile &amp; Desktop Hero Carousel
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                    Hero Carousel (Slider Atas)
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Tampil eksklusif di slider banner paling atas beranda
-                    (Maksimal 1 iklan aktif)
+                  <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                    Slider banner paling atas beranda
                   </p>
                 </div>
               </div>
               {level1Slot.isOccupied ? (
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[9px] font-black text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                  SLOT TERISI (MASUK ANTREAN)
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-0.5 text-[9px] font-black text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                  SLOT TERISI
                 </span>
               ) : (
-                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[9px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[9px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                   SLOT TERSEDIA
                 </span>
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50/70 p-3.5 dark:border-orange-900/60 dark:bg-orange-950/30">
-              <div className="flex items-center gap-2.5">
-                <span className="rounded-lg bg-orange-600 px-2 py-0.5 text-[10px] font-extrabold text-white">
+            <div className="flex items-center justify-between gap-2.5 rounded-2xl border border-orange-200 bg-orange-50/70 p-3.5 dark:border-orange-900/60 dark:bg-orange-950/30">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <span className="shrink-0 whitespace-nowrap rounded-lg bg-orange-600 px-2 py-0.5 text-[10px] font-extrabold text-white">
                   LEVEL 2 • GRID PRODUK
                 </span>
-                <div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
                     In-Feed Grid Produk (Katalog)
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
                     Diselipkan di antara etalase kartu produk toko
                   </p>
                 </div>
               </div>
-              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[9px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[9px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                 SLOT TERSEDIA
               </span>
             </div>
