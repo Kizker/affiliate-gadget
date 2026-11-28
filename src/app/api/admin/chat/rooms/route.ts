@@ -19,7 +19,7 @@ export async function GET() {
       select: { role: true, storeId: true },
     })
 
-    if (!user || !isAdminStaffRole(user.role)) {
+    if (!user || (!isAdminStaffRole(user.role) && user.role !== 'MITRA')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -144,70 +144,90 @@ export async function GET() {
       })
       const storeIds = group?.stores.map((s) => s.id) || []
 
-      // Jika After Sales belum ditugaskan ke grup toko manapun, kembalikan daftar kosong
-      if (storeIds.length === 0) {
-        return NextResponse.json({ success: true, data: [] })
-      }
+      // Bantuan langsung After Sales ke Superadmin
+      const helpClause = { customerId: session.user.id, storeId: null }
 
-      const storeScope = {
-        OR: [
-          { storeId: { in: storeIds } },
-          { order: { storeId: { in: storeIds } } },
-          {
-            order: {
-              items: {
-                some: { product: { storeId: { in: storeIds } } },
+      if (storeIds.length === 0) {
+        whereClause = {
+          messages: { some: {} },
+          ...helpClause,
+        }
+      } else {
+        const storeScope = {
+          OR: [
+            { storeId: { in: storeIds } },
+            { order: { storeId: { in: storeIds } } },
+            {
+              order: {
+                items: {
+                  some: { product: { storeId: { in: storeIds } } },
+                },
               },
             },
-          },
-        ],
-      }
+          ],
+        }
 
-      whereClause = {
-        messages: { some: {} },
-        AND: [
-          storeScope,
-          {
-            OR: [
-              // 1. Seluruh percakapan yang memiliki permohonan retur / penukaran barang di grup toko
-              {
-                order: {
-                  returnRequests: { some: {} },
+        whereClause = {
+          messages: { some: {} },
+          OR: [
+            helpClause,
+            {
+              AND: [
+                storeScope,
+                {
+                  OR: [
+                    // 1. Seluruh percakapan yang memiliki permohonan retur / penukaran barang di grup toko
+                    {
+                      order: {
+                        returnRequests: { some: {} },
+                      },
+                    },
+                    // 2. Percakapan dengan pesan kartu referensi retur
+                    {
+                      messages: {
+                        some: {
+                          OR: [
+                            { messageType: 'return_reference' },
+                            { content: { contains: 'return_reference' } },
+                          ],
+                        },
+                      },
+                    },
+                    // 3. Percakapan dengan aduan komplain purna jual
+                    {
+                      order: {
+                        complaints: { some: {} },
+                      },
+                    },
+                    // 4. Percakapan pesanan selesai (COMPLETED) untuk toko dalam grup
+                    {
+                      order: {
+                        status: 'COMPLETED',
+                      },
+                    },
+                    // 5. Percakapan yang di-claim oleh user After Sales ini
+                    { claimedById: session.user.id },
+                  ],
                 },
-              },
-              // 2. Percakapan dengan pesan kartu referensi retur
-              {
-                messages: {
-                  some: {
-                    OR: [
-                      { messageType: 'return_reference' },
-                      { content: { contains: 'return_reference' } },
-                    ],
-                  },
-                },
-              },
-              // 3. Percakapan dengan aduan komplain purna jual
-              {
-                order: {
-                  complaints: { some: {} },
-                },
-              },
-              // 4. Percakapan pesanan selesai (COMPLETED) untuk toko dalam grup
-              {
-                order: {
-                  status: 'COMPLETED',
-                },
-              },
-              // 5. Percakapan yang di-claim oleh user After Sales ini
-              { claimedById: session.user.id },
-            ],
-          },
-        ],
+              ],
+            },
+          ],
+        }
       }
     } else if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
       // Superadmin / Platform Admin dapat melihat seluruh chat platform termasuk CS { storeId: null }
       whereClause = {
         messages: { some: {} },
+      }
+    } else if (user.role === 'MITRA') {
+      whereClause = {
+        messages: { some: {} },
+        OR: [
+          // Bantuan langsung Mitra ke Superadmin
+          { customerId: session.user.id, storeId: null },
+          // Percakapan yang diklaim oleh mitra ini
+          { claimedById: session.user.id },
+        ],
       }
     } else {
       whereClause = {
@@ -386,7 +406,7 @@ export async function POST(request: Request) {
       select: { role: true, storeId: true },
     })
 
-    if (!user || !isAdminStaffRole(user.role)) {
+    if (!user || (!isAdminStaffRole(user.role) && user.role !== 'MITRA')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

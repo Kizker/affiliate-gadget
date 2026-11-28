@@ -23,7 +23,7 @@ export async function GET(
       select: { role: true, storeId: true },
     })
 
-    if (!user || !isAdminStaffRole(user.role)) {
+    if (!user || (!isAdminStaffRole(user.role) && user.role !== 'MITRA')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -100,32 +100,48 @@ export async function GET(
     }
 
     if (user.role === 'AFTER_SALES') {
-      const group = await prisma.storeGroup.findFirst({
-        where: { afterSalesUserId: session.user.id },
-        include: { stores: { select: { id: true } } },
-      })
-      const storeIds = group?.stores.map((s) => s.id) || []
+      const isSuperAdminHelp =
+        room.customerId === session.user.id && room.storeId === null
 
-      // Jika belum ditugaskan ke grup cabang manapun, tolak akses
-      if (storeIds.length === 0) {
-        return NextResponse.json(
-          { error: 'Anda belum ditugaskan ke grup cabang toko manapun' },
-          { status: 403 }
-        )
+      if (!isSuperAdminHelp) {
+        const group = await prisma.storeGroup.findFirst({
+          where: { afterSalesUserId: session.user.id },
+          include: { stores: { select: { id: true } } },
+        })
+        const storeIds = group?.stores.map((s) => s.id) || []
+
+        // Jika belum ditugaskan ke grup cabang manapun, tolak akses
+        if (storeIds.length === 0) {
+          return NextResponse.json(
+            { error: 'Anda belum ditugaskan ke grup cabang toko manapun' },
+            { status: 403 }
+          )
+        }
+
+        const isGroupRoom =
+          storeIds.includes(room.storeId || '') ||
+          (room.order &&
+            (storeIds.includes((room.order as any).storeId || '') ||
+              (room.order as any).items?.some((i: any) =>
+                storeIds.includes(i.product?.storeId || '')
+              ))) ||
+          room.claimedById === session.user.id
+
+        if (!isGroupRoom) {
+          return NextResponse.json(
+            { error: 'Akses percakapan grup cabang lain ditolak' },
+            { status: 403 }
+          )
+        }
       }
+    }
 
-      const isGroupRoom =
-        storeIds.includes(room.storeId || '') ||
-        (room.order &&
-          (storeIds.includes((room.order as any).storeId || '') ||
-            (room.order as any).items?.some((i: any) =>
-              storeIds.includes(i.product?.storeId || '')
-            ))) ||
-        room.claimedById === session.user.id
-
-      if (!isGroupRoom) {
+    if (user.role === 'MITRA') {
+      const isSuperAdminHelp =
+        room.customerId === session.user.id && room.storeId === null
+      if (!isSuperAdminHelp && room.claimedById !== session.user.id) {
         return NextResponse.json(
-          { error: 'Akses percakapan grup cabang lain ditolak' },
+          { error: 'Akses percakapan ditolak' },
           { status: 403 }
         )
       }
@@ -264,7 +280,7 @@ export async function POST(
       select: { role: true, storeId: true },
     })
 
-    if (!user || !isAdminStaffRole(user.role)) {
+    if (!user || (!isAdminStaffRole(user.role) && user.role !== 'MITRA')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -395,32 +411,48 @@ export async function POST(
     }
 
     if (user.role === 'AFTER_SALES') {
-      const group = await prisma.storeGroup.findFirst({
-        where: { afterSalesUserId: session.user.id },
-        include: { stores: { select: { id: true } } },
-      })
-      const storeIds = group?.stores.map((s) => s.id) || []
+      const isSuperAdminHelp =
+        room.customerId === session.user.id && room.storeId === null
 
-      // Jika belum ditugaskan ke grup cabang manapun, tolak kirim pesan
-      if (storeIds.length === 0) {
-        return NextResponse.json(
-          { error: 'Anda belum ditugaskan ke grup cabang toko manapun' },
-          { status: 403 }
-        )
+      if (!isSuperAdminHelp) {
+        const group = await prisma.storeGroup.findFirst({
+          where: { afterSalesUserId: session.user.id },
+          include: { stores: { select: { id: true } } },
+        })
+        const storeIds = group?.stores.map((s) => s.id) || []
+
+        // Jika belum ditugaskan ke grup cabang manapun, tolak kirim pesan
+        if (storeIds.length === 0) {
+          return NextResponse.json(
+            { error: 'Anda belum ditugaskan ke grup cabang toko manapun' },
+            { status: 403 }
+          )
+        }
+
+        const isGroupStore =
+          storeIds.includes(room.storeId || '') ||
+          (room.order &&
+            (storeIds.includes(room.order.storeId || '') ||
+              room.order.items?.some((i) =>
+                storeIds.includes(i.product?.storeId || '')
+              ))) ||
+          room.claimedById === session.user.id
+
+        if (!isGroupStore) {
+          return NextResponse.json(
+            { error: 'Akses percakapan grup cabang lain ditolak' },
+            { status: 403 }
+          )
+        }
       }
+    }
 
-      const isGroupStore =
-        storeIds.includes(room.storeId || '') ||
-        (room.order &&
-          (storeIds.includes(room.order.storeId || '') ||
-            room.order.items?.some((i) =>
-              storeIds.includes(i.product?.storeId || '')
-            ))) ||
-        room.claimedById === session.user.id
-
-      if (!isGroupStore) {
+    if (user.role === 'MITRA') {
+      const isSuperAdminHelp =
+        room.customerId === session.user.id && room.storeId === null
+      if (!isSuperAdminHelp && room.claimedById !== session.user.id) {
         return NextResponse.json(
-          { error: 'Akses percakapan grup cabang lain ditolak' },
+          { error: 'Akses percakapan ditolak' },
           { status: 403 }
         )
       }

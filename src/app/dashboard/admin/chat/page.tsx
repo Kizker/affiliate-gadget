@@ -409,7 +409,13 @@ function AdminChatContent() {
         isStoreHelpToSuperAdmin: true,
         customer: {
           id: currentUserId || '',
-          name: session?.user?.name || 'Admin Toko',
+          name:
+            session?.user?.name ||
+            (userRole === 'AFTER_SALES'
+              ? 'Admin After Sales'
+              : userRole === 'MITRA'
+                ? 'Mitra Servis'
+                : 'Admin Toko'),
           email: session?.user?.email || '',
           image: session?.user?.image || null,
           phone: null,
@@ -437,12 +443,15 @@ function AdminChatContent() {
     }
   }, [currentUserId, session?.user, userRole])
 
-  // Auto-buka CS room jika diakses via parameter ?cs=true
+  // Auto-buka CS room jika diakses via parameter ?cs=true (Store Admin, After Sales, & Mitra)
+  const isAllowedHelpUser =
+    isStoreAdmin || userRole === 'AFTER_SALES' || userRole === 'MITRA'
+
   useEffect(() => {
-    if (paramCs && isStoreAdmin && isAllowed) {
+    if (paramCs && isAllowedHelpUser && isAllowed) {
       handleOpenSuperAdminCsChat()
     }
-  }, [paramCs, isStoreAdmin, isAllowed, handleOpenSuperAdminCsChat])
+  }, [paramCs, isAllowedHelpUser, isAllowed, handleOpenSuperAdminCsChat])
   const [activeOrderContext, setActiveOrderContext] = useState<{
     orderId: string
     orderNumber: string
@@ -2183,13 +2192,20 @@ function AdminChatContent() {
                   room.customer?.role === 'STORE_ADMIN' ||
                   room.customer?.role === 'STORE_SALES'
 
+                const isAfterSalesUser = room.customer?.role === 'AFTER_SALES'
+                const isMitraUser = room.customer?.role === 'MITRA'
+
                 const displayTitle = isStoreHelpChat
                   ? 'Customer Service (Superadmin)'
                   : isStoreAdminUser
                     ? `${room.customer?.name || 'Admin Toko'} (${room.customer?.store?.name || 'Toko Cabang'})`
-                    : room.customer?.name ||
-                      room.customer?.email?.split('@')[0] ||
-                      'Pelanggan'
+                    : isAfterSalesUser
+                      ? `${room.customer?.name || 'Admin After Sales'} (After Sales)`
+                      : isMitraUser
+                        ? `${room.customer?.name || 'Mitra Toko'} (Mitra Servis)`
+                        : room.customer?.name ||
+                          room.customer?.email?.split('@')[0] ||
+                          'Pelanggan'
 
                 const status = room.order
                   ? statusConfig[room.order.status]
@@ -2256,6 +2272,14 @@ function AdminChatContent() {
                           <span className="rounded bg-indigo-50 px-1 text-[9px] font-bold text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
                             🏢 Admin Toko:{' '}
                             {room.customer?.store?.name || 'Cabang'}
+                          </span>
+                        ) : isAfterSalesUser ? (
+                          <span className="rounded bg-purple-50 px-1 text-[9px] font-bold text-purple-600 dark:bg-purple-950/50 dark:text-purple-400">
+                            🎧 After Sales
+                          </span>
+                        ) : isMitraUser ? (
+                          <span className="rounded bg-emerald-50 px-1 text-[9px] font-bold text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                            🔧 Mitra Servis
                           </span>
                         ) : !room.storeId ? (
                           <span className="rounded bg-sky-50 px-1 text-[9px] font-bold text-sky-600 dark:bg-sky-950/50 dark:text-sky-400">
@@ -2338,9 +2362,13 @@ function AdminChatContent() {
                           : selectedRoom.customer?.role === 'STORE_ADMIN' ||
                               selectedRoom.customer?.role === 'STORE_SALES'
                             ? `${selectedRoom.customer?.name || 'Admin Toko'} (${selectedRoom.customer?.store?.name || 'Toko Cabang'})`
-                            : selectedRoom.customer?.name ||
-                              selectedRoom.customer?.email ||
-                              'Pelanggan'}
+                            : selectedRoom.customer?.role === 'AFTER_SALES'
+                              ? `${selectedRoom.customer?.name || 'Admin After Sales'} (After Sales)`
+                              : selectedRoom.customer?.role === 'MITRA'
+                                ? `${selectedRoom.customer?.name || 'Mitra Toko'} (Mitra Servis)`
+                                : selectedRoom.customer?.name ||
+                                  selectedRoom.customer?.email ||
+                                  'Pelanggan'}
                       </h3>
                       {isSelectedStoreHelpChat ? (
                         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
@@ -2352,6 +2380,16 @@ function AdminChatContent() {
                         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-0.5 text-[9.5px] font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
                           <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                           Admin Toko
+                        </span>
+                      ) : selectedRoom.customer?.role === 'AFTER_SALES' ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-purple-50 px-2.5 py-0.5 text-[9.5px] font-bold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                          After Sales
+                        </span>
+                      ) : selectedRoom.customer?.role === 'MITRA' ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-0.5 text-[9.5px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Mitra Servis
                         </span>
                       ) : !selectedRoom.storeId ? (
                         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-sky-50 px-2.5 py-0.5 text-[9.5px] font-bold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">

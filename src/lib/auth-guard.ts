@@ -62,13 +62,14 @@ export const ROUTE_ACCESS_MATRIX: Record<string, string[]> = {
   '/dashboard/admin/whatsapp': ['SUPER_ADMIN'],
   '/dashboard/after-sales': ['SUPER_ADMIN', 'AFTER_SALES', 'STORE_ADMIN'],
 
-  // Chat — semua admin & staff toko
+  // Chat — semua admin & staff toko serta partner aftersales & mitra
   '/dashboard/admin/chat': [
     'SUPER_ADMIN',
     'ADMIN',
     'STORE_ADMIN',
     'STORE_SALES',
     'AFTER_SALES',
+    'MITRA',
   ],
 
   // Katalog Produk — SUPER_ADMIN, ADMIN, STORE_ADMIN, CONTENT_EDITOR

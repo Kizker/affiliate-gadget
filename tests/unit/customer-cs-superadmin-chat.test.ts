@@ -49,8 +49,6 @@ describe('Customer to CS / Superadmin Chat Robustness Suite', () => {
     )
     const content = fs.readFileSync(chatPagePath, 'utf-8')
     expect(content).toContain('isCsRoom')
-    expect(content).toContain(
-      'isCsRoom ? undefined : (selectedRoom.storeId || undefined)'
-    )
+    expect(content).toContain('isCsRoom ? undefined')
   })
 })

@@ -14,6 +14,7 @@ import {
   Settings,
   TrendingUp,
   ExternalLink,
+  Headphones,
   type LucideIcon,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -406,6 +407,17 @@ const Header = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <Link href="/dashboard/admin/chat?cs=true">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="shadow-2xs inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300"
+          >
+            <Headphones className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <span>Bantuan Superadmin</span>
+          </motion.button>
+        </Link>
+
         <Link href="/dashboard/mitra/settings">
           <motion.button
             whileHover={{ scale: 1.02 }}

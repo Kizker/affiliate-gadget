@@ -36,6 +36,7 @@ import {
   Headphones,
   QrCode,
   Scale,
+  Edit3,
 } from 'lucide-react'
 import { useSidebarSafe } from '@/context/sidebar-context'
 import { useAdminNotifications } from '@/context/admin-notifications-context'
@@ -201,6 +202,11 @@ const afterSalesNavSections: NavSection[] = [
         label: 'Retur & Komplain',
         href: '/dashboard/after-sales/returns',
       },
+      {
+        icon: Headphones,
+        label: 'Bantuan Superadmin',
+        href: '/dashboard/after-sales/chat?cs=true',
+      },
     ],
   },
   {
@@ -210,6 +216,40 @@ const afterSalesNavSections: NavSection[] = [
         icon: Settings,
         label: 'Pengaturan Akun',
         href: '/dashboard/after-sales/settings',
+      },
+    ],
+  },
+]
+
+// Mitra Navigation (Workshop & Servis)
+const mitraNavSections: NavSection[] = [
+  {
+    title: 'Utama',
+    items: [
+      {
+        icon: LayoutDashboard,
+        label: 'Dashboard Mitra',
+        href: '/dashboard/mitra',
+      },
+    ],
+  },
+  {
+    title: 'Layanan & Bantuan',
+    items: [
+      {
+        icon: Edit3,
+        label: 'Edit Profil Toko',
+        href: '/dashboard/mitra/profile/edit',
+      },
+      {
+        icon: Settings,
+        label: 'Pengaturan Akun',
+        href: '/dashboard/mitra/settings',
+      },
+      {
+        icon: Headphones,
+        label: 'Bantuan Superadmin',
+        href: '/dashboard/admin/chat?cs=true',
       },
     ],
   },
@@ -387,7 +427,7 @@ export function Sidebar({
 
   const fallbackRole = useMemo(() => {
     if (pathname.startsWith('/dashboard/after-sales')) return 'AFTER_SALES'
-    if (pathname.startsWith('/dashboard/mitra')) return 'STORE_ADMIN'
+    if (pathname.startsWith('/dashboard/mitra')) return 'MITRA'
     if (pathname.startsWith('/dashboard/customer')) return 'CUSTOMER'
     if (pathname.startsWith('/dashboard/teknisi')) return 'TECHNICIAN'
     return 'SUPER_ADMIN'
@@ -427,6 +467,9 @@ export function Sidebar({
   const navSections = useMemo(() => {
     if (effectiveRole === 'AFTER_SALES') {
       return afterSalesNavSections
+    }
+    if (effectiveRole === 'MITRA') {
+      return mitraNavSections
     }
     if (effectiveRole === 'CUSTOMER') {
       return customerNavSections

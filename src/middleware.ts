@@ -53,6 +53,7 @@ const ADMIN_SUBROUTE_ACCESS: Record<string, string[]> = {
     'STORE_ADMIN',
     'STORE_SALES',
     'AFTER_SALES',
+    'MITRA',
   ],
   '/dashboard/admin/etalase': [
     'SUPER_ADMIN',
