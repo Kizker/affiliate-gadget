@@ -894,14 +894,6 @@ export default function OrdersClient({
                                       )}
 
                                       <Link
-                                        href={firstItemHref}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                                      >
-                                        <span>Rincian Unit</span>
-                                      </Link>
-
-                                      <Link
                                         href={`/dashboard/customer/chat?${chatParams.toString()}`}
                                         onClick={(e) => e.stopPropagation()}
                                         className={`shadow-2xs inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition active:scale-95 ${
@@ -1159,14 +1151,7 @@ export default function OrdersClient({
                                           </span>
                                         )}
 
-                                        <Link
-                                          href={extraItemDetailHref}
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="shadow-2xs inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                                        >
-                                          <span>Rincian Unit</span>
-                                        </Link>
-
+                                        {/* Chat Action */}
                                         <Link
                                           href={`/dashboard/customer/chat?${chatParams.toString()}`}
                                           onClick={(e) => e.stopPropagation()}

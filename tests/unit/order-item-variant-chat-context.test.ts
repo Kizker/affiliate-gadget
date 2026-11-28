@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 
 describe('Order Item Variant-Specific Chat Context Suite', () => {
   it('1. prioritizes variantName over product/etalase cover name when constructing chat parameters', () => {
@@ -114,5 +116,20 @@ describe('Order Item Variant-Specific Chat Context Suite', () => {
       payload.variantName || payload.productName || 'Produk Pesanan'
 
     expect(prodName).toBe('Samsung Galaxy S26 Ultra - 256GB')
+  })
+
+  it('4. verifies removal of redundant Rincian Unit buttons on order items list', () => {
+    const ordersClientPath = path.join(
+      process.cwd(),
+      'src',
+      'app',
+      'dashboard',
+      'customer',
+      'orders',
+      'orders-client.tsx'
+    )
+    const content = fs.readFileSync(ordersClientPath, 'utf-8')
+    expect(content).not.toContain('<span>Rincian Unit</span>')
+    expect(content).toContain('Rincian Pesanan')
   })
 })
