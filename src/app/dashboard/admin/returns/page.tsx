@@ -259,6 +259,12 @@ export default function SuperAdminReturnsPage() {
       // Wajib sudah diproses/diteruskan After Sales
       if (item.status === 'PENDING') return false
 
+      const isReturnedToAfterSales = Boolean(
+        item.storeResponse?.includes(
+          '[Dikembalikan Superadmin ke After Sales]'
+        ) || item.qcStatus === 'NEEDS_REVISION'
+      )
+
       const q = searchQuery.toLowerCase()
       const matchQuery =
         item.order.orderNumber.toLowerCase().includes(q) ||
@@ -273,7 +279,8 @@ export default function SuperAdminReturnsPage() {
 
       if (!matchQuery) return false
       if (statusFilter === 'ALL') return true
-      if (statusFilter === 'IN_REVIEW') return item.status === 'IN_REVIEW'
+      if (statusFilter === 'IN_REVIEW')
+        return item.status === 'IN_REVIEW' && !isReturnedToAfterSales
       if (statusFilter === 'APPROVED')
         return item.status === 'APPROVED' || item.status === 'COMPLETED'
       if (statusFilter === 'REJECTED') return item.status === 'REJECTED'
@@ -285,8 +292,14 @@ export default function SuperAdminReturnsPage() {
     const superAdminReturns = returns.filter((r) => r.status !== 'PENDING')
     return {
       all: superAdminReturns.length,
-      inReview: superAdminReturns.filter((r) => r.status === 'IN_REVIEW')
-        .length,
+      inReview: superAdminReturns.filter(
+        (r) =>
+          r.status === 'IN_REVIEW' &&
+          !r.storeResponse?.includes(
+            '[Dikembalikan Superadmin ke After Sales]'
+          ) &&
+          r.qcStatus !== 'NEEDS_REVISION'
+      ).length,
       approved: superAdminReturns.filter(
         (r) => r.status === 'APPROVED' || r.status === 'COMPLETED'
       ).length,
@@ -388,19 +401,31 @@ export default function SuperAdminReturnsPage() {
       ) : (
         <div className="space-y-4">
           {filteredReturns.map((item) => {
+            const isReturnedToAfterSales = Boolean(
+              item.storeResponse?.includes(
+                '[Dikembalikan Superadmin ke After Sales]'
+              ) || item.qcStatus === 'NEEDS_REVISION'
+            )
             const isPendingDecision =
-              item.status === 'PENDING' || item.status === 'IN_REVIEW'
+              (item.status === 'PENDING' || item.status === 'IN_REVIEW') &&
+              !isReturnedToAfterSales
             const isApproved =
               item.status === 'APPROVED' || item.status === 'COMPLETED'
             const isRejected = item.status === 'REJECTED'
-            const isRecApproved = Boolean(
-              item.storeResponse?.includes(
-                '[Rekomendasi After Sales: DISETUJUI]'
+            const isRecApproved =
+              !isReturnedToAfterSales &&
+              Boolean(
+                item.storeResponse?.includes(
+                  '[Rekomendasi After Sales: DISETUJUI]'
+                )
               )
-            )
-            const isRecRejected = Boolean(
-              item.storeResponse?.includes('[Rekomendasi After Sales: DITOLAK]')
-            )
+            const isRecRejected =
+              !isReturnedToAfterSales &&
+              Boolean(
+                item.storeResponse?.includes(
+                  '[Rekomendasi After Sales: DITOLAK]'
+                )
+              )
             const hasRecommendation = isRecApproved || isRecRejected
 
             return (
@@ -456,12 +481,17 @@ export default function SuperAdminReturnsPage() {
                         ? 'Refund Dana'
                         : 'Tukar Unit Baru'}
                     </span>
-                    {item.status === 'IN_REVIEW' && (
+                    {isReturnedToAfterSales ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Clock className="h-3.5 w-3.5 animate-pulse text-amber-600" />{' '}
+                        Menunggu Keputusan After Sales...
+                      </span>
+                    ) : item.status === 'IN_REVIEW' ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-xs font-bold text-orange-700 dark:border-orange-900/40 dark:bg-orange-950/40 dark:text-orange-300">
                         <Clock className="h-3.5 w-3.5 text-orange-600" />{' '}
                         Menunggu ACC Superadmin
                       </span>
-                    )}
+                    ) : null}
                     {item.status === 'PENDING' && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
                         <Clock className="h-3.5 w-3.5 text-amber-600" />{' '}
@@ -639,7 +669,28 @@ export default function SuperAdminReturnsPage() {
                   </div>
                 )}
 
-                {hasRecommendation ? (
+                {isReturnedToAfterSales ? (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-950 transition dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                    <div className="flex items-center gap-2 font-bold">
+                      <Clock className="h-4 w-4 animate-pulse text-amber-600 dark:text-amber-400" />
+                      <span className="text-amber-900 dark:text-amber-100">
+                        Tiket Dikembalikan ke After Sales &bull; Menunggu Telaah
+                        / Keputusan Ulang After Sales
+                      </span>
+                    </div>
+                    <p className="mt-1 leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+                      Anda telah menolak rekomendasi After Sales dan
+                      mengembalikan tiket ini. Tim After Sales sedang meninjau
+                      kembali pengajuan ini di meja kerja mereka.
+                    </p>
+                    {item.storeResponse && (
+                      <p className="mt-2 border-t border-amber-200/60 pt-1.5 text-[11px] text-amber-800 dark:border-amber-900/40 dark:text-amber-300">
+                        <strong>Catatan Pengembalian Terakhir:</strong> &ldquo;
+                        {cleanRecommendationNote(item.storeResponse)}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                ) : hasRecommendation ? (
                   <div
                     className={`mt-4 rounded-xl border p-3.5 text-xs transition ${isRecApproved ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200' : 'border-rose-200 bg-rose-50/70 text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200'}`}
                   >
@@ -718,7 +769,14 @@ export default function SuperAdminReturnsPage() {
                       minute: '2-digit',
                     })}
                   </span>
-                  {isPendingDecision && (
+                  {isReturnedToAfterSales ? (
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-xs font-bold text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Clock className="h-3.5 w-3.5 animate-pulse text-amber-600" />
+                        <span>Menunggu Keputusan After Sales...</span>
+                      </span>
+                    </div>
+                  ) : isPendingDecision ? (
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -761,49 +819,51 @@ export default function SuperAdminReturnsPage() {
                         </span>
                       </button>
                     </div>
-                  )}
+                  ) : null}
 
-                  {!isPendingDecision && item.status === 'COMPLETED' && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                        {item.type === 'REPLACEMENT'
-                          ? 'Resi Pengganti Terbit'
-                          : 'Refund Selesai'}
-                      </span>
-                      {(item.returnTrackingNumber ||
-                        item.order.trackingNumber) && (
-                        <>
-                          {item.type === 'REPLACEMENT' && (
+                  {!isPendingDecision &&
+                    !isReturnedToAfterSales &&
+                    item.status === 'COMPLETED' && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          {item.type === 'REPLACEMENT'
+                            ? 'Resi Pengganti Terbit'
+                            : 'Refund Selesai'}
+                        </span>
+                        {(item.returnTrackingNumber ||
+                          item.order.trackingNumber) && (
+                          <>
+                            {item.type === 'REPLACEMENT' && (
+                              <button
+                                type="button"
+                                onClick={() => handleViewThermalLabel(item)}
+                                disabled={loadingThermalLabel}
+                                className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                              >
+                                <Printer className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                                <span>Cetak Air Waybill</span>
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => handleViewThermalLabel(item)}
-                              disabled={loadingThermalLabel}
-                              className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 transition hover:bg-slate-50 active:scale-95 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                              onClick={() => {
+                                setActiveTrackingQuery(
+                                  item.returnTrackingNumber ||
+                                    item.order.trackingNumber ||
+                                    ''
+                                )
+                                setResiModalOpen(true)
+                              }}
+                              className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                             >
-                              <Printer className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-                              <span>Cetak Air Waybill</span>
+                              <Search className="h-3.5 w-3.5" />
+                              <span>Lacak Biteship</span>
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveTrackingQuery(
-                                item.returnTrackingNumber ||
-                                  item.order.trackingNumber ||
-                                  ''
-                              )
-                              setResiModalOpen(true)
-                            }}
-                            className="shadow-2xs inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                          >
-                            <Search className="h-3.5 w-3.5" />
-                            <span>Lacak Biteship</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
+                          </>
+                        )}
+                      </div>
+                    )}
 
                   {!isPendingDecision && item.status === 'REJECTED' && (
                     <div className="flex flex-wrap items-center gap-2">

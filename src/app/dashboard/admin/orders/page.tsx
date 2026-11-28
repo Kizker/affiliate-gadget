@@ -1704,6 +1704,45 @@ export default function AdminOrdersPage() {
                             )}
                           </div>
 
+                          {/* Pelacakan 2 (Khusus REPLACEMENT): Resi Unit Pengganti */}
+                          {isReplacement && selectedOrder.trackingNumber && (
+                            <div className="space-y-1.5 rounded-xl border border-blue-200/80 bg-white p-3 dark:border-blue-900/60 dark:bg-slate-900">
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-200">
+                                  <Truck className="h-3.5 w-3.5 text-blue-600" />
+                                  Pengiriman Unit Baru Pengganti
+                                </span>
+                                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                                  UNIT DALAM PENGIRIMAN
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                                <div className="font-mono">
+                                  <span className="text-[10px] text-slate-400">
+                                    Resi Unit Pengganti:{' '}
+                                  </span>
+                                  <span className="font-bold text-slate-900 dark:text-white">
+                                    {selectedOrder.courierCode || 'JNE'} —{' '}
+                                    {selectedOrder.trackingNumber}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCheckResiQuery(
+                                      selectedOrder.trackingNumber || ''
+                                    )
+                                    setShowCheckResiModal(true)
+                                  }}
+                                  className="shadow-2xs inline-flex cursor-pointer items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-blue-700 active:scale-95"
+                                >
+                                  <Search className="h-3 w-3" />
+                                  <span>Lacak Unit Pengganti (Biteship)</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Pelacakan 3 (Khusus REFUND): Rincian Rekening & Pengembalian Dana */}
                           {!isReplacement && (
                             <div className="space-y-1.5 rounded-xl border border-emerald-200/80 bg-white p-3 dark:border-emerald-900/60 dark:bg-slate-900">

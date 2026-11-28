@@ -106,4 +106,19 @@ describe('Dual-Tier Return Approval: After Sales Confirmation & Superadmin Final
     expect(page).toContain('handleDirectApprove')
     expect(page).toContain('handleDirectRejectAndReturn')
   })
+
+  it('6. Meja Kerja Superadmin: Menampilkan "Menunggu Keputusan After Sales..." dan menyembunyikan tombol ACC saat tiket dikembalikan ke After Sales', () => {
+    const page = fs
+      .readFileSync(superAdminReturnsPagePath, 'utf8')
+      .replace(/\r\n/g, '\n')
+
+    expect(page).toContain('isReturnedToAfterSales')
+    expect(page).toContain('Menunggu Keputusan After Sales...')
+    expect(page).toContain('Tiket Dikembalikan ke After Sales')
+    expect(page).toContain('Menunggu Telaah / Keputusan Ulang After Sales')
+    // Counts inReview tidak mengikutkan tiket yang dikembalikan ke After Sales
+    expect(page).toContain(
+      "!r.storeResponse?.includes(\n            '[Dikembalikan Superadmin ke After Sales]'\n          )"
+    )
+  })
 })
